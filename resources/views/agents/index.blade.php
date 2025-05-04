@@ -1,0 +1,74 @@
+<x-app-layout>
+
+    <div class="py-12">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            @if(session('success'))
+                <div class="mb-4 p-4 bg-green-200 text-green-800 rounded">
+                    {{ session('success') }}
+                </div>
+            @endif
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="p-6 text-gray-900">
+                    <h2 class="text-2xl font-bold mb-6">Nossos Assistentes de IA</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        @foreach ($agents as $agent)
+                            <div class="bg-gray-100 rounded-lg overflow-hidden shadow-md">
+                                
+                                <!-- Imagem do agente -->
+                                <div class="h-48 bg-gray-200">
+                                    <img src="{{ asset('storage/' . $agent->image_path) }}" alt="{{ $agent->name }}" 
+                                        class="w-full h-full object-cover">
+                                </div>
+                                
+                                <!-- Descritivo -->
+                                <div class="p-4">
+                                    <h3 class="text-xl font-bold mb-2">{{ $agent->name }}</h3>
+                                    <p class="text-gray-700 mb-4">{{ $agent->description }}</p>
+                                    <div class="text-lg font-semibold mb-4">R$ {{ number_format($agent->price, 2, ',', '.') }}</div>
+                                        <form method="POST" action="{{ route('agents.addToCart', $agent->id) }}">
+                                            @csrf
+                                            <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 mb-4">
+                                                Adicionar ao Carrinho
+                                            </button>
+                                        </form>
+                                </div>
+                                
+                                <!-- Video do YouTube -->
+                                <div class="p-4 border-t border-gray-200">
+                                    <div class="aspect-w-16 aspect-h-9">
+                                        <iframe 
+                                            src="{{ $agent->youtube_url }}" 
+                                            frameborder="0" 
+                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                            allowfullscreen
+                                            class="w-full h-48"
+                                        ></iframe>
+                                    </div>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                    
+                    @guest
+                        <div class="mt-8 text-center">
+                            <p class="mb-4">Para acessar todos os assistentes, crie uma conta ou faça login.</p>
+                            <div class="flex justify-center gap-4">
+                                <a href="{{ route('register') }}" 
+                                   class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+                                    Criar conta
+                                </a>
+                                <a href="{{ route('login') }}" 
+                                   class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+                                    Fazer login
+                                </a>
+                            </div>
+                        </div>
+                    @endguest
+                </div>
+            </div>
+        </div>
+    </div>
+
+</x-app-layout>
