@@ -36,13 +36,36 @@
                             <textarea name="description" id="description" rows="4" 
                                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">{{ old('description') }}</textarea>
                         </div>
+
+                        <div class="mb-4">
+                            <label for="organization" class="block text-gray-700 text-sm font-bold mb-2">Organization</label>
+                            <textarea name="organization" id="organization" rows="1" 
+                                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">{{ old('organization') }}</textarea>
+                        </div>
                         
                         <div class="mb-4">
+                            <label for="project_id" class="block text-gray-700 text-sm font-bold mb-2">Project Id</label>
+                            <textarea name="project_id" id="organization" rows="1" 
+                                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">{{ old('project_id') }}</textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="system_prompt" class="block text-gray-700 text-sm font-bold mb-2">System Prompt</label>
+                            <textarea name="system_prompt" id="system_prompt" rows="4" 
+                                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">{{ old('system_prompt') }}</textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <img id="agent-image-preview"
+                                src="https://via.placeholder.com/150x150?text=Pré-visualização"
+                                alt="Pré-visualização"
+                                class="w-32 h-32 object-cover rounded mb-2 border border-gray-300">
                             <label for="image" class="block text-gray-700 text-sm font-bold mb-2">Imagem</label>
-                            <input type="file" name="image" id="image" accept="image/*"
+                            <input type="file" name="image" id="image" accept="image/*" onchange="previewImage(event)"
                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
                             <p class="text-sm text-gray-500 mt-1">Formatos aceitos: JPG, PNG, GIF (max 2MB)</p>
                         </div>
+
                         
                         <div class="mb-4">
                             <label for="youtube_video_id" class="block text-gray-700 text-sm font-bold mb-2">ID do Vídeo no YouTube</label>
@@ -81,3 +104,18 @@
         </div>
     </div>
 </x-app-layout>
+
+<script>
+function previewImage(event) {
+    const imagePreview = document.getElementById('agent-image-preview');
+    const file = event.target.files[0];
+
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            imagePreview.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+}
+</script>

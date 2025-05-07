@@ -11,6 +11,7 @@ class ChatSession extends Model
     protected $fillable = [
         'user_id',
         'agent_id',
+        'thread_id',
         'ai_model',
         'current_step',
         'should_persist',

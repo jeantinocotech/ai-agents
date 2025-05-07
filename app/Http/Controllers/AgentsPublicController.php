@@ -4,14 +4,29 @@ namespace App\Http\Controllers;
 
 use App\Models\Agent;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class AgentsPublicController extends Controller
 {
     public function index()
     {
-        $agents = Agent::all();
-        return view('agents.index', compact('agents'));
+        
+        Log::info('AgentsPublicController@index called');
+        
+        $user = auth()->user();
+        $purchasedAgentIds = [];
+    
+        if ($user) {
+            $purchasedAgentIds = $user->purchases()->pluck('agent_id')->toArray(); }
+    
+        $agents = Agent::where('is_active', true)->get();
+
+        Log::info('Purchased Agent IDs: ' , [$purchasedAgentIds], [$agents]);
+    
+        return view('agents.index', compact('agents', 'purchasedAgentIds'));
+
     }
+    
 
     public function addToCart(Request $request, $id)
     {

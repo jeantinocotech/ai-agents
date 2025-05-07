@@ -13,7 +13,7 @@
 		            $table->string('name');
 		            $table->text('description')->nullable();
 		            $table->string('image_path')->nullable();
-		            $table->string('video_path')->nullable();
+		            $table->string('video_youtube_id')->nullable();
 			        $table->string('api_key')->nullable();
 			        $table->string('model_type');
 		            $table->timestamps();

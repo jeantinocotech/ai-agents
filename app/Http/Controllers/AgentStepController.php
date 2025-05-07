@@ -11,7 +11,7 @@ class AgentStepController extends Controller
     public function index(Agent $agent)
     {
         $steps = $agent->steps;
-        return view('agent_steps.index', compact('agent', 'steps'));
+        return view('admin.agents.index', compact('agent', 'steps'));
     }
 
     public function create(Agent $agent)
@@ -34,7 +34,7 @@ class AgentStepController extends Controller
 
         $agent->steps()->create($validated);
 
-        return redirect()->route('agents.steps.index', $agent)->with('success', 'Passo criado com sucesso.');
+        return redirect()->route('admin.agents.edit', $agent)->with('success', 'Passo criado com sucesso.');
     }
 
     public function edit(Agent $agent, AgentStep $step)
@@ -57,12 +57,12 @@ class AgentStepController extends Controller
 
         $step->update($validated);
 
-        return redirect()->route('agents.steps.index', $agent)->with('success', 'Passo atualizado com sucesso.');
+        return redirect()->route('admin.agents.edit', $agent)->with('success', 'Passo atualizado com sucesso.');
     }
 
     public function destroy(Agent $agent, AgentStep $step)
     {
         $step->delete();
-        return redirect()->route('agents.steps.index', $agent)->with('success', 'Passo deletado com sucesso.');
+        return redirect()->route('admin.agents.edit', $agent)->with('success', 'Passo deletado com sucesso.');
     }
 }

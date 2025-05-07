@@ -2,7 +2,7 @@
     <div class="p-4">
         <h2 class="text-xl font-bold mb-4">Editar Passo: {{ $step->name }}</h2>
 
-        <form method="POST" action="{{ route('agents.steps.update', [$agent, $step]) }}">
+        <form method="POST" action="{{ route('admin.agents.steps.update', [$agent, $step]) }}">
             @csrf
             @method('PUT')
 

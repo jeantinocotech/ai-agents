@@ -2,7 +2,7 @@
     <div class="p-4">
         <h2 class="text-xl font-bold mb-4">Novo Passo para {{ $agent->name }}</h2>
 
-        <form method="POST" action="{{ route('agents.steps.store', $agent) }}">
+        <form method="POST" action="{{ route('admin.agents.steps.store', $agent) }}">
             @csrf
 
             <div class="mb-4">

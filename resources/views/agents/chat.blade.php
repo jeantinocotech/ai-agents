@@ -53,6 +53,8 @@
             </div>
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     
     <script>
 
@@ -74,6 +76,7 @@
             const chatBox = document.getElementById('chatBox');
             const messageForm = document.getElementById('message-form');
             const userMessageInput = document.getElementById('userMessage');
+            let userMessage = userMessageInput.value.trim();
             const aiModelSelect = document.getElementById('ai-model');
             const dynamicInputsContainer = document.getElementById('dynamic-inputs');
 
@@ -100,7 +103,7 @@
                     systemPrompt = data.system_prompt;
                     steps = data.steps;
                     
-                    console.log('Instruções carregadas:', steps);
+                    console.log('Instruções carregadas:', steps,   steps.length, currentStepIndex);
                     
                     if (steps.length > 0) {
                         showStep(steps[currentStepIndex]);
@@ -153,6 +156,7 @@
                 // Define a função handleFileUpload no escopo global
                 window.handleFileUpload = function(tipo) {
                     const input = document.getElementById(`fileInput-${tipo}`);
+
                     if (!input.files.length) {
                         alert('Selecione um arquivo primeiro.');
                         return;
@@ -161,32 +165,55 @@
                     const file = input.files[0];
                     uploadedFiles[tipo] = file;
                     
-                    console.log(`Arquivo ${tipo} selecionado:`, file.name);
+                    console.log(`Arquivo ${tipo} selecionado:`, file.name, 'CurrentStepIndex', currentStepIndex, 'steps length', steps.length); // debug
                     chatBox.innerHTML += `<div class="text-sm text-green-600 p-2">✅ Arquivo ${tipo.toUpperCase()} recebido: ${file.name}</div>`;
                     chatBox.scrollTop = chatBox.scrollHeight;
                     
-                    checkRequiredInputsAndProceed();
+                    // Se estamos dentro de steps obrigatórios (controlado por currentStepIndex)
+                    if (currentStepIndex < steps.length) {
+                        checkRequiredInputsAndProceed();
+                    } else {
+                        // Fora do fluxo de steps, NÃO envia automaticamente
+                        console.log('Arquivo recebido fora dos steps. Aguarda comando do usuário.');
+                    }
                 };
             }
 
             function checkRequiredInputsAndProceed() {
-                if (currentStepIndex >= steps.length) {
+
+                if (currentStepIndex >= steps.length ) {
                     console.log('Todos os passos foram concluídos');
                     return;
                 }
                 
+
                 const step = steps[currentStepIndex];
                 const requiredInputs = step.required_inputs;
-                
-                // Verifica se todos os arquivos necessários foram enviados
                 const allUploaded = requiredInputs.every(input => uploadedFiles[input]);
-                
+
+                console.log('Entrou no checkRequiredInputsAndProceed:', step, requiredInputs, allUploaded); // debug
+
                 if (allUploaded) {
-                    console.log('Todos os arquivos necessários foram enviados. Enviar mensagem ao agente.');
-                    
-                    // Envia uma mensagem automática para processar os arquivos
-                    userMessageInput.value = `Por favor, processe os arquivos que enviei para o passo ${step.order}.`;
-                    sendMessage();
+                    console.log(`✅ Todos os arquivos do passo ${step.order} foram enviados.`, 'currentStepIndex', currentStepIndex, 'steps.length', steps.length);
+
+                    // Se for o último passo
+                    if (currentStepIndex === steps.length) {
+                        console.log('📤 Último passo concluído. Enviando mensagem para análise automática.', currentStepIndex, step.length);
+                        userMessageInput.value = `Por favor, processe o(s) arquivo(s) que enviei.`;
+                        sendMessage();
+                    } else {
+                        // Envia arquivo para processamento
+                        sendMessage();
+
+                        // Avança para o próximo passo
+                        currentStepIndex++;
+                        const nextStep = steps[currentStepIndex];
+                        console.log(`➡️ Avançando para o passo ${nextStep.order}:`, nextStep);
+                        showStep(nextStep);
+                        renderDynamicInputs(nextStep.required_inputs[0]);
+                    }
+                } else {
+                    console.log('Aguardando todos os arquivos obrigatórios para este passo.');
                 }
             }
 
@@ -208,15 +235,35 @@
                 if (isSending) return;
                 isSending = true;
 
+                // Se o campo estiver vazio, mas arquivos foram enviados, cria uma mensagem padrão
+                let userMessage = userMessageInput.value.trim();
+                console.log('sendMessage iniciada currentStepIndex', currentStepIndex, 'steps.length' , steps.length, 'upload', Object.keys(uploadedFiles).length ); // debug
+
+                if (!userMessage) {
+                    if (Object.keys(uploadedFiles).length > 0 && currentStepIndex === steps.length ) {
+                        userMessage = "Por favor, analise os arquivos que acabei de enviar.";
+                    }
+                    else if (Object.keys(uploadedFiles).length = 0) {
+                        userMessage = "Por favor, digite uma mensagem ou envie um arquivo.";
+                        isSending = false;
+                        return  
+                    }
+                    else {
+                        userMessage = "Arquivo enviado com sucesso.";  
+                        console.log('Uploaded files:', uploadedFiles , currentStepIndex); // debug
+                    }
+                }
+
                 // Exibe a mensagem do usuário no chat
                 chatBox.innerHTML += `<div class="my-2"><strong>Você:</strong> ${userMessage}</div>`;
                 chatBox.scrollTop = chatBox.scrollHeight;
 
+                console.log('userMessage:', userMessage); // debug
+
                 // Prepara dados para envio
                 const formData = new FormData();
-                if (!userMessage) {
-                    userMessage = `continue`;
-                }
+              
+
                 formData.append('message', userMessage);
                 formData.append('agent_id', agentId);
                 formData.append('ai_model', aiModelSelect.value);
@@ -237,23 +284,13 @@
                 chatBox.appendChild(loadingIndicator);
                 chatBox.scrollTop = chatBox.scrollHeight;
 
-                
-                // Verificar se é necessário manter esse codigo
-                if (!userMessage) {
-                    alert('Por favor, digite uma mensagem.');
-                    sendButton.disabled = false;
-                    sendButton.textContent = 'Enviar';
-                    isSending = false;
-                return;
-                }
 
                 // Envia a requisição
                 fetch('{{ route('chat.send') }}', {
-                    method: 'POST',
+                    method: 'POST', // ← importante
                     headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),'Accept': 'application/json'
+                    },
                     body: formData
                 })
                 .then(async response => {
@@ -267,9 +304,15 @@
                 .then(data => {
                     // Remove o indicador de carregamento
                     chatBox.removeChild(loadingIndicator);
+
+                    const replyHtml = marked.parse(data.reply);
                     
                     // Exibe a resposta do agente
-                    chatBox.innerHTML += `<div class="bg-gray-50 p-2 my-2 rounded"><strong>Agente (${data.model_used}):</strong> ${data.reply}</div>`;
+                    chatBox.innerHTML += `
+                        <div class="bg-gray-50 p-4 my-4 rounded-lg border border-gray-200 text-sm prose prose-sm prose-slate">
+                            <strong>Agente (${data.model_used}):</strong><br>
+                            ${replyHtml}
+                        </div>`;
                     chatBox.scrollTop = chatBox.scrollHeight;
                     
                     // Guarda o ID da sessão
@@ -279,11 +322,18 @@
 
                     // Verifica se tem próximo input requerido
                     if (data.next_required_input) {
-                        console.log('Próximo input requerido:', data.next_required_input);
+                     
+                        currentStepIndex++; // ← garante avanço para o novo passo
+                        console.log('Próximo input requerido:', data.next_required_input, 'CurrentStepIndex', currentStepIndex);
                         renderDynamicInputs(data.next_required_input);
+                        
+                        // Atualiza o passo no painel se necessário
+                        if (steps[currentStepIndex]) {
+                            showStep(steps[currentStepIndex]);
+                        }
                     } else {
                         // Se não há mais inputs requeridos neste passo
-                        currentStepIndex++;
+                        //currentStepIndex++;
                         
                         // Limpa os arquivos já processados
                         uploadedFiles = {};
@@ -302,8 +352,17 @@
                             }
                         } else {
                             // Finaliza o processo, todos os passos concluídos
-                            chatBox.innerHTML += `<div class="text-green-600 p-2 font-bold">✅ Todos os passos foram concluídos! Você pode continuar conversando com o agente.</div>`;
-                            dynamicInputsContainer.innerHTML = '';
+                            chatBox.innerHTML += `<div class="text-green-600 p-2 font-bold">✅ Vamos seguir ou prefere concluir? </div>`;
+                            dynamicInputsContainer.innerHTML += `<div class="text-gray-500 italic">Você pode continuar conversando ou enviar novos arquivos para análise.</div>`;
+                            dynamicInputsContainer.innerHTML = `
+                                                                <div class="mt-4 border border-dashed p-4 bg-yellow-50 rounded-lg">
+                                                                    <p class="text-sm mb-2 text-gray-700">Deseja enviar uma nova versão do seu CV para reanálise?</p>
+                                                                    <input type="file" id="fileInput-cv-update" class="mb-2 block w-full border border-gray-300 rounded px-2 py-1">
+                                                                    <button onclick="handleFileUpload('cv-update')" class="bg-blue-600 text-white px-4 py-1 rounded">
+                                                                    Enviar CV Atualizado
+                                                                    </button>
+                                                                </div>`;
+
                         }
                     }
 
@@ -341,12 +400,21 @@
             });
 
             fetch(`/agents/{{ $agent->id }}/current-step`)
+                 
                 .then(response => response.json())
                 .then(data => {
-                    if (data.required_input) {
+                    console.log('.then date.required_input', data.required_input, 'currentStepIndex', currentStepIndex); // debug
+                    if (data.required_input && currentStepIndex === 0) {
+                        console.log('Inicializando render do currentStep Index = 0 :', data.required_input, currentStepIndex);
+                        
+                    } else {
+                        console.log('⚠️ Ignorando render inicial pois já estamos em outro passo.');
                         renderDynamicInputs(data.required_input);
                     }
-                });
+                })    
+                .catch(error => {
+                    console.error('Erro:', error);
+                    });
 
         });
 

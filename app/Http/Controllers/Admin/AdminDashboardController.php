@@ -4,14 +4,129 @@ namespace App\Http\Controllers\Admin;
 
 use Illuminate\Http\Request;
 use App\Models\Agent;
+use App\Models\User;
+use App\Models\ChatSession;
+use App\Models\AgentRating;
 use App\Http\Controllers\Controller;
-
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
 
 class AdminDashboardController extends Controller
 {
     public function index()
     {
+        // Estatísticas gerais
         $totalAgents = Agent::count();
-        return view('admin.dashboard', compact('totalAgents'));
+        $totalUsers = User::count();
+        $totalSessions = ChatSession::count();
+        
+        // Estatísticas detalhadas por agente
+        $agentStats = Agent::select('agents.*')
+            ->withCount('purchases as users_count')
+            ->withCount('chatSessions as sessions_count')
+            ->leftJoin('agent_ratings', 'agents.id', '=', 'agent_ratings.agent_id')
+            ->groupBy('agents.id')
+            ->selectRaw('COALESCE(AVG(agent_ratings.rating), 0) as average_rating')
+            ->orderBy('sessions_count', 'desc')
+            ->get();
+            
+        // Últimas avaliações com comentários
+        $latestRatings = AgentRating::with(['user', 'agent'])
+            ->whereNotNull('comment')
+            ->where('comment', '!=', '')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+            
+        // Dados para o gráfico de uso nos últimos 30 dias
+        $thirtyDaysAgo = Carbon::now()->subDays(30);
+        $sessionsPerDay = ChatSession::where('created_at', '>=', $thirtyDaysAgo)
+            ->groupBy('date')
+            ->select(DB::raw('DATE(created_at) as date'), DB::raw('count(*) as total'))
+            ->get()
+            ->pluck('total', 'date')
+            ->toArray();
+            
+        // Preparar dados para Chart.js
+        $chartData = [
+            'labels' => [],
+            'sessions' => []
+        ];
+        
+        for ($i = 0; $i < 30; $i++) {
+            $date = Carbon::now()->subDays($i)->format('Y-m-d');
+            $chartData['labels'][] = Carbon::parse($date)->format('d/m');
+            $chartData['sessions'][] = $sessionsPerDay[$date] ?? 0;
+        }
+        
+        // Inverter arrays para mostrar ordem cronológica correta
+        $chartData['labels'] = array_reverse($chartData['labels']);
+        $chartData['sessions'] = array_reverse($chartData['sessions']);
+        
+        return view('admin.dashboard', compact(
+            'totalAgents', 
+            'totalUsers', 
+            'totalSessions', 
+            'agentStats', 
+            'latestRatings', 
+            'chartData'
+        ));
+    }
+    
+    public function agentStats($id)
+    {
+        $agent = Agent::findOrFail($id);
+        
+        // Estatísticas de uso
+        $totalUsers = $agent->purchases()->count();
+        $totalSessions = $agent->chatSessions()->count();
+        
+        // Obter avaliações
+        $ratings = AgentRating::where('agent_id', $id)
+            ->with('user')
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
+            
+        // Distribuição de avaliações
+        $ratingDistribution = [
+            5 => AgentRating::where('agent_id', $id)->where('rating', 5)->count(),
+            4 => AgentRating::where('agent_id', $id)->where('rating', 4)->count(),
+            3 => AgentRating::where('agent_id', $id)->where('rating', 3)->count(),
+            2 => AgentRating::where('agent_id', $id)->where('rating', 2)->count(),
+            1 => AgentRating::where('agent_id', $id)->where('rating', 1)->count(),
+        ];
+        
+        // Média de avaliação
+        $averageRating = AgentRating::where('agent_id', $id)->avg('rating') ?? 0;
+        
+        // Dados para gráfico de uso semanal
+        $lastWeekSessions = $agent->chatSessions()
+            ->where('created_at', '>=', Carbon::now()->subDays(7))
+            ->groupBy('date')
+            ->select(DB::raw('DATE(created_at) as date'), DB::raw('count(*) as total'))
+            ->get()
+            ->pluck('total', 'date')
+            ->toArray();
+            
+        $weeklyChartData = [
+            'labels' => [],
+            'sessions' => []
+        ];
+        
+        for ($i = 6; $i >= 0; $i--) {
+            $date = Carbon::now()->subDays($i)->format('Y-m-d');
+            $weeklyChartData['labels'][] = Carbon::parse($date)->format('d/m');
+            $weeklyChartData['sessions'][] = $lastWeekSessions[$date] ?? 0;
+        }
+        
+        return view('admin.agents.stats', compact(
+            'agent', 
+            'totalUsers', 
+            'totalSessions', 
+            'ratings', 
+            'ratingDistribution', 
+            'averageRating',
+            'weeklyChartData'
+        ));
     }
 }

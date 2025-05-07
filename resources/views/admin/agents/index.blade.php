@@ -33,7 +33,7 @@
                                 <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Tipo de Modelo
                                 </th>
-                                <th class="py-3 px-4 border-<th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Data de Criação
                                 </th>
                                 <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -79,6 +79,7 @@
                                         </div>
                                     </td>
                                 </tr>
+                               
                             @empty
                                 <tr>
                                     <td colspan="6" class="py-4 px-4 border-b border-gray-200 text-center">

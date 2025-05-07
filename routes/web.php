@@ -14,6 +14,7 @@ use App\Http\Controllers\AgentStepController;
 use App\Http\Middleware\AdminMiddleware;
 use App\Http\Controllers\CvAnalysisController;
 use App\Http\Controllers\WebCvAnalysisController;
+use App\Http\Controllers\PurchaseController;
 
 
 // Página inicial - listagem pública de agentes
@@ -83,7 +84,16 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     Route::post('/cv-analysis', [WebCvAnalysisController::class, 'processForm']);
 
 
-   
+    // Pausar compra
+    Route::post('/purchase/pause/{purchase}', [PurchaseController::class, 'pause'])
+    ->middleware('auth')
+    ->name('purchase.pause');
+    Route::post('/purchase/resume/{purchase}', [PurchaseController::class, 'resume'])
+    ->middleware('auth')
+    ->name('purchase.resume');
+
+
+
     Route::get('/clear-log', function () {
     file_put_contents(storage_path('logs/laravel.log'), '');
     return 'Log limpo com sucesso!';

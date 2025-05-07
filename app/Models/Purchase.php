@@ -13,12 +13,24 @@ class Purchase extends Model
     protected $fillable = [
         'user_id',
         'agent_id',
+        'paused',
+        'paused_at',
     ];
     
+    protected $casts = [
+        'paused_at' => 'datetime',
+        'paused' => 'boolean',
+    ];
+
     public function agent()
     {
         return $this->belongsTo(Agent::class);
     }
     
+    public function events()
+    {
+        return $this->hasMany(PurchaseEvent::class);
+    }
+
 }
 

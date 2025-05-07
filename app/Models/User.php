@@ -50,4 +50,10 @@ class User extends Authenticatable
     {
         return (bool) $this->is_admin;
     }
+
+    public function purchases()
+    {
+        return $this->hasMany(Purchase::class);
+    }
+
 }

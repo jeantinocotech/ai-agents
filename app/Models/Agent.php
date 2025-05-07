@@ -13,13 +13,15 @@ class Agent extends Model
         'name',
         'description',
         'image_path',
-        'video_path',
+        'youtube_video_id',
         'api_key',
         'model_type',
         'price',
         'organization',
         'project_id',
+        'assistant_id',
         'system_prompt',
+        'is_active'
     ];
     
     /**
@@ -45,5 +47,28 @@ class Agent extends Model
     {
         return $this->hasMany(AgentStep::class)->orderBy('step_order');
     }
+
+    // app/Models/Agent.php
+    public function purchases()
+    {
+        return $this->hasMany(Purchase::class, 'agent_id');
+    }
+      // Relacionamento com sessões de chat
+      public function chatSessions()
+      {
+          return $this->hasMany(ChatSession::class, 'agent_id');
+      }
+      
+      // Relacionamento com avaliações
+      public function ratings()
+      {
+          return $this->hasMany(AgentRating::class, 'agent_id');
+      }
+      
+      // Obter média de avaliações
+      public function getAverageRatingAttribute()
+      {
+          return $this->ratings()->avg('rating') ?? 0;
+      }
 
 }

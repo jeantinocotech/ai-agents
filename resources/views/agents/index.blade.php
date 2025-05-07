@@ -13,29 +13,49 @@
                     <h2 class="text-2xl font-bold mb-6">Nossos Assistentes de IA</h2>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        @foreach ($agents as $agent)
-                            <div class="bg-gray-100 rounded-lg overflow-hidden shadow-md">
+                    @foreach ($agents as $agent)
+
+                        @if($agent->is_active)
+
+                            @php
+                                $jaPossui = in_array($agent->id, $purchasedAgentIds ?? []);
+                            @endphp
+
+                            <div class="bg-gray-100 rounded-lg overflow-hidden shadow-md relative">
                                 
-                                <!-- Imagem do agente -->
+                                @if($jaPossui)
+                                    <div class="absolute top-2 right-2 bg-green-600 text-white text-xs px-2 py-1 rounded">
+                                        ✅ assinado
+                                    </div>
+                                @endif
+
+                                <!-- Imagem -->
                                 <div class="h-48 bg-gray-200">
                                     <img src="{{ asset('storage/' . $agent->image_path) }}" alt="{{ $agent->name }}" 
                                         class="w-full h-full object-cover">
                                 </div>
                                 
-                                <!-- Descritivo -->
                                 <div class="p-4">
                                     <h3 class="text-xl font-bold mb-2">{{ $agent->name }}</h3>
                                     <p class="text-gray-700 mb-4">{{ $agent->description }}</p>
-                                    <div class="text-lg font-semibold mb-4">R$ {{ number_format($agent->price, 2, ',', '.') }}</div>
+
+                                    @if(!$jaPossui)
+                                        <div class="text-lg font-semibold mb-4">R$ {{ number_format($agent->price, 2, ',', '.') }}</div>
+                                    @else
+                                        <div class="text-gray-600 text-decoration: line-through mb-4">R$ {{ number_format($agent->price, 2, ',', '.') }} </div>
+                                    @endif    
+
+                                    @if(!$jaPossui)
                                         <form method="POST" action="{{ route('agents.addToCart', $agent->id) }}">
                                             @csrf
                                             <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 mb-4">
                                                 Adicionar ao Carrinho
                                             </button>
                                         </form>
+                                    @endif
                                 </div>
-                                
-                                <!-- Video do YouTube -->
+
+                                <!-- YouTube -->
                                 <div class="p-4 border-t border-gray-200">
                                     <div class="aspect-w-16 aspect-h-9">
                                         <iframe 
@@ -48,7 +68,11 @@
                                     </div>
                                 </div>
                             </div>
-                        @endforeach
+
+                        @endif
+
+                    @endforeach
+
                     </div>
                     
                     @guest
