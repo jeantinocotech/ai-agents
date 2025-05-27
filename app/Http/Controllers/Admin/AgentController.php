@@ -33,6 +33,7 @@ class AgentController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'youtube_video_id' => 'nullable|string|max:150',
             'api_key' => 'nullable|string',
+            'assistant_id' => 'nullable|string',
             'model_type' => 'required|string',
         ]);
 
@@ -48,6 +49,7 @@ class AgentController extends Controller
             'system_prompt' => $validated['system_prompt'] ?? null,
             'price' => $validated['price'] ?? 1.99,
             'api_key' => $validated['api_key'],
+            'assistant_id' => $validated['assistant_id'],
             'model_type' => $validated['model_type'],
         ]);
 
@@ -77,6 +79,7 @@ class AgentController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'youtube_video_id' => 'nullable|string|max:150',
             'api_key' => 'nullable|string',
+            'assistant_id' => 'nullable|string',
             'model_type' => 'required|string',
             'is_active' => 'nullable|boolean',
         ]);
@@ -90,6 +93,7 @@ class AgentController extends Controller
             'price' => $validated['price'] ?? 1.99,
             'youtube_video_id' => $validated['youtube_video_id'],
             'api_key' => $validated['api_key'],
+            'assistant_id' => $validated['assistant_id'],
             'model_type' => $validated['model_type'],
             'is_active' => $request->has('is_active'),
         ];

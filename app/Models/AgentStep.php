@@ -17,6 +17,7 @@ class AgentStep extends Model
         'expected_keywords',
         'system_message',
         'can_continue',
+        'upload_file',
     ];
 
     protected $casts = [

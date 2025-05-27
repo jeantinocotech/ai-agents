@@ -45,8 +45,14 @@
                         
                         <div class="mb-4">
                             <label for="project_id" class="block text-gray-700 text-sm font-bold mb-2">Project Id</label>
-                            <textarea name="project_id" id="organization" rows="1" 
+                            <textarea name="project_id" id="project_id" rows="1" 
                                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">{{ old('project_id') }}</textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="assistant_id" class="block text-gray-700 text-sm font-bold mb-2">Assistant Id</label>
+                            <textarea name="assistant_id" id="assistant_id" rows="1" 
+                                      class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">{{ old('assistant_id') }}</textarea>
                         </div>
 
                         <div class="mb-4">

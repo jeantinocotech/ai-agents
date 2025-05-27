@@ -51,7 +51,9 @@ Route::post('/agentes/{id}/adicionar-carrinho', [AgentsPublicController::class, 
 
 // Rotas Chat
 Route::post('/chat/send', [AgentController::class, 'sendChat'])->name('chat.send');
-Route::post('/chat/finalize', [AgentController::class, 'finalizeSession'])->name('chat.finalize');
+Route::post('/chat/sendfile', [AgentController::class, 'sendFile'])->name('chat.sendfile');
+//Route::get('/chat/{agent}/finalize', [AgentController::class, 'finalizeSession'])->name('chat.finalize');
+Route::post('/chat/{agentId}/finalize', [AgentController::class, 'finalizeSession'])->name('chat.finalize');
 Route::get('/agents/{agent}/current-step', [AgentController::class, 'getCurrentStep'])->name('agent.currentStep');
 Route::get('/agents/{id}/instructions', [AgentController::class, 'getAgentInstructions'])->name('agent.AgentInstructions');
 

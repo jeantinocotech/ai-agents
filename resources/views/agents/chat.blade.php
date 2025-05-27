@@ -1,4 +1,3 @@
-<!-- resources/views/agents/chat.blade.php -->
 <x-app-layout>
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -11,23 +10,12 @@
                         <h2 class="text-2xl font-bold">Chat com {{ $agent->name }}</h2>
                     </div>
                     
-                    <!-- Seletor de Modelo AI -->
-                    <div class="mb-4">
-                        <label for="ai-model" class="block text-sm font-medium text-gray-700">Selecione o modelo:</label>
-                        <select id="ai-model" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-500 focus:ring-opacity-50">
-                            <option value="gpt-4">OpenAI (GPT)</option>
-                            <option value="claude-3">Anthropic (Claude)</option>
-                        </select>
-                    </div>
-                    
                     <!-- Interface de chat -->
                     <div class="border border-gray-300 rounded-lg">
                         <!-- Área de exibição do chat -->
                         <div id="chatBox" class="p-4 border h-80 overflow-y-scroll mb-4"></div>
 
                         <!-- Área de entrada de mensagem -->
-                    ≈
-
                         <div class="border-t border-gray-300 p-4">
 
                             <div id="dynamic-inputs" class="mb-4"></div>
@@ -41,384 +29,477 @@
                                     Enviar
                                 </button>
                             </form>
+
+                            <div class="flex left mr-4 mt-2 p-2">
+                                <button id="restartProcess" class="bg-gray-200 hover:bg-gray-400 text-gray px-4 py-2 rounded-lg text-sm">
+                                    Reiniciar Processo
+                                </button>
+                            </div>
+
                         </div>
-                    </div>
-                    
-                    <!-- Informação do modelo ativo -->
-                    <div class="mt-4 text-sm text-gray-600" id="model-info">
-                        <p>Modelo atual: <span class="font-semibold">OpenAI (GPT)</span></p>
                     </div>
                    
                 </div>
             </div>
         </div>
     </div>
+</x-app-layout>
 
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+
+<script>
+   
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM carregado');
     
-    <script>
+    // Variáveis de estado
+    let isSending = false;
+    let systemPrompt = '';
+    let agentDescription = '';
+    let steps = [];
+    let currentStepIndex = 0;
+    let uploadedFiles = {};
+    let process_ended = false;
+    const agentId = {{ $agent->id }};
+    const agentAiModel = "{{ $agent->model_type }}";
 
-        document.addEventListener('DOMContentLoaded', function() {
+    console.log('model type',agentAiModel);
+    let chatSessionId = null;
+    const baseUrl = window.location.origin;
+
+    // Elementos DOM frequentemente acessados
+    const chatBox = document.getElementById('chatBox');
+    const messageForm = document.getElementById('message-form');
+    const userMessageInput = document.getElementById('userMessage');
+    const dynamicInputsContainer = document.getElementById('dynamic-inputs');
+
+    // Inicialização
+    initChat();
+
+    // Funções principais
+    function initChat() {
+        displayWelcomeMessage();
+        loadAgentInstructions();
+        setupEventListeners();
+        checkCurrentStep(); // Nova função para verificar o passo atual
+    }
+
+    function displayWelcomeMessage() {
+        chatBox.innerHTML = `<div><strong>Agente:</strong> Olá! Eu sou {{ $agent->name }}. Te ajudarei com as seguintes tarefas:</div>`;
+    }
+
+     // Verifica se há uma sessão ativa e qual o passo atual
+     async function checkCurrentStep() {
+        try {
+            const res = await fetch(`/agents/{{ $agent->id }}/current-step`);
+            const data = await res.json();
             
-            console.log('DOM carregado'); // debug
-            
-            // Variáveis de estado
-            let isSending = false;
-            let systemPrompt = '';
-            let steps = [];
-            let currentStepIndex = 0;
-            let uploadedFiles = {};
-            const agentId = {{ $agent->id }};
-            let chatSessionId = null;
-            const baseUrl = window.location.origin;
-
-            // Elementos DOM frequentemente acessados
-            const chatBox = document.getElementById('chatBox');
-            const messageForm = document.getElementById('message-form');
-            const userMessageInput = document.getElementById('userMessage');
-            let userMessage = userMessageInput.value.trim();
-            const aiModelSelect = document.getElementById('ai-model');
-            const dynamicInputsContainer = document.getElementById('dynamic-inputs');
-
-           // Inicialização
-           initChat();
-
-           // Funções principais
-           function initChat() {
-                displayWelcomeMessage();
-                loadAgentInstructions();
-                setupEventListeners();
-            }
-
-            function displayWelcomeMessage() {
-                chatBox.innerHTML = `<div><strong>Agente:</strong> Olá! Eu sou {{ $agent->name }}. Te ajudarei com as seguintes tarefas:</div>`;
-            }
-
-            async function loadAgentInstructions() {
-                console.log("Carregando instruções do agente...");
-                try {
-                    const res = await fetch(`/agents/{{ $agent->id }}/instructions`);
-                    const data = await res.json();
-                    
-                    systemPrompt = data.system_prompt;
-                    steps = data.steps;
-                    
-                    console.log('Instruções carregadas:', steps,   steps.length, currentStepIndex);
-                    
-                    if (steps.length > 0) {
-                        showStep(steps[currentStepIndex]);
-                        const requiredInputs = steps[currentStepIndex].required_inputs;
-                        if (requiredInputs && requiredInputs.length > 0) {
-                            renderDynamicInputs(requiredInputs[0]);
-                        }
-                    }
-                } catch (error) {
-                    console.error("Erro ao carregar instruções do agente:", error);
-                    chatBox.innerHTML += `<div class="text-red-600 p-2">Erro ao carregar passos do agente. Tente novamente.</div>`;
-                }
-            }
-
-            function setupEventListeners() {
-                // Formulário de mensagem
-                messageForm.addEventListener('submit', function(event) {
-                    event.preventDefault();
-                    sendMessage();
-                });
-                
-                // Alteração de modelo de IA
-                aiModelSelect.addEventListener('change', function() {
-                    const modelInfo = document.getElementById('model-info');
-                    const selectedModel = this.options[this.selectedIndex].text;
-                    modelInfo.innerHTML = `<p>Modelo atual: <span class="font-semibold">${selectedModel}</span></p>`;
-                });
-            }
-
-            function showStep(step) {
-                const message = `Passo ${step.order}: ${step.description}`;
-                console.log('Exibindo passo:', step);
-                chatBox.innerHTML += `<div class="text-sm p-2 bg-gray-100 my-2 rounded">${message}</div>`;
-                chatBox.scrollTop = chatBox.scrollHeight;
-            }
-
-            function renderDynamicInputs(inputType) {
-                console.log("Renderizando input para:", inputType);
-                
-                dynamicInputsContainer.innerHTML = `
-                    <div class="border p-3 rounded-lg bg-blue-50">
-                        <label class="block mb-2 text-sm font-medium text-gray-700">Envie o arquivo: ${inputType.toUpperCase()}</label>
-                        <input type="file" id="fileInput-${inputType}" class="mb-2 border border-gray-300 rounded px-2 py-1 w-full">
-                        <button type="button" onclick="handleFileUpload('${inputType}')" class="bg-blue-500 text-white px-4 py-1 rounded">
-                            Enviar Arquivo
-                        </button>
-                    </div>
-                `;
-                
-                // Define a função handleFileUpload no escopo global
-                window.handleFileUpload = function(tipo) {
-                    const input = document.getElementById(`fileInput-${tipo}`);
-
-                    if (!input.files.length) {
-                        alert('Selecione um arquivo primeiro.');
-                        return;
-                    }
-                    
-                    const file = input.files[0];
-                    uploadedFiles[tipo] = file;
-                    
-                    console.log(`Arquivo ${tipo} selecionado:`, file.name, 'CurrentStepIndex', currentStepIndex, 'steps length', steps.length); // debug
-                    chatBox.innerHTML += `<div class="text-sm text-green-600 p-2">✅ Arquivo ${tipo.toUpperCase()} recebido: ${file.name}</div>`;
-                    chatBox.scrollTop = chatBox.scrollHeight;
-                    
-                    // Se estamos dentro de steps obrigatórios (controlado por currentStepIndex)
-                    if (currentStepIndex < steps.length) {
-                        checkRequiredInputsAndProceed();
+                // Se existe uma sessão ativa, salva o ID
+                if (data.session_id) {
+                    chatSessionId = data.session_id;
+                    if (data.current_step > 0) { 
+                        currentStepIndex = data.current_step - 1 || 0;
                     } else {
-                        // Fora do fluxo de steps, NÃO envia automaticamente
-                        console.log('Arquivo recebido fora dos steps. Aguarda comando do usuário.');
+                        currentStepIndex = 0;
                     }
-                };
-            }
+                } 
 
-            function checkRequiredInputsAndProceed() {
-
-                if (currentStepIndex >= steps.length ) {
-                    console.log('Todos os passos foram concluídos');
-                    return;
-                }
+                console.log('Sessão ativa encontrada:', chatSessionId, 'Passo atual:', currentStepIndex);
                 
-
-                const step = steps[currentStepIndex];
-                const requiredInputs = step.required_inputs;
-                const allUploaded = requiredInputs.every(input => uploadedFiles[input]);
-
-                console.log('Entrou no checkRequiredInputsAndProceed:', step, requiredInputs, allUploaded); // debug
-
-                if (allUploaded) {
-                    console.log(`✅ Todos os arquivos do passo ${step.order} foram enviados.`, 'currentStepIndex', currentStepIndex, 'steps.length', steps.length);
-
-                    // Se for o último passo
-                    if (currentStepIndex === steps.length) {
-                        console.log('📤 Último passo concluído. Enviando mensagem para análise automática.', currentStepIndex, step.length);
-                        userMessageInput.value = `Por favor, processe o(s) arquivo(s) que enviei.`;
-                        sendMessage();
-                    } else {
-                        // Envia arquivo para processamento
-                        sendMessage();
-
-                        // Avança para o próximo passo
-                        currentStepIndex++;
-                        const nextStep = steps[currentStepIndex];
-                        console.log(`➡️ Avançando para o passo ${nextStep.order}:`, nextStep);
-                        showStep(nextStep);
-                        renderDynamicInputs(nextStep.required_inputs[0]);
-                    }
+                // Se há um input requerido neste passo, renderiza-o
+                console.log('Current_Step: ', data.current_step);
+                if (data.upload_file) {
+                    renderDynamicInputs(data.required_input);
+                } else if (data.current_step > 0) { 
+                        showStep(steps[currentStepIndex])
                 } else {
-                    console.log('Aguardando todos os arquivos obrigatórios para este passo.');
+                    process_ended = true;
+                    console.log('process_ended = True : ', process_ended);
+                }    
+                      
+        } catch (error) {
+            console.error("Erro ao verificar passo atual:", error);
+        }
+    }
+
+   // Verifica se há uma sessão ativa e qual o passo atual
+   async function getNextStep() {
+        try {
+            const res = await fetch(`/agents/{{ $agent->id }}/next-step`);
+            //const res = await fetch(`/agents/{{ $agent->id }}/chat`);
+        
+            const data = await res.json();
+
+            if (data.current_step = 0) { 
+                process_ended = true;
+            } else {
+                process_ended = false
+            }
+           
+            // Se existe uma sessão ativa, salva o ID
+            if (data.session_id) {
+                chatSessionId = data.session_id;
+                currentStepIndex = data.current_step - 1|| 0;
+                console.log('Sessão ativa encontrada:', chatSessionId, 'Passo atual:', currentStepIndex);
+                
+                // Se há um input requerido neste passo, renderiza-o
+                if (data.upload_file) {
+                    renderDynamicInputs(data.required_input);
                 }
             }
+        } catch (error) {
+            console.error("Erro ao verificar passo atual:", error);
+        }
+    }
 
-            function nextStep() {
-                currentStepIndex++;
-                console.log('Next steps'); // debug
-                if (currentStepIndex < steps.length) {
-                showStep(steps[currentStepIndex]);
-                } else {
-                document.getElementById('chat-box').innerHTML += `<div class="text-green-600">Todos os passos foram concluídos!</div>`;
-                }
-            }
+     // Verifica se há uma sessão ativa e qual o passo atual
+   async function startNewProcess() {
 
-            function sendMessage() {
-                console.log('sendMessage iniciada'); // debug
-
-                if (event) event.preventDefault(); // previne reload se for via form
-
-                if (isSending) return;
-                isSending = true;
-
-                // Se o campo estiver vazio, mas arquivos foram enviados, cria uma mensagem padrão
-                let userMessage = userMessageInput.value.trim();
-                console.log('sendMessage iniciada currentStepIndex', currentStepIndex, 'steps.length' , steps.length, 'upload', Object.keys(uploadedFiles).length ); // debug
-
-                if (!userMessage) {
-                    if (Object.keys(uploadedFiles).length > 0 && currentStepIndex === steps.length ) {
-                        userMessage = "Por favor, analise os arquivos que acabei de enviar.";
-                    }
-                    else if (Object.keys(uploadedFiles).length = 0) {
-                        userMessage = "Por favor, digite uma mensagem ou envie um arquivo.";
-                        isSending = false;
-                        return  
-                    }
-                    else {
-                        userMessage = "Arquivo enviado com sucesso.";  
-                        console.log('Uploaded files:', uploadedFiles , currentStepIndex); // debug
-                    }
-                }
-
-                // Exibe a mensagem do usuário no chat
-                chatBox.innerHTML += `<div class="my-2"><strong>Você:</strong> ${userMessage}</div>`;
-                chatBox.scrollTop = chatBox.scrollHeight;
-
-                console.log('userMessage:', userMessage); // debug
-
-                // Prepara dados para envio
-                const formData = new FormData();
-              
-
-                formData.append('message', userMessage);
-                formData.append('agent_id', agentId);
-                formData.append('ai_model', aiModelSelect.value);
-
-                if (chatSessionId) {
-                    formData.append('session_id', chatSessionId);
-                }
-
-                // Anexa arquivos caso existam
-                for (const [key, file] of Object.entries(uploadedFiles)) {
-                    formData.append(key, file);
-                }
-
-                // Exibe indicador de carregamento
-                const loadingIndicator = document.createElement('div');
-                loadingIndicator.className = 'text-gray-500 italic my-2';
-                loadingIndicator.textContent = 'Enviando mensagem...';
-                chatBox.appendChild(loadingIndicator);
-                chatBox.scrollTop = chatBox.scrollHeight;
+        try {
+            process_ended = true;
 
 
-                // Envia a requisição
-                fetch('{{ route('chat.send') }}', {
-                    method: 'POST', // ← importante
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),'Accept': 'application/json'
-                    },
-                    body: formData
-                })
-                .then(async response => {
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        console.error('Erro da API:', errorText);
-                        throw new Error('Erro na resposta do servidor');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    // Remove o indicador de carregamento
-                    chatBox.removeChild(loadingIndicator);
-
-                    const replyHtml = marked.parse(data.reply);
-                    
-                    // Exibe a resposta do agente
-                    chatBox.innerHTML += `
-                        <div class="bg-gray-50 p-4 my-4 rounded-lg border border-gray-200 text-sm prose prose-sm prose-slate">
-                            <strong>Agente (${data.model_used}):</strong><br>
-                            ${replyHtml}
-                        </div>`;
-                    chatBox.scrollTop = chatBox.scrollHeight;
-                    
-                    // Guarda o ID da sessão
-                    if (data.session_id) {
-                        chatSessionId = data.session_id;
-                    }
-
-                    // Verifica se tem próximo input requerido
-                    if (data.next_required_input) {
-                     
-                        currentStepIndex++; // ← garante avanço para o novo passo
-                        console.log('Próximo input requerido:', data.next_required_input, 'CurrentStepIndex', currentStepIndex);
-                        renderDynamicInputs(data.next_required_input);
-                        
-                        // Atualiza o passo no painel se necessário
-                        if (steps[currentStepIndex]) {
-                            showStep(steps[currentStepIndex]);
-                        }
-                    } else {
-                        // Se não há mais inputs requeridos neste passo
-                        //currentStepIndex++;
-                        
-                        // Limpa os arquivos já processados
-                        uploadedFiles = {};
-                        
-                        // Verifica se há mais passos
-                        if (currentStepIndex < steps.length) {
-                            // Exibe o próximo passo
-                            showStep(steps[currentStepIndex]);
-                            
-                            // Renderiza os inputs do próximo passo
-                            const nextRequiredInputs = steps[currentStepIndex].required_inputs;
-                            if (nextRequiredInputs && nextRequiredInputs.length > 0) {
-                                renderDynamicInputs(nextRequiredInputs[0]);
-                            } else {
-                                dynamicInputsContainer.innerHTML = '';
-                            }
-                        } else {
-                            // Finaliza o processo, todos os passos concluídos
-                            chatBox.innerHTML += `<div class="text-green-600 p-2 font-bold">✅ Vamos seguir ou prefere concluir? </div>`;
-                            dynamicInputsContainer.innerHTML += `<div class="text-gray-500 italic">Você pode continuar conversando ou enviar novos arquivos para análise.</div>`;
-                            dynamicInputsContainer.innerHTML = `
-                                                                <div class="mt-4 border border-dashed p-4 bg-yellow-50 rounded-lg">
-                                                                    <p class="text-sm mb-2 text-gray-700">Deseja enviar uma nova versão do seu CV para reanálise?</p>
-                                                                    <input type="file" id="fileInput-cv-update" class="mb-2 block w-full border border-gray-300 rounded px-2 py-1">
-                                                                    <button onclick="handleFileUpload('cv-update')" class="bg-blue-600 text-white px-4 py-1 rounded">
-                                                                    Enviar CV Atualizado
-                                                                    </button>
-                                                                </div>`;
-
-                        }
-                    }
-
-                     // Limpa o campo de mensagem
-                    userMessageInput.value = '';
-                    isSending = false;
-
-                    })
-                    .catch(error => {
-                        console.error('Erro ao enviar mensagem:', error);
-                        
-                        // Remove o indicador de carregamento
-                        chatBox.removeChild(loadingIndicator);
-
-                        // Exibe mensagem de erro
-                        chatBox.innerHTML += `<div class="text-red-600 p-2">❌ Erro ao enviar mensagem. Por favor, tente novamente.</div>`;
-                        chatBox.scrollTop = chatBox.scrollHeight;
-                        
-                        isSending = false;
-                    })
-            }
-
-            
-            // ✅ Fecha corretamente essa função
-            document.getElementById('ai-model').addEventListener('change', function() {
-                const modelInfo = document.getElementById('model-info');
-                const selectedModel = this.options[this.selectedIndex].text;
-                modelInfo.innerHTML = `<p>Modelo atual: <span class="font-semibold">${selectedModel}</span></p>`;
-            }); 
-
-            document.getElementById('message-form').addEventListener('submit', function(event) {
-                event.preventDefault(); // Impede o reload da página
-                console.log('formulário enviado'); // debug
-                sendMessage();
+            const res = await fetch(`/chat/${agentId}/finalize`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                },
             });
 
-            fetch(`/agents/{{ $agent->id }}/current-step`)
-                 
-                .then(response => response.json())
-                .then(data => {
-                    console.log('.then date.required_input', data.required_input, 'currentStepIndex', currentStepIndex); // debug
-                    if (data.required_input && currentStepIndex === 0) {
-                        console.log('Inicializando render do currentStep Index = 0 :', data.required_input, currentStepIndex);
-                        
-                    } else {
-                        console.log('⚠️ Ignorando render inicial pois já estamos em outro passo.');
-                        renderDynamicInputs(data.required_input);
-                    }
-                })    
-                .catch(error => {
-                    console.error('Erro:', error);
-                    });
+            if (!res.ok) {
+                throw new Error(`Erro na requisição: ${res.status}`);
+            }
 
+            const data = await res.json();
+
+            if (data.agent) {
+                console.log('Agente:', data.agent);
+                console.log('Nova sessão iniciada:', data.session_id);
+                console.log('Passo atual:', data.current_step);
+
+                // Atualiza as variáveis de estado
+                chatSessionId = data.session_id;
+                currentStepIndex = data.current_step - 1 || 0;
+                process_ended = false;
+
+                // Reinicia o chat
+                initChat();
+            }
+        } catch (error) {
+            console.error('Erro ao reiniciar o processo:', error);
+        }
+
+    }
+
+    function setupEventListeners() {
+
+        // Botao reestartar processo
+       document.getElementById('restartProcess').addEventListener('click', startNewProcess);
+
+        // Formulário de mensagem
+        messageForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            sendMessage();
+            checkCurrentStep();
+        });    
+
+    }
+   
+    function renderDynamicInputs(inputType) {
+        if (!inputType) {
+            dynamicInputsContainer.innerHTML = '';
+            return;
+        }
+        
+        console.log("Renderizando input para:", inputType);
+        
+        dynamicInputsContainer.innerHTML = `
+            <div class="border p-3 rounded-lg bg-blue-50">
+                <label class="block mb-2 text-sm font-medium text-gray-700">Envie o arquivo: ${inputType.toUpperCase()}</label>
+                <input type="file" id="fileInput-${inputType}" class="mb-2 border border-gray-300 rounded px-2 py-1 w-full">
+                <button type="button" onclick="handleFileUpload('${inputType}')" class="bg-blue-500 text-white px-4 py-1 rounded">
+                    Enviar Arquivo
+                </button>
+            </div>
+        `;
+    }
+
+    // Define a função handleFileUpload no escopo global
+    window.handleFileUpload = function(tipo) {
+        
+        console.log('Arquivo enviado para:', tipo);
+        const input = document.getElementById(`fileInput-${tipo}`);
+
+        if (!input || !input.files.length) {
+            alert('Selecione um arquivo primeiro.');
+            return;
+        }
+        
+        const file = input.files[0];
+        uploadedFiles[tipo] = file;
+        
+        console.log(`Arquivo ${tipo} selecionado:`, file.name, 'CurrentStepIndex', currentStepIndex); 
+        chatBox.innerHTML += `<div class="text-sm text-green-600 p-2">✅ Arquivo ${tipo.toUpperCase()} recebido: ${file.name}</div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+        
+        // Envia o arquivo automaticamente após upload
+        //sendMessage(`Arquivo ${tipo.toUpperCase()} enviado: ${file.name}`);
+        sendFile(tipo, `Arquivo ${tipo.toUpperCase()} enviado: ${file.name}`);
+    }
+
+    async function loadAgentInstructions() {
+        console.log("Carregando instruções do agente...");
+        try {
+            const res = await fetch(`/agents/{{ $agent->id }}/instructions`);
+            const data = await res.json();
+            
+            systemPrompt = data.system_prompt;
+            chatBox.innerHTML += `<div class="text-600 p-2">${data.agent_description}</div>`;
+
+            if (data.steps) {
+                steps = data.steps;
+           
+                console.log('Instruções do agente carregadas - data:', data);
+                console.log('Instruções carregadas:', steps, steps.length, currentStepIndex);
+            } else {
+                steps = null;
+                currentStepIndex = 0;
+                console.log('Nenhum passo encontrado.');
+            }
+            
+        } catch (error) {
+            console.error("Erro ao carregar instruções do agente:", error);
+            chatBox.innerHTML += `<div class="text-red-600 p-2">Erro ao carregar passos do agente. Tente novamente.</div>`;
+        }
+    }
+
+    function showStep(step) {
+        if (!step) return;
+        
+        const message = `Passo ${step.order}: ${step.description}`;
+        console.log('Exibindo passo:', step);
+        chatBox.innerHTML += `<div class="text-sm p-2 bg-gray-100 my-2 rounded">${message}</div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function sendFile(tipo, customMessage) {
+   
+        // Usa mensagem personalizada ou pega do input
+        let userMessage = customMessage;
+        let fileTipo = tipo;
+
+        // Exibe a mensagem do usuário no chat
+        chatBox.innerHTML += `<div class="my-2"><strong>Você:</strong> ${userMessage}</div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        console.log('Enviando mensagem:', userMessage, 'Session ID:', chatSessionId); 
+
+        // Prepara dados para envio
+        const formData = new FormData();
+        formData.append('message', userMessage);
+        formData.append('agent_id', agentId);
+        formData.append('ai_model', agentAiModel);
+        formData.append('inputType', fileTipo);
+
+        // CRUCIAL: Sempre envia o session_id se existir
+        if (chatSessionId) {
+            formData.append('session_id', chatSessionId);
+            console.log('Anexando session_id ao request:', chatSessionId);
+        }
+
+        // Anexa arquivos caso existam
+        for (const [key, file] of Object.entries(uploadedFiles)) {
+            formData.append(key, file);
+            console.log(`Anexando arquivo ${key}:`, file.name);
+        }
+
+        // Exibe indicador de carregamento
+        const loadingIndicator = document.createElement('div');
+        loadingIndicator.className = 'text-gray-500 italic my-2';
+        loadingIndicator.textContent = 'Enviando mensagem...';
+        chatBox.appendChild(loadingIndicator);
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        fetch('{{ route('chat.sendfile') }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json'
+            },
+            body: formData
+        })
+        .then(async response => {
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Erro da API:', errorText);
+                throw new Error('Erro na resposta do servidor');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Remove o indicador de carregamento
+            chatBox.removeChild(loadingIndicator);
+            
+            // IMPORTANTE: Atualiza o sessionId
+            if (data.session_id) {
+                chatSessionId = data.session_id;
+                console.log('Session ID atualizado:', chatSessionId);
+            }
+
+            currentStepIndex
+
+            // Limpa o campo de mensagem
+            userMessageInput.value = '';
+            isSending = false;
+        })
+        .catch(error => {
+            console.error('Erro ao enviar mensagem:', error);
+            
+            // Remove o indicador de carregamento
+            if (loadingIndicator.parentNode === chatBox) {
+                chatBox.removeChild(loadingIndicator);
+            }
+
+            // Exibe mensagem de erro
+            chatBox.innerHTML += `<div class="text-red-600 p-2">❌ Erro ao enviar mensagem. Por favor, tente novamente.</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+            
+            isSending = false;
         });
+    }
 
-    </script>
+
+    function sendMessage(customMessage) {
+        if (isSending) return;
+        isSending = true;
+
+        // Usa mensagem personalizada ou pega do input
+        let userMessage = customMessage || userMessageInput.value.trim();
+        
+        // Se não há mensagem explícita
+        if (!userMessage) {
+            if (Object.keys(uploadedFiles).length > 0) {
+                userMessage = "Arquivo enviado com sucesso.";
+            } else {
+                userMessage = "Por favor, digite uma mensagem ou envie um arquivo.";
+                isSending = false;
+                return;
+            }
+        }
+
+        // Exibe a mensagem do usuário no chat
+        chatBox.innerHTML += `<div class="my-2"><strong>Você:</strong> ${userMessage}</div>`;
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        console.log('Enviando mensagem:', userMessage, 'Session ID:', chatSessionId); 
+
+        // Prepara dados para envio
+        const formData = new FormData();
+        formData.append('message', userMessage);
+        formData.append('agent_id', agentId);
+        formData.append('ai_model', agentAiModel);
+
+        // CRUCIAL: Sempre envia o session_id se existir
+        if (chatSessionId) {
+            formData.append('session_id', chatSessionId);
+            console.log('Anexando session_id ao request:', chatSessionId);
+        }
+
+        // Anexa arquivos caso existam
+        for (const [key, file] of Object.entries(uploadedFiles)) {
+            formData.append(key, file);
+            console.log(`Anexando arquivo ${key}:`, file.name);
+        }
+
+        // Exibe indicador de carregamento
+        const loadingIndicator = document.createElement('div');
+        loadingIndicator.className = 'text-gray-500 italic my-2';
+        loadingIndicator.textContent = 'Enviando mensagem...';
+        chatBox.appendChild(loadingIndicator);
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        fetch('{{ route('chat.send') }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json'
+            },
+            body: formData
+        })
+        .then(async response => {
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Erro da API:', errorText);
+                throw new Error('Erro na resposta do servidor');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Remove o indicador de carregamento
+            chatBox.removeChild(loadingIndicator);
+
+            let replyHtml;
+
+            // Verifica se o conteúdo é Markdown ou HTML
+            if (data.reply.startsWith('<') && data.reply.endsWith('>')) {
+                // Presume que é HTML
+                replyHtml = data.reply;
+            } else {
+                // Presume que é Markdown
+                replyHtml = marked.parse(data.reply);
+            }
+
+            // Wrap do conteúdo com Tailwind e aplicação de estilos na tabela
+           // Aplica Tailwind dinamicamente nas tags da tabela
+            replyHtml = replyHtml
+                .replace(/<table[^>]*>/g, '<table class="min-w-full table-auto border border-gray-300 divide-y divide-gray-300 text-sm text-gray-800">')
+                .replace(/<th>/g, '<th class="bg-gray-100 font-semibold text-left px-4 py-2 border border-gray-300">')
+                .replace(/<td>/g, '<td class="px-4 py-2 border border-gray-200 align-top">');
+
+            // Exibe com wrapper estilizado
+            chatBox.innerHTML += `
+            <div class="bg-white p-4 my-4 rounded-lg border border-gray-200 text-sm prose prose-sm prose-slate max-w-full overflow-auto">
+                <strong>Agente (${data.model_used}):</strong><br>
+                <div class="overflow-x-auto">
+                    ${replyHtml}
+                </div>
+            </div>`;
+
+            // Processa as fórmulas matemáticas com MathJax
+            MathJax.typesetPromise();
+
+            chatBox.scrollTop = chatBox.scrollHeight;
+            
+            // IMPORTANTE: Atualiza o sessionId
+            if (data.session_id) {
+                chatSessionId = data.session_id;
+                console.log('Session ID atualizado:', chatSessionId);
+            }
 
 
-</x-app-layout>
+            // Limpa o campo de mensagem
+            userMessageInput.value = '';
+            isSending = false;
+        })
+        .catch(error => {
+            console.error('Erro ao enviar mensagem:', error);
+            
+            // Remove o indicador de carregamento
+            if (loadingIndicator.parentNode === chatBox) {
+                chatBox.removeChild(loadingIndicator);
+            }
+
+            // Exibe mensagem de erro
+            chatBox.innerHTML += `<div class="text-red-600 p-2">❌ Erro ao enviar mensagem. Por favor, tente novamente.</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+            
+            isSending = false;
+        });
+    }
+
+});
+
+</script>

@@ -10,6 +10,8 @@ use App\Models\AgentRating;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
+
 
 class AdminDashboardController extends Controller
 {
@@ -19,6 +21,12 @@ class AdminDashboardController extends Controller
         $totalAgents = Agent::count();
         $totalUsers = User::count();
         $totalSessions = ChatSession::count();
+
+        Log::info('Statistica', [
+            'totalAgents' => $totalAgents,
+            'totalUsers' => $totalUsers,
+            'totalSessions' => $totalSessions
+        ]);
         
         // Estatísticas detalhadas por agente
         $agentStats = Agent::select('agents.*')
@@ -29,7 +37,12 @@ class AdminDashboardController extends Controller
             ->selectRaw('COALESCE(AVG(agent_ratings.rating), 0) as average_rating')
             ->orderBy('sessions_count', 'desc')
             ->get();
-            
+        
+            Log::info('Statistica', [
+                'totalAgents' => $agentStats,
+            ]);
+
+
         // Últimas avaliações com comentários
         $latestRatings = AgentRating::with(['user', 'agent'])
             ->whereNotNull('comment')
@@ -37,6 +50,10 @@ class AdminDashboardController extends Controller
             ->orderBy('created_at', 'desc')
             ->limit(5)
             ->get();
+
+            Log::info('Rating', [
+                'totalAgents' => $latestRatings,
+            ]);
             
         // Dados para o gráfico de uso nos últimos 30 dias
         $thirtyDaysAgo = Carbon::now()->subDays(30);
@@ -46,6 +63,10 @@ class AdminDashboardController extends Controller
             ->get()
             ->pluck('total', 'date')
             ->toArray();
+
+            Log::info('Sessions per day', [
+                'totalAgents' => $sessionsPerDay,
+            ]);
             
         // Preparar dados para Chart.js
         $chartData = [
