@@ -82,6 +82,10 @@ class CartController extends Controller
         $cart = session()->get('cart', []);
         $user = auth()->user();
 
+        if (empty($cart)) {
+            return redirect()->route('cart.index')->with('error', 'Seu carrinho está vazio.');
+        }
+
         foreach ($cart as $item) {
             Purchase::firstOrCreate([
                 'user_id' => $user->id,

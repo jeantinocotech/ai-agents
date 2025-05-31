@@ -15,10 +15,20 @@ use App\Http\Middleware\AdminMiddleware;
 use App\Http\Controllers\CvAnalysisController;
 use App\Http\Controllers\WebCvAnalysisController;
 use App\Http\Controllers\PurchaseController;
+use App\Http\Controllers\RatingController;
+use App\Http\Controllers\HotmartWebhookController;
 
 
 // Página inicial - listagem pública de agentes
 Route::get('/', [AgentController::class, 'index'])->name('home');
+
+// Rotas públicas de visualização
+Route::get('/agents/{agent}/ratings', [RatingController::class, 'agentRatings'])
+    ->name('agents.ratings');
+
+// API Routes
+Route::get('/api/agents/{agent}/rating-stats', [RatingController::class, 'getAgentRatingStats'])
+    ->name('api.agent.rating-stats');
 
 // Grupo de rotas protegidas por autenticação
 Route::middleware(['auth'])->group(function () {
@@ -30,6 +40,38 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+     // Formulário de avaliação
+     Route::get('/ratings/form/{chatSession}', [RatingController::class, 'showRatingForm'])
+     ->name('ratings.form');
+ 
+    // Salvar avaliação
+    Route::post('/ratings', [RatingController::class, 'store'])
+        ->name('ratings.store');
+    
+    // Atualizar avaliação
+    Route::put('/ratings/{rating}', [RatingController::class, 'update'])
+        ->name('ratings.update');
+    
+    // Remover avaliação
+    Route::delete('/ratings/{rating}', [RatingController::class, 'destroy'])
+        ->name('ratings.destroy');
+    
+    // Minhas avaliações
+    Route::get('/my-ratings', [RatingController::class, 'myRatings'])
+        ->name('ratings.my-ratings');
+    
+    // Solicitar avaliação após chat
+    Route::get('/request-rating/{chatSession}', [RatingController::class, 'requestRating'])
+        ->name('ratings.request');
+    
+    // AJAX Routes
+    Route::get('/ratings/quick-modal/{chatSession}', [RatingController::class, 'quickRatingModal'])
+        ->name('ratings.quick-modal');
+    
+    Route::post('/ratings/quick-store', [RatingController::class, 'quickStore'])
+        ->name('ratings.quick-store');
+
 });
 
 // Carrinho
@@ -38,12 +80,17 @@ Route::post('/cart/add/{id}', [CartController::class, 'addToCart'])->name('cart.
 Route::post('/cart/remove/{id}', [CartController::class, 'removeFromCart'])->name('cart.remove');
 Route::post('/cart/clear', [CartController::class, 'clearCart'])->name('cart.clear');
 
+
+
 // Checkout (requer login)
 Route::middleware(['auth'])->group(function () {
-    Route::get('/cart/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
-    Route::post('/cart/checkout/process', [CartController::class, 'processCheckout'])->name('cart.processCheckout');
+    Route::post('/cart/checkout', [CartController::class, 'processCheckout'])->name('cart.processCheckout');
+    //Route::post('/cart/checkout/process', [CartController::class, 'processCheckout'])->name('cart.processCheckout');
     Route::get('/cart/checkout/success', [CartController::class, 'checkoutSuccess'])->name('checkout.success');
+    //Pagamento Hotmart
+    Route::post('/hotmart/webhook', [HotmartWebhookController::class, 'handle']);
 });
+
 
 Route::get('/agentes', [AgentsPublicController::class, 'index'])->name('agents.index');
 Route::post('/agentes/{id}/adicionar-carrinho', [AgentsPublicController::class, 'addToCart'])->name('agents.addToCart');
@@ -64,6 +111,11 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
     Route::resource('agents', AdminAgentController::class);
+    Route::get('agents/{agent}/ratings', [AdminAgentController::class, 'ratings'])->name('agents.ratings');
+
+    // Estatísticas detalhadas de um agente
+    Route::get('/agents/{agent}/stats', [AdminDashboardController::class, 'agentStats'])
+        ->name('agents.stats');
 
     // Steps dos agents (fica dentro também)
     Route::prefix('agents/{agent}/steps')->name('agents.steps.')->group(function () {
@@ -100,5 +152,8 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     file_put_contents(storage_path('logs/laravel.log'), '');
     return 'Log limpo com sucesso!';
     });
+
+ 
+
 
 require __DIR__.'/auth.php';

@@ -15,6 +15,7 @@ use Smalot\PdfParser\Parser as PdfParser;
 use PhpOffice\PhpWord\IOFactory as WordLoader;
 use App\Models\Purchase;
 use phpDocumentor\Reflection\PseudoTypes\False_;
+use App\Models\AgentRating;
 
 class AgentController extends Controller
 {
@@ -33,7 +34,9 @@ class AgentController extends Controller
         if ($user) {
             $purchasedAgentIds = $user->purchases()->pluck('agent_id')->toArray(); }
     
-        $agents = Agent::where('is_active', true)->get();
+            $agents = Agent::withAvg('ratings', 'rating')
+            ->where('is_active', true)
+            ->get();
 
         Log::info('Purchased Agent IDs: ' , [$purchasedAgentIds], [$agents]);
     
@@ -54,7 +57,34 @@ class AgentController extends Controller
                  ->first()
         : null;
 
-        return view('agents.show', compact('agent', 'purchase'));
+         // Buscar avaliações
+        $ratings = AgentRating::where('agent_id', $id)
+        ->with('user')
+        ->orderBy('created_at', 'desc')
+        ->paginate(5);
+
+        // Estatísticas das avaliações
+        $totalRatings = AgentRating::where('agent_id', $id)->count();
+        $averageRating = AgentRating::where('agent_id', $id)->avg('rating') ?? 0;
+
+        // Distribuição de avaliações
+        $ratingDistribution = [
+            5 => AgentRating::where('agent_id', $id)->where('rating', 5)->count(),
+            4 => AgentRating::where('agent_id', $id)->where('rating', 4)->count(),
+            3 => AgentRating::where('agent_id', $id)->where('rating', 3)->count(),
+            2 => AgentRating::where('agent_id', $id)->where('rating', 2)->count(),
+            1 => AgentRating::where('agent_id', $id)->where('rating', 1)->count(),
+        ];
+
+    return view('agents.show', compact(
+            'agent', 
+            'ratings', 
+            'totalRatings', 
+            'averageRating', 
+            'ratingDistribution',
+            'purchase'
+       ));
+        
     }
 
     public function chat($id)
@@ -62,6 +92,15 @@ class AgentController extends Controller
 
         $agent = Agent::with('steps')->findOrFail($id);
         $steps = $agent->steps()->orderBy('step_order')->get();
+
+        $session = ChatSession::where('user_id', auth()->id())
+            ->where('agent_id', $agent->id)
+            ->orderBy('created_at', 'desc') // Ordena pela data de criação (mais recente primeiro)
+            ->first(); // Obtém apenas a última sessão
+
+        $session->already_rated = AgentRating::where('user_id', auth()->id())
+             ->where('chat_session_id', $session->id)
+            ->exists();
 
         Log::info('Acessando chat do agente', ['agent' => $agent, 'steps' => $steps]);
 
@@ -75,7 +114,7 @@ class AgentController extends Controller
 
         Log::info('Preparando nova sessão de chat', ['agent_id' => $id]);
 
-        return view('agents.chat', compact('agent','steps'));
+        return view('agents.chat', compact('agent','steps','session'));
     }
 
     public function finalizeSession($agentId)
@@ -177,13 +216,18 @@ class AgentController extends Controller
                         'ai_model' =>$firstStep->agent->model_type,
                         'current_step' => 1,
                         'should_persist' => true,
-                        'is_active' => true
+                        'is_active' => true,
                     ]);
                     
                     Log::info('Nova sessão criada com passos', ['session_id' => $session->id]);
+
+                    $session->already_rated = AgentRating::where('user_id', Auth::id())
+                    ->where('chat_session_id', $session->id)
+                    ->exists();
                     
                     return response()->json([
                         'session_id' => $session->id,
+                        'is_active' => $session->is_active,
                         'current_step' => 1,
                         'required_input' => $firstStep->required_input ?? null,
                         'upload_file' => $firstStep->upload_file    
@@ -919,10 +963,12 @@ class AgentController extends Controller
         
         $startTime = time();
         $maxWait = 120;
+        $tentativas = 0;
     
         // Espera o run finalizar
         do {
             usleep(100000);
+
             $runCheck = $http->get("https://api.openai.com/v1/threads/{$session->thread_id}/runs/{$run['id']}");
             $status = $runCheck['status'] ?? null;
             Log::info('Verificando status do run', ['status' => $status, 'elapsed_time' => time() - $startTime]);
@@ -931,6 +977,18 @@ class AgentController extends Controller
                 Log::warning("Timeout na espera pelo run OpenAI");
                 $http->post("https://api.openai.com/v1/threads/{$session->thread_id}/runs/{$run['id']}/abort");
                 return null;
+            }
+
+            if ($status == 'failed' and $tentativas < 3) {
+                Log::error('Run finalizou com status inesperado: ' . $status . '#' . $tentativas);
+                $run = $http->post("https://api.openai.com/v1/threads/{$session->thread_id}/runs", [
+                    'assistant_id' => $agent->assistant_id,
+                ]);
+                
+                usleep(100000);
+                $runCheck = $http->get("https://api.openai.com/v1/threads/{$session->thread_id}/runs/{$run['id']}");
+                $status = $runCheck['status'] ?? null;
+                $tentativas++;
             }
 
         } while (in_array($status, ['queued', 'in_progress']));

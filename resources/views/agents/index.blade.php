@@ -37,6 +37,26 @@
                                 
                                 <div class="p-4">
                                     <h3 class="text-xl font-bold mb-2">{{ $agent->name }}</h3>
+                                    <!-- Estrelas -->
+                                    @php
+                                        $media = round($agent->ratings_avg_rating ?? 0, 1);
+                                    @endphp
+
+                                    <div class="flex items-center mb-2">
+                                        @for ($i = 1; $i <= 5; $i++)
+                                            @if ($i <= floor($media))
+                                                <svg class="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
+                                                    <polygon points="10,1 12,7 18,7 13,11 15,17 10,13 5,17 7,11 2,7 8,7" />
+                                                </svg>
+                                            @else
+                                                <svg class="w-4 h-4 text-gray-300 fill-current" viewBox="0 0 20 20">
+                                                    <polygon points="10,1 12,7 18,7 13,11 15,17 10,13 5,17 7,11 2,7 8,7" />
+                                                </svg>
+                                            @endif
+                                        @endfor
+                                        <span class="ml-2 text-sm text-gray-600">({{ $media }}/5)</span>
+                                    </div>
+
                                     <p class="text-gray-700 mb-4">{{ $agent->description }}</p>
 
                                     @if(!$jaPossui)

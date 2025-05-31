@@ -53,6 +53,7 @@
                 }
             });
         });
+        
     </script>
     @endpush
         
@@ -193,7 +194,7 @@
                             <p>{{ $agent->created_at->format('d/m/Y') }}</p>
                         </div>
                     </div>
-                    @endforeach
+        
                 </div>
             </div>
             

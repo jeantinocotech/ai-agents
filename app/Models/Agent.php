@@ -21,7 +21,9 @@ class Agent extends Model
         'project_id',
         'assistant_id',
         'system_prompt',
-        'is_active'
+        'is_active',
+        'hotmart_checkout_url',
+        'hotmart_product_id',
     ];
     
     /**

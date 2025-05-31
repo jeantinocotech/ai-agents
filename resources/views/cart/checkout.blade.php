@@ -1,39 +1,31 @@
-// resources/views/cart/checkout.blade.php
-<!-- resources/views/cart/checkout.blade.php -->
-
+<!-- resources/views/checkout.blade.php -->
 <x-app-layout>
     <div class="max-w-4xl mx-auto py-12">
-        <h1 class="text-3xl font-bold mb-8">Seu Carrinho</h1>
+        <h1 class="text-3xl font-bold mb-8">Finalize sua compra</h1>
 
-        @if(count($cart) > 0)
-            <div class="space-y-6">
-                @foreach($cart as $item)
-                    <div class="p-4 border rounded shadow flex justify-between items-center">
-                        <div>
-                            <h2 class="text-xl font-semibold">{{ $item['name'] }}</h2> <!-- Se for um array -->
-                            <p class="text-gray-600">{{ $item['description'] }}</p>
-                        </div>
-                        <div class="text-lg font-bold">
-                            R$ {{ number_format($item['price'], 2, ',', '.') }}
-                        </div>
-                    </div>
-                @endforeach
-            </div>
+        <p class="mb-6 text-gray-600">Clique no botão abaixo para comprar cada agente individualmente pela Hotmart.</p>
 
-            <div class="mt-8 flex justify-between items-center">
-                <div class="text-2xl font-bold">
-                    Total: R$ {{ number_format($total, 2, ',', '.') }}
+        @foreach($agents as $agent)
+            <div class="p-4 border rounded shadow mb-4 flex justify-between items-center">
+                <div>
+                    <h2 class="text-xl font-semibold">{{ $agent->name }}</h2>
+                    <p class="text-gray-600">{{ $agent->description }}</p>
                 </div>
 
-                <form method="POST" action="{{ route('cart.processCheckout') }}">
-                    @csrf
-                    <button class="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700 transition">
-                        Finalizar Compra
-                    </button>
-                </form>
+                @if($agent->hotmart_checkout_url)
+                    <a href="{{ $agent->hotmart_checkout_url }}?email={{ urlencode(auth()->user()->email) }}"
+                       target="_blank"
+                       class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition">
+                       Comprar
+                    </a>
+                @else
+                    <span class="text-red-500">Link não disponível</span>
+                @endif
             </div>
-        @else
-            <p class="text-gray-500">Seu carrinho está vazio.</p>
-        @endif
+        @endforeach
+
+        <a href="{{ route('home') }}" class="inline-block mt-6 text-blue-600 hover:underline">
+            ← Voltar à página inicial
+        </a>
     </div>
 </x-app-layout>

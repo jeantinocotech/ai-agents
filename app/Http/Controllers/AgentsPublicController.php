@@ -19,7 +19,10 @@ class AgentsPublicController extends Controller
         if ($user) {
             $purchasedAgentIds = $user->purchases()->pluck('agent_id')->toArray(); }
     
-        $agents = Agent::where('is_active', true)->get();
+            $agents = Agent::withAvg('ratings', 'rating')
+            ->where('is_active', true)
+            ->get();
+
 
         Log::info('Purchased Agent IDs: ' , [$purchasedAgentIds], [$agents]);
     

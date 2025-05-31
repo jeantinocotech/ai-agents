@@ -26,7 +26,12 @@ class PurchaseController extends Controller
         if ($purchase->paused) {
             return back()->with('info', 'Esta assinatura já está pausada.');
         }
-    
+
+         // Pausa na Hotmart, se aplicável
+        if ($purchase->hotmart_subscription_code) {
+            $this->pauseHotmartSubscription($purchase->hotmart_subscription_code);
+        }
+        
         $purchase->update([
             'paused' => true,
             'paused_at' => now(),
@@ -56,7 +61,12 @@ class PurchaseController extends Controller
             'paused' => false,
             'paused_at' => null,
         ]);
-        
+
+         // Retoma na Hotmart, se aplicável
+        if ($purchase->hotmart_subscription_code) {
+            $this->resumeHotmartSubscription($purchase->hotmart_subscription_code);
+        }
+            
         PurchaseEvent::create([
             'purchase_id' => $purchase->id,
             'event_type' => 'resumed',
@@ -67,5 +77,40 @@ class PurchaseController extends Controller
         return back()->with('success', 'Assinatura reativada com sucesso!');
     }
 
-    
+    private function pauseHotmartSubscription($subscriptionCode)
+    {
+        $accessToken = env('HOTMART_ACCESS_TOKEN');
+
+        $response = \Illuminate\Support\Facades\Http::withHeaders([
+            'Authorization' => "Bearer $accessToken",
+        ])->post("https://api.hotmart.com/payments/api/v1/subscription/{$subscriptionCode}/status", [
+            'status' => 'SUSPENDED',
+        ]);
+
+        Log::info('Hotmart Pause Response', [
+            'subscription_code' => $subscriptionCode,
+            'response' => $response->json(),
+        ]);
+
+        return $response->successful();
+    }
+
+    private function resumeHotmartSubscription($subscriptionCode)
+    {
+        $accessToken = env('HOTMART_ACCESS_TOKEN');
+
+        $response = \Illuminate\Support\Facades\Http::withHeaders([
+            'Authorization' => "Bearer $accessToken",
+        ])->post("https://api.hotmart.com/payments/api/v1/subscription/{$subscriptionCode}/status", [
+            'status' => 'ACTIVE',
+        ]);
+
+        Log::info('Hotmart Resume Response', [
+            'subscription_code' => $subscriptionCode,
+            'response' => $response->json(),
+        ]);
+
+        return $response->successful();
+    }
+
 }
