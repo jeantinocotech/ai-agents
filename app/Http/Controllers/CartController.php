@@ -61,6 +61,7 @@ class CartController extends Controller
     }
 
     // Página de checkout (precisa estar logado)
+    // Página de checkout - agora direcionando para Hotmart
     public function checkout()
     {
         if (!Auth::check()) {
@@ -68,38 +69,38 @@ class CartController extends Controller
         }
 
         $cart = session()->get('cart', []);
-        $total = array_sum(array_column($cart, 'price'));
         
-        log::info('Total: ' . $total);
-        log::info('cart ',  [$cart]);
-
-        return view('cart.checkout', compact('cart', 'total'));
-    }
-
-    // Processa o checkout
-    public function processCheckout(Request $request)
-    {
-        $cart = session()->get('cart', []);
-        $user = auth()->user();
-
         if (empty($cart)) {
             return redirect()->route('cart.index')->with('error', 'Seu carrinho está vazio.');
         }
 
-        foreach ($cart as $item) {
-            Purchase::firstOrCreate([
-                'user_id' => $user->id,
-                'agent_id' => $item['id'],
-            ]);
+        // Busca os agentes completos do banco
+        $agentIds = array_keys($cart);
+        $agents = Agent::whereIn('id', $agentIds)->get();
+        
+        // Verifica se todos os agentes têm URL da Hotmart configurada
+        $agentsWithoutUrl = $agents->whereNull('hotmart_checkout_url');
+        if ($agentsWithoutUrl->isNotEmpty()) {
+            return redirect()->route('cart.index')->with('error', 'Alguns agentes não têm checkout configurado.');
         }
 
-        session()->forget('cart');
-        return redirect()->route('checkout.success');
+        $total = array_sum(array_column($cart, 'price'));
+        
+        Log::info('Checkout iniciado', [
+            'user_id' => auth()->id(),
+            'agents' => $agentIds,
+            'total' => $total
+        ]);
+
+        return view('cart.checkout', compact('agents', 'total'));
     }
 
     // Página de sucesso após checkout
     public function checkoutSuccess()
     {
+        // Limpa o carrinho após sucesso
+        session()->forget('cart');
         return view('cart.success');
     }
+
 }

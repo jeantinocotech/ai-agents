@@ -75,22 +75,26 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // Carrinho
-Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
-Route::post('/cart/add/{id}', [CartController::class, 'addToCart'])->name('cart.add');
-Route::post('/cart/remove/{id}', [CartController::class, 'removeFromCart'])->name('cart.remove');
-Route::post('/cart/clear', [CartController::class, 'clearCart'])->name('cart.clear');
 
+Route::prefix('cart')->name('cart.')->group(function () {
+    Route::get('/', [CartController::class, 'index'])->name('index');
+    Route::post('/add/{id}', [CartController::class, 'addToCart'])->name('add');
+    Route::post('/remove/{id}', [CartController::class, 'removeFromCart'])->name('remove');
+    Route::post('/clear', [CartController::class, 'clearCart'])->name('clear');
+    Route::get('/checkout', [CartController::class, 'checkout'])->name('checkout');
+    Route::get('/success', [CartController::class, 'checkoutSuccess'])->name('success');
+    Route::post('/hotmart/webhook', [HotmartWebhookController::class, 'handle']);
+});
 
 
 // Checkout (requer login)
 Route::middleware(['auth'])->group(function () {
-    Route::post('/cart/checkout', [CartController::class, 'processCheckout'])->name('cart.processCheckout');
+    //Route::post('/cart/checkout', [CartController::class, 'processCheckout'])->name('cart.processCheckout');
     //Route::post('/cart/checkout/process', [CartController::class, 'processCheckout'])->name('cart.processCheckout');
-    Route::get('/cart/checkout/success', [CartController::class, 'checkoutSuccess'])->name('checkout.success');
+    //Route::get('/cart/checkout/success', [CartController::class, 'checkoutSuccess'])->name('checkout.success');
     //Pagamento Hotmart
-    Route::post('/hotmart/webhook', [HotmartWebhookController::class, 'handle']);
-});
 
+});
 
 Route::get('/agentes', [AgentsPublicController::class, 'index'])->name('agents.index');
 Route::post('/agentes/{id}/adicionar-carrinho', [AgentsPublicController::class, 'addToCart'])->name('agents.addToCart');
@@ -137,23 +141,21 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     Route::get('/cv-analysis', [WebCvAnalysisController::class, 'showForm']);
     Route::post('/cv-analysis', [WebCvAnalysisController::class, 'processForm']);
 
-
     // Pausar compra
-    Route::post('/purchase/pause/{purchase}', [PurchaseController::class, 'pause'])
-    ->middleware('auth')
-    ->name('purchase.pause');
-    Route::post('/purchase/resume/{purchase}', [PurchaseController::class, 'resume'])
-    ->middleware('auth')
-    ->name('purchase.resume');
-
+    Route::middleware(['auth'])->group(function () {
+        Route::post('/purchase/pause/{purchase}', [PurchaseController::class, 'pause'])
+        ->middleware('auth')
+        ->name('purchase.pause');
+        
+        Route::post('/purchase/resume/{purchase}', [PurchaseController::class, 'resume'])
+        ->middleware('auth')
+        ->name('purchase.resume');
+    });
 
 
     Route::get('/clear-log', function () {
     file_put_contents(storage_path('logs/laravel.log'), '');
     return 'Log limpo com sucesso!';
     });
-
- 
-
 
 require __DIR__.'/auth.php';
