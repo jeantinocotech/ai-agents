@@ -38,25 +38,24 @@ RUN if [ ! -f /app/.env ]; then \
             echo "APP_DEBUG=true" >> /app/.env && \
             echo "APP_URL=http://localhost" >> /app/.env && \
             echo "" >> /app/.env && \
-            echo "LOG_CHANNEL=stack" >> /app/.env && \
+            echo "LOG_CHANNEL=stderr" >> /app/.env && \
             echo "LOG_LEVEL=debug" >> /app/.env; \
         fi \
     fi
 
-# Ajusta permissões ANTES dos comandos artisan
-RUN chown -R application:application /app \
+# Cria o arquivo de log e ajusta todas as permissões
+RUN touch /app/storage/logs/laravel.log \
+    && chown -R application:application /app \
     && chmod -R 775 /app/storage \
     && chmod -R 775 /app/bootstrap/cache \
-    && chmod -R 755 /app/public
+    && chmod -R 755 /app/public \
+    && chmod 664 /app/storage/logs/laravel.log
 
 # Gera a key se não existir (importante!)
 RUN php artisan key:generate --force
 
 # Testa se o Laravel está funcionando
 RUN php artisan --version
-
-# Configura logs para aparecer no stdout/stderr
-RUN ln -sf /dev/stdout /app/storage/logs/laravel.log
 
 EXPOSE 80
 
