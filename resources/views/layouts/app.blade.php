@@ -32,6 +32,10 @@
                 {{ $slot }}
             </main>
         </div>
+        
+        <div class="test-css">
+            TESTE CSS - Se você vê este texto com fundo vermelho, o CSS está funcionando!
+        </div>
        
     </body>
 </html>
