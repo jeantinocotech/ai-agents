@@ -96,6 +96,7 @@ class CartController extends Controller
     }
 
     // Página de sucesso após checkout
+     // Página de sucesso após checkout
     public function checkoutSuccess()
     {
         // Limpa o carrinho após sucesso
