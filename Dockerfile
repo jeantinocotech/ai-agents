@@ -42,9 +42,5 @@ RUN touch /app/storage/logs/laravel.log \
     && chmod -R 755 /app/public \
     && chmod 664 /app/storage/logs/laravel.log
 
-# Limpa caches se existirem
-RUN php artisan config:clear \
-    && php artisan cache:clear \
-    && php artisan view:clear
 
 EXPOSE 80
