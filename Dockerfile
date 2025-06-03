@@ -36,9 +36,9 @@ RUN chown -R application:application /app/public \
 
 EXPOSE 80
 
-COPY entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
-ENTRYPOINT ["/entrypoint.sh"]
+#COPY entrypoint.sh /entrypoint.sh
+#RUN chmod +x /entrypoint.sh
+#ENTRYPOINT ["/entrypoint.sh"]
 
 #CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=80"]
 #CMD ["supervisord", "-n"]
