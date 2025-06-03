@@ -15,7 +15,10 @@ WORKDIR /app
 ENV WEB_DOCUMENT_ROOT /app/public
 
 # Copia os arquivos da build do frontend e Laravel
-COPY --from=frontend /app /app
+# Copia arquivos de frontend gerados pelo Vite
+COPY --from=frontend /app/public/build /app/public/build
+COPY --from=frontend /app/public/manifest.json /app/public/manifest.json
+#COPY --from=frontend /app /app
 
 # Instala dependências PHP
 RUN composer install --no-dev --optimize-autoloader \
