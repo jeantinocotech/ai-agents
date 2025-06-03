@@ -3,9 +3,40 @@ FROM node:18-alpine as frontend
 
 WORKDIR /app
 COPY package*.json ./
+
+# Mostra as dependências
+RUN echo "=== Package.json ===" \
+    && cat package.json \
+    && echo "=== Instalando dependências ===" 
+
 RUN npm install
+
+# Copia todos os arquivos necessários para o build
 COPY . .
+
+# Verifica se tem tailwind.config.js
+RUN echo "=== Verificando Tailwind ===" \
+    && ls -la tailwind.config.js || echo "tailwind.config.js não encontrado" \
+    && echo "=== Verificando postcss.config.js ===" \
+    && ls -la postcss.config.js || echo "postcss.config.js não encontrado"
+
+# Mostra estrutura antes do build
+RUN echo "=== Arquivos resources ===" \
+    && ls -la resources/css/ \
+    && ls -la resources/js/ \
+    && echo "=== Conteúdo app.css ===" \
+    && head -10 resources/css/app.css
+
+# Executa o build
 RUN npm run build
+
+# Verifica se os assets foram gerados corretamente
+RUN echo "=== Verificando build ===" \
+    && ls -la public/build/ \
+    && echo "=== Assets gerados ===" \
+    && ls -la public/build/assets/ || echo "Pasta assets não encontrada" \
+    && echo "=== Manifest.json ===" \
+    && cat public/build/manifest.json
 
 # Etapa 2: preparar PHP + Apache com Laravel
 FROM webdevops/php-apache:8.2-alpine
@@ -54,8 +85,17 @@ RUN touch /app/storage/logs/laravel.log \
 # Gera a key se não existir (importante!)
 RUN php artisan key:generate --force
 
+# Verifica se os assets existem
+RUN ls -la /app/public/build/ || echo "Assets não encontrados em /app/public/build/"
+RUN ls -la /app/public/ | grep -E "(css|js|build)" || echo "Nenhum asset encontrado em /app/public/"
+
 # Testa se o Laravel está funcionando
 RUN php artisan --version
+
+# Limpa caches se existirem
+RUN php artisan config:clear \
+    && php artisan cache:clear \
+    && php artisan view:clear
 
 EXPOSE 80
 
