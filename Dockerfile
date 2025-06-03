@@ -17,29 +17,46 @@ ENV WEB_DOCUMENT_ROOT /app/public
 # Copia os arquivos da build do frontend e Laravel
 COPY --from=frontend /app /app
 
-# Instala dependências PHP
+# Instala dependências PHP (sem cache ainda)
 RUN composer install --no-dev --optimize-autoloader
 
-# Configurações do Laravel
-RUN php artisan config:cache \
-    && php artisan route:cache \
-    && php artisan view:cache
+# Cria diretórios necessários se não existirem
+RUN mkdir -p /app/storage/logs \
+    && mkdir -p /app/storage/framework/cache \
+    && mkdir -p /app/storage/framework/sessions \
+    && mkdir -p /app/storage/framework/views \
+    && mkdir -p /app/bootstrap/cache
 
-# Ajusta permissões
+# Cria arquivo .env se não existir (baseado no .env.example)
+RUN if [ ! -f /app/.env ]; then \
+        if [ -f /app/.env.example ]; then \
+            cp /app/.env.example /app/.env; \
+        else \
+            echo "APP_NAME=Laravel" > /app/.env && \
+            echo "APP_ENV=production" >> /app/.env && \
+            echo "APP_KEY=" >> /app/.env && \
+            echo "APP_DEBUG=true" >> /app/.env && \
+            echo "APP_URL=http://localhost" >> /app/.env && \
+            echo "" >> /app/.env && \
+            echo "LOG_CHANNEL=stack" >> /app/.env && \
+            echo "LOG_LEVEL=debug" >> /app/.env; \
+        fi \
+    fi
+
+# Ajusta permissões ANTES dos comandos artisan
 RUN chown -R application:application /app \
-    && chmod -R 775 /app/storage /app/bootstrap/cache \
+    && chmod -R 775 /app/storage \
+    && chmod -R 775 /app/bootstrap/cache \
     && chmod -R 755 /app/public
 
-# Garante que os assets estejam acessíveis
-RUN chown -R application:application /app/public \
-    && chmod -R 755 /app/public
+# Gera a key se não existir (importante!)
+RUN php artisan key:generate --force
+
+# Testa se o Laravel está funcionando
+RUN php artisan --version
+
+# Configura logs para aparecer no stdout/stderr
+RUN ln -sf /dev/stdout /app/storage/logs/laravel.log
 
 EXPOSE 80
-
-#COPY entrypoint.sh /entrypoint.sh
-#RUN chmod +x /entrypoint.sh
-#ENTRYPOINT ["/entrypoint.sh"]
-
-#CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=80"]
-#CMD ["supervisord", "-n"]
 
