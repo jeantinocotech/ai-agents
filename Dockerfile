@@ -7,8 +7,18 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# Etapa 2: preparar PHP + Apache com Laravel
-FROM webdevops/php-apache:8.2-alpine
+# Etapa 2: PHP com Apache
+FROM php:8.2-apache
+
+# Ativa o mod_rewrite e extensões
+RUN docker-php-ext-install pdo pdo_mysql \
+    && a2enmod rewrite
+
+# Define a raiz do site
+ENV APACHE_DOCUMENT_ROOT /app/public
+
+# Aponta o DocumentRoot no apache
+RUN sed -ri -e 's!/var/www/html!/app/public!g' /etc/apache2/sites-available/000-default.conf
 
 WORKDIR /app
 
