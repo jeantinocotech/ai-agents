@@ -8,7 +8,7 @@ COPY . .
 RUN npm run build
 
 # Etapa 2: preparar PHP + Apache com Laravel
-FROM webdevops/php-apache:8.2
+FROM webdevops/php-apache:8.2-alpine
 
 WORKDIR /app
 
