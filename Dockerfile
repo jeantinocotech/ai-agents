@@ -17,6 +17,14 @@ ENV WEB_DOCUMENT_ROOT /app/public
 # Copia os arquivos da build do frontend e Laravel
 COPY --from=frontend /app /app
 
+# Garante que o .htaccess seja criado dentro da pasta public/build/assets
+RUN echo '<FilesMatch "\.css$">' > /app/public/build/assets/.htaccess \
+    && echo '    ForceType text/css' >> /app/public/build/assets/.htaccess \
+    && echo '</FilesMatch>' >> /app/public/build/assets/.htaccess \
+    && echo '<FilesMatch "\.js$">' >> /app/public/build/assets/.htaccess \
+    && echo '    ForceType application/javascript' >> /app/public/build/assets/.htaccess \
+    && echo '</FilesMatch>' >> /app/public/build/assets/.htaccess
+
 # Instala dependências PHP
 RUN composer install --no-dev --optimize-autoloader 
 
