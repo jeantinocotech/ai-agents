@@ -59,5 +59,7 @@ RUN chown -R www-data:www-data /app \
 
 EXPOSE 80
 
-RUN php artisan storage:link || true
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+ENTRYPOINT ["/entrypoint.sh"]
 
