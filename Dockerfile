@@ -29,7 +29,7 @@ WORKDIR /app
 # Copia tudo do frontend + Laravel
 COPY --from=frontend /app /app
 
-# Instala dependências PHP (Laravel)
+# ⚠️ Agora sim os arquivos existem -> instalar dependências
 RUN composer install --no-dev --optimize-autoloader
 
 # Corrige MIME do CSS/JS com .htaccess persistente
@@ -41,8 +41,12 @@ RUN mkdir -p /app/public/build/assets \
     && echo '    ForceType application/javascript' >> /app/public/build/assets/.htaccess \
     && echo '</FilesMatch>' >> /app/public/build/assets/.htaccess
 
+# ⚠️ Recria .htaccess do Laravel (caso tenha sido sobrescrito no COPY)
+RUN cp /app/public/.htaccess.example /app/public/.htaccess || true
+
 # Ajusta permissões Laravel
 RUN chown -R www-data:www-data /app \
-    && chmod -R 775 /app/storage /app/bootstrap/cache
+    && chmod -R 775 /app/storage /app/bootstrap/cache \
+    && chmod -R 755 /app/public
 
 EXPOSE 80
