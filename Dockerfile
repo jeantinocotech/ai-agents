@@ -58,3 +58,6 @@ RUN chown -R www-data:www-data /app \
     && chmod -R 755 /app/public
 
 EXPOSE 80
+
+RUN php artisan storage:link || true
+
