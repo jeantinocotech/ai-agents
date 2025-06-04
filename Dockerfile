@@ -3,12 +3,17 @@ FROM node:18-alpine as frontend
 
 WORKDIR /app
 
-# Copia apenas os arquivos de dependência primeiro (melhor cache)
+# Copia arquivos de configuração
 COPY package*.json ./
-RUN npm ci --only=production
+COPY vite.config.js ./
+COPY tailwind.config.js ./
 
-# Copia o resto dos arquivos
-COPY . .
+# Instala TODAS as dependências (incluindo devDependencies para o build)
+RUN npm ci
+
+# Copia apenas os arquivos necessários para o build
+COPY resources/ ./resources/
+COPY public/ ./public/
 
 # Executa o build do Vite
 RUN npm run build
@@ -23,8 +28,8 @@ ENV WEB_DOCUMENT_ROOT /app/public
 # Instala Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copia os arquivos do projeto
-COPY . /app
+# Copia os arquivos do projeto (exceto node_modules)
+COPY --exclude=node_modules . /app
 
 # Copia os assets buildados do Vite da etapa anterior
 COPY --from=frontend /app/public/build /app/public/build
