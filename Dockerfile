@@ -2,20 +2,9 @@
 FROM node:18-alpine as frontend
 
 WORKDIR /app
-
-# Copia arquivos de configuração
 COPY package*.json ./
-COPY vite.config.js ./
-COPY tailwind.config.js ./
-
-# Instala TODAS as dependências (incluindo devDependencies para o build)
-RUN npm ci
-
-# Copia apenas os arquivos necessários para o build
-COPY resources/ ./resources/
-COPY public/ ./public/
-
-# Executa o build do Vite
+RUN npm install
+COPY . .
 RUN npm run build
 
 # Etapa 2: preparar PHP + Apache com Laravel
@@ -25,33 +14,16 @@ WORKDIR /app
 
 ENV WEB_DOCUMENT_ROOT /app/public
 
-# Instala Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-
-# Copia os arquivos do projeto (exceto node_modules)
-COPY --exclude=node_modules . /app
-
-# Copia os assets buildados do Vite da etapa anterior
-COPY --from=frontend /app/public/build /app/public/build
-
-# Verifica se os assets foram copiados corretamente
-RUN ls -la /app/public/build/ && ls -la /app/public/build/assets/ || echo "Assets não encontrados"
+# Copia os arquivos da build do frontend e Laravel
+COPY --from=frontend /app /app
 
 # Instala dependências PHP
-RUN composer install --no-dev --optimize-autoloader --no-interaction
-
-# Cria diretórios necessários
-RUN mkdir -p /app/storage/logs \
-    && mkdir -p /app/storage/framework/cache \
-    && mkdir -p /app/storage/framework/sessions \
-    && mkdir -p /app/storage/framework/views \
-    && mkdir -p /app/bootstrap/cache
+RUN composer install --no-dev --optimize-autoloader 
 
 # Configurar MIME types para Apache - SOLUÇÃO PARA O PROBLEMA CSS
 RUN echo "# MIME types for Vite assets" >> /opt/docker/etc/httpd/conf.d/10-php.conf \
     && echo "AddType text/css .css" >> /opt/docker/etc/httpd/conf.d/10-php.conf \
-    && echo "AddType application/javascript .js" >> /opt/docker/etc/httpd/conf.d/10-php.conf \
-    && echo "AddType application/json .json" >> /opt/docker/etc/httpd/conf.d/10-php.conf
+    && echo "AddType application/javascript .js" >> /opt/docker/etc/httpd/conf.d/10-php.conf
 
 # Criar configuração específica para assets do build
 RUN echo '<LocationMatch "^/build/.*\.css$">' >> /opt/docker/etc/httpd/conf.d/10-php.conf \
@@ -63,10 +35,22 @@ RUN echo '<LocationMatch "^/build/.*\.css$">' >> /opt/docker/etc/httpd/conf.d/10
 
 # Ajusta permissões
 RUN chown -R application:application /app \
-    && chmod -R 775 /app/storage /app/bootstrap/cache \
+    && chmod -R 755 /app/storage /app/bootstrap/cache \
     && chmod -R 755 /app/public
 
-# Gera key do Laravel se necessário
-RUN php artisan config:cache || true
+# Cria diretórios necessários se não existirem
+RUN mkdir -p /app/storage/logs \
+    && mkdir -p /app/storage/framework/cache \
+    && mkdir -p /app/storage/framework/sessions \
+    && mkdir -p /app/storage/framework/views \
+    && mkdir -p /app/bootstrap/cache
+
+# Cria o arquivo de log e ajusta todas as permissões
+RUN touch /app/storage/logs/laravel.log \
+    && chown -R application:application /app \
+    && chmod -R 775 /app/storage \
+    && chmod -R 775 /app/bootstrap/cache \
+    && chmod -R 755 /app/public \
+    && chmod 664 /app/storage/logs/laravel.log
 
 EXPOSE 80
