@@ -131,6 +131,10 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
         Route::delete('/{step}', [AgentStepController::class, 'destroy'])->name('destroy');
     });
 
+    //busca preco no hotmart e atualiza tabela de agentes
+  
+    Route::post('/agents/update-prices', [AgentController::class, 'updateAllHotmartPrices'])->name('agents.updatePrices');
+
 });
 
 

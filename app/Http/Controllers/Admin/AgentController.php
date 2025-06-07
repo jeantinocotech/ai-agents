@@ -7,6 +7,7 @@ use App\Models\Agent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use App\Services\HotmartService;
 
 class AgentController extends Controller
 {
@@ -143,4 +144,21 @@ class AgentController extends Controller
 
         return back()->with('success', 'Agente desativado.');
     }
+
+    public function updateAllHotmartPrices(HotmartService $hotmartService)
+{
+    $agents = Agent::whereNotNull('hotmart_product_id')->get();
+    $updated = 0;
+
+    foreach ($agents as $agent) {
+        $price = $hotmartService->getProductPrice($agent->hotmart_product_id);
+        if ($price) {
+            $agent->price = $price;
+            $agent->save();
+            $updated++;
+        }
+    }
+
+    return redirect()->back()->with('success', "{$updated} preços atualizados com sucesso.");
+}
 }
