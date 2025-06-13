@@ -7,7 +7,7 @@ use App\Models\Agent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
-use App\Services\HotmartService;
+
 
 class AgentController extends Controller
 {
@@ -76,7 +76,7 @@ class AgentController extends Controller
             'organization' => 'required|string',
             'project_id' => 'nullable|string',
             'system_prompt' => 'nullable|string',
-            'price' => 'nullable|numeric|min:0',
+            'price_formatted' => 'nullable|numeric|min:0', // Use o campo hidden formatado
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'youtube_video_id' => 'nullable|string|max:150',
             'api_key' => 'nullable|string',
@@ -91,12 +91,12 @@ class AgentController extends Controller
             'organization' => $validated['organization'] ?? null,
             'project_id' => $validated['project_id'] ?? null,
             'system_prompt' => $validated['system_prompt'] ?? null,
-            'price' => $validated['price'] ?? 1.99,
+            'price' => $validated['price_formatted'] ?? 1.99, // Já vem no formato correto
             'youtube_video_id' => $validated['youtube_video_id'],
             'api_key' => $validated['api_key'],
             'assistant_id' => $validated['assistant_id'],
             'model_type' => $validated['model_type'],
-            'is_active' => $request->has('is_active'),
+            'is_active' => $request->input('is_active', 0),
         ];
 
         if ($request->hasFile('image')) {
@@ -145,20 +145,4 @@ class AgentController extends Controller
         return back()->with('success', 'Agente desativado.');
     }
 
-    public function updateAllHotmartPrices(HotmartService $hotmartService)
-{
-    $agents = Agent::whereNotNull('hotmart_product_id')->get();
-    $updated = 0;
-
-    foreach ($agents as $agent) {
-        $price = $hotmartService->getProductPrice($agent->hotmart_product_id);
-        if ($price) {
-            $agent->price = $price;
-            $agent->save();
-            $updated++;
-        }
-    }
-
-    return redirect()->back()->with('success', "{$updated} preços atualizados com sucesso.");
-}
 }

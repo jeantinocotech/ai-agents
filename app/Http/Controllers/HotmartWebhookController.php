@@ -27,11 +27,24 @@ class HotmartWebhookController extends Controller
 
         $event = $request->input('event');
         $data = $request->input('data');
+
+        // Log do payload recebido para debug
+        Log::info('Hotmart Webhook recebido (ajustado)', ['event' => $event, 'data' => $data]);
         
         // Estrutura pode variar, adapte conforme a documentação da Hotmart
-        $buyerEmail = $data['buyer']['email'] ?? $request->input('buyer.email');
-        $productId = $data['product']['id'] ?? $request->input('product.id');
-        $subscriptionCode = $data['subscription']['code'] ?? $request->input('subscription.code');
+        //$buyerEmail = $data['buyer']['email'] ?? $request->input('buyer.email');
+        $buyerEmail = $data['buyer']['email'] ?? null;
+
+        //$productId = $data['product']['id'] ?? $request->input('product.id');
+        // Busca do primeiro produto digital listado (Hotmart envia uma lista)
+        $productId = null;
+        if (!empty($data['product']['content']['products'])) {
+            $productId = $data['product']['content']['products'][0]['id'];
+        }
+
+        //$subscriptionCode = $data['subscription']['code'] ?? $request->input('subscription.code');
+        // Código da assinatura (opcional, dependendo do evento)
+        $subscriptionCode = $data['subscription']['subscriber']['code'] ?? null;
 
         if (!$buyerEmail || !$productId) {
             Log::warning('Dados obrigatórios ausentes no webhook', [
@@ -40,6 +53,7 @@ class HotmartWebhookController extends Controller
             ]);
             return response()->json(['status' => 'missing data'], 400);
         }
+
 
         $user = User::where('email', $buyerEmail)->first();
         $agent = Agent::where('hotmart_product_id', $productId)->first();

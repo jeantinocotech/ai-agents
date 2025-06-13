@@ -39,6 +39,25 @@
                         </div>
 
                         <div class="mb-4">
+                            <label for="price" class="block text-gray-700 text-sm font-bold mb-2">Preço</label>
+                            <div class="relative">
+                                <span class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 pointer-events-none">R$</span>
+                                <input 
+                                    type="text" 
+                                    name="price" 
+                                    id="price" 
+                                    value="{{ old('price', number_format($agent->price, 2, ',', '.')) }}" 
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 pl-10 text-gray-700 text-left leading-tight focus:outline-none focus:shadow-outline"
+                                    placeholder="0,00"
+                                >
+                            </div>
+                            <p class="text-sm text-gray-500 mt-1">Digite apenas números. Ex: 12345 vira R$ 123,45</p>
+                            
+                            <!-- Campo hidden para enviar o valor correto para o servidor -->
+                            <input type="hidden" name="price_formatted" id="price_formatted" value="{{ $agent->price }}">
+                        </div>
+
+                        <div class="mb-4">
                             <label for="organization" class="block text-gray-700 text-sm font-bold mb-2">Organization</label>
                             <textarea name="organization" id="organization" rows="4" 
                                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">{{ old('organization', $agent->organization) }}</textarea>
@@ -116,11 +135,11 @@
                             <x-input-label for="is_active" :value="__('Ativado')" />
                             <div class="flex items-center gap-4">
                                 <label class="flex items-center">
-                                    <input type="radio" name="is_active" value="1" {{ old('is_active', $profile->is_active ?? 1) == 1 ? 'checked' : '' }} />
+                                    <input type="radio" name="is_active" value="1" {{ old('is_active', $agent->is_active ?? 1) == 1 ? 'checked' : '' }} />
                                     <span>{{ __('Ativo') }}</span>
                                 </label>
                                 <label class="flex items-center">
-                                    <input type="radio" name="is_active" value="0" {{ old('is_active', $profile->is_active ?? 1) == 0 ? 'checked' : '' }} />
+                                    <input type="radio" name="is_active" value="0" {{ old('is_active', $agent->is_active ?? 1) == 0 ? 'checked' : '' }} />
                                     <span>{{ __('Inativo') }}</span>
                                 </label>
                             </div>
@@ -179,6 +198,101 @@
         </div>
     </div>
 </x-app-layout>
+
+<style>
+    /* Adicione este CSS no final do seu blade ou em um arquivo CSS separado */
+    .price-input-container {
+        position: relative;
+    }
+    
+    .price-input-container input[type="text"] {
+        text-align: right;
+        padding-left: 2.5rem;
+    }
+    
+    .currency-symbol {
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #6b7280;
+        pointer-events: none;
+    }
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const priceInput = document.getElementById('price');
+        const priceFormattedInput = document.getElementById('price_formatted');
+        
+        function formatPrice(input) {
+            let value = input.value.replace(/\D/g, '');
+            
+            if (value === '') {
+                input.value = '';
+                priceFormattedInput.value = '0';
+                return;
+            }
+            
+            // Limita a 10 dígitos (até 99.999.999,99)
+            if (value.length > 10) {
+                value = value.slice(0, 10);
+            }
+            
+            let numericValue = parseInt(value, 10);
+            let formattedValue = (numericValue / 100).toFixed(2);
+            
+            // Formatação brasileira para exibição
+            let parts = formattedValue.split('.');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            
+            input.value = parts.join(',');
+            
+            // Valor para o servidor (formato americano)
+            priceFormattedInput.value = formattedValue;
+        }
+        
+        // Formatar ao digitar
+        priceInput.addEventListener('input', function() {
+            formatPrice(this);
+        });
+        
+        // Formatar valor inicial se existir
+        if (priceInput.value) {
+            // Remove formatação existente e reforma
+            let cleanValue = priceInput.value.replace(/\D/g, '');
+            if (cleanValue) {
+                priceInput.value = cleanValue;
+                formatPrice(priceInput);
+            }
+        }
+        
+        // Impede colagem de texto inválido
+        priceInput.addEventListener('paste', function(e) {
+            e.preventDefault();
+            let paste = (e.clipboardData || window.clipboardData).getData('text');
+            let numbers = paste.replace(/\D/g, '');
+            if (numbers) {
+                this.value = numbers;
+                formatPrice(this);
+            }
+        });
+        
+        // Previne entrada de caracteres inválidos
+        priceInput.addEventListener('keypress', function(e) {
+            if (!/\d/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                if (!(e.key === 'a' && e.ctrlKey) && !(e.key === 'c' && e.ctrlKey) && !(e.key === 'v' && e.ctrlKey)) {
+                    e.preventDefault();
+                }
+            }
+        });
+        
+        // Antes de submeter o formulário, garantir que o valor está correto
+        document.querySelector('form').addEventListener('submit', function() {
+            // O valor já está sendo atualizado no campo hidden, então não precisa fazer nada
+        });
+    });
+</script>
 
 <script>
 function previewImage(event) {

@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use App\Services\HotmartService;
 
 
 class AdminDashboardController extends Controller
@@ -150,4 +151,36 @@ class AdminDashboardController extends Controller
             'weeklyChartData'
         ));
     }
+
+    public function updateAllHotmartPrices(HotmartService $hotmartService)
+    {
+        $agents = Agent::whereNotNull('hotmart_product_id')->get();
+        $updated = 0;
+
+        Log::info('Preco atual - antes do For');
+    
+        foreach ($agents as $agent) {
+
+            Log::info('antes da API Hotmart', [
+                'agent' => $agent->name, 'product_id' => $agent->hotmart_product_id, 'price' => $agent->price]);
+
+            $price = $hotmartService->getProductPrice($agent->hotmart_product_id);
+
+            Log::info('depois da API Hotmart', [
+                'Hotmart price' => $price,
+                'Agent price' => $agent->price
+            ]);
+
+            if ($price) {
+                Log::info('Novo price', [
+                    'price atual' => $agent->price, 'novo preco' => $price]);
+                $agent->price = $price;
+                $agent->save();
+                $updated++;
+            }
+        }
+    
+        return redirect()->back()->with('success', "{$updated} preços atualizados com sucesso.");
+    }
+
 }

@@ -89,11 +89,8 @@ Route::prefix('cart')->name('cart.')->group(function () {
 
 // Checkout (requer login)
 Route::middleware(['auth'])->group(function () {
-    //Route::post('/cart/checkout', [CartController::class, 'processCheckout'])->name('cart.processCheckout');
-    //Route::post('/cart/checkout/process', [CartController::class, 'processCheckout'])->name('cart.processCheckout');
-    //Route::get('/cart/checkout/success', [CartController::class, 'checkoutSuccess'])->name('checkout.success');
+    Route::post('/cart/checkout/process', [CartController::class, 'processCheckout'])->name('cart.processCheckout');
     //Pagamento Hotmart
-
 });
 
 Route::get('/agentes', [AgentsPublicController::class, 'index'])->name('agents.index');
@@ -107,7 +104,6 @@ Route::post('/chat/sendfile', [AgentController::class, 'sendFile'])->name('chat.
 Route::post('/chat/{agentId}/finalize', [AgentController::class, 'finalizeSession'])->name('chat.finalize');
 Route::get('/agents/{agent}/current-step', [AgentController::class, 'getCurrentStep'])->name('agent.currentStep');
 Route::get('/agents/{id}/instructions', [AgentController::class, 'getAgentInstructions'])->name('agent.AgentInstructions');
-
 
 
 Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
@@ -133,7 +129,7 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
 
     //busca preco no hotmart e atualiza tabela de agentes
   
-    Route::post('/agents/update-prices', [AgentController::class, 'updateAllHotmartPrices'])->name('agents.updatePrices');
+    Route::post('/agents/update-prices', [AdminDashboardController::class, 'updateAllHotmartPrices'])->name('agents.updatePrices');
 
 });
 
