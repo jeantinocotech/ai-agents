@@ -9,6 +9,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
 });
 
-Route::post('/hotmart/webhook', [HotmartWebhookController::class, 'handle']);
+Route::post('/cart/hotmart/webhook', [HotmartWebhookController::class, 'handle']);
 
 

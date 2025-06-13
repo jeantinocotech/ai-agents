@@ -83,7 +83,6 @@ Route::prefix('cart')->name('cart.')->group(function () {
     Route::post('/clear', [CartController::class, 'clearCart'])->name('clear');
     Route::get('/checkout', [CartController::class, 'checkout'])->name('checkout');
     Route::get('/success', [CartController::class, 'checkoutSuccess'])->name('success');
-    Route::post('/hotmart/webhook', [HotmartWebhookController::class, 'handle']);
 });
 
 
