@@ -5,7 +5,8 @@ use App\Http\Controllers\AgentController;
 use App\Http\Controllers\HotmartWebhookController;
 
 // Hotmart webhook route - excluded from CSRF protection
-Route::post('/cart/hotmart/webhook', [HotmartWebhookController::class, 'handle']);
+// Using the exact same path as before to maintain compatibility
+Route::post('cart/hotmart/webhook', [HotmartWebhookController::class, 'handle']);
 
 Route::middleware('auth:sanctum')->group(function () {
     // Protected API routes go here
