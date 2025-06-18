@@ -38,7 +38,7 @@ WORKDIR /app
 COPY --from=frontend /app /app
 
 # Instala dependências PHP
-RUN composer install --no-dev --optimize-autoloader
+RUN composer install --no-dev --optimize-autoloader --no-scripts
 
 # Garante que o .htaccess do Laravel esteja presente
 RUN cp /app/public/.htaccess.example /app/public/.htaccess || true

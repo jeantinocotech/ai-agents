@@ -23,7 +23,7 @@ class HotmartService
     public function getAccessToken(): ?string
     {
         try {
-            $cachedToken = Cache::get('hotmart_access_token');
+            $cachedToken = Cache::get('HOTMART_ACCESS_TOKEN');
             if ($cachedToken) {
                 $this->accessToken = $cachedToken;
                 return $cachedToken;
@@ -33,7 +33,7 @@ class HotmartService
             $envToken = env('HOTMART_ACCESS_TOKEN');
             if ($envToken) {
                 $this->accessToken = $envToken;
-                Cache::put('hotmart_access_token', $envToken, now()->addHours(1));
+                Cache::put('HOTMART_ACCESS_TOKEN', $envToken, now()->addHours(1));
                 return $envToken;
             }
 
@@ -57,7 +57,7 @@ class HotmartService
                     $token = $data['access_token'];
                     $expiresIn = $data['expires_in'] ?? 3600;
 
-                    Cache::put('hotmart_access_token', $token, now()->addSeconds($expiresIn - 300));
+                    Cache::put('HOTMART_ACCESS_TOKEN', $token, now()->addSeconds($expiresIn - 300));
                     $this->accessToken = $token;
                     return $token;
                 } else {

@@ -33,7 +33,7 @@ class HotmartServiceUpdated
     public function getAccessToken(): ?string
     {
         // Try to get from cache first
-        $cachedToken = Cache::get('hotmart_access_token');
+        $cachedToken = Cache::get('HOTMART_ACCESS_TOKEN');
         if ($cachedToken) {
             Log::info('Using cached Hotmart token');
             return $cachedToken;
@@ -43,7 +43,7 @@ class HotmartServiceUpdated
         $envToken = env('HOTMART_ACCESS_TOKEN');
         if ($envToken) {
             Log::info('Using Hotmart token from .env');
-            Cache::put('hotmart_access_token', $envToken, now()->addHours(1));
+            Cache::put('HOTMART_ACCESS_TOKEN', $envToken, now()->addHours(1));
             return $envToken;
         }
 
@@ -87,7 +87,7 @@ class HotmartServiceUpdated
                     $expiresIn = $data['expires_in'] ?? 3600;
 
                     Log::info('Successfully obtained Hotmart token with client credentials');
-                    Cache::put('hotmart_access_token', $token, now()->addSeconds($expiresIn - 300));
+                    Cache::put('HOTMART_ACCESS_TOKEN', $token, now()->addSeconds($expiresIn - 300));
                     return $token;
                 }
                 
@@ -131,7 +131,7 @@ class HotmartServiceUpdated
                     $expiresIn = $data['expires_in'] ?? 3600;
 
                     Log::info('Successfully obtained Hotmart token with basic auth');
-                    Cache::put('hotmart_access_token', $token, now()->addSeconds($expiresIn - 300));
+                    Cache::put('HOTMART_ACCESS_TOKEN', $token, now()->addSeconds($expiresIn - 300));
                     return $token;
                 }
                 

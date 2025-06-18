@@ -153,7 +153,7 @@ class PurchaseController extends Controller
     {
         try {
             // Verifica se já temos um token válido em cache/session
-            $cachedToken = cache('hotmart_access_token');
+            $cachedToken = cache('HOTMART_ACCESS_TOKEN');
             if ($cachedToken) {
                 return $cachedToken;
             }
@@ -179,7 +179,7 @@ class PurchaseController extends Controller
                 $expiresIn = $data['expires_in'] ?? 3600;
 
                 // Cache o token por um tempo menor que o tempo de expiração
-                cache(['hotmart_access_token' => $token], now()->addSeconds($expiresIn - 300));
+                cache(['HOTMART_ACCESS_TOKEN' => $token], now()->addSeconds($expiresIn - 300));
 
                 return $token;
             }
