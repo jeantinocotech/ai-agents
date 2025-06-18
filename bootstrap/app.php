@@ -16,8 +16,6 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\VerifyCsrfToken::class
         );
         
-        // Register the HotmartWebhookMiddleware
-        $middleware->append(\App\Http\Middleware\HotmartWebhookMiddleware::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

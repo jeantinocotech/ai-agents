@@ -19,6 +19,7 @@ use App\Http\Controllers\RatingController;
 use App\Http\Controllers\HotmartWebhookController;
 
 
+Route::post('/cart/hotmart/webhook', [HotmartWebhookController::class, 'handle']);
 
 // Página inicial - listagem pública de agentes
 Route::get('/', [AgentController::class, 'index'])->name('home');
@@ -163,5 +164,3 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
 
 require __DIR__.'/auth.php';
 
-// Load webhook routes
-require __DIR__.'/webhooks.php';
