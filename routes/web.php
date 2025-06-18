@@ -157,4 +157,6 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     return 'Log limpo com sucesso!';
     });
 
+    Route::post('/cart/hotmart/webhook', [HotmartWebhookController::class, 'handle']);
+
 require __DIR__.'/auth.php';
