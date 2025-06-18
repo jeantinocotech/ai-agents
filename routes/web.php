@@ -18,10 +18,6 @@ use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RatingController;
 use App\Http\Controllers\HotmartWebhookController;
 
-// Define the Hotmart webhook route at the top level with custom middleware
-// This middleware bypasses CSRF protection for this route
-Route::post('/cart/hotmart/webhook', [HotmartWebhookController::class, 'handle'])
-    ->middleware(\App\Http\Middleware\HotmartWebhookMiddleware::class);
 
 
 // Página inicial - listagem pública de agentes
@@ -166,3 +162,6 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
 
 
 require __DIR__.'/auth.php';
+
+// Load webhook routes
+require __DIR__.'/webhooks.php';
