@@ -83,6 +83,7 @@ Route::prefix('cart')->name('cart.')->group(function () {
     Route::post('/clear', [CartController::class, 'clearCart'])->name('clear');
     Route::get('/checkout', [CartController::class, 'checkout'])->name('checkout');
     Route::get('/success', [CartController::class, 'checkoutSuccess'])->name('success');
+    Route::post('/hotmart/webhook', [HotmartWebhookController::class, 'handle']);
 });
 
 
@@ -157,6 +158,6 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     return 'Log limpo com sucesso!';
     });
 
-    Route::post('/cart/hotmart/webhook', [HotmartWebhookController::class, 'handle']);
+
 
 require __DIR__.'/auth.php';
