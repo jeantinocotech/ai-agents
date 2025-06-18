@@ -18,6 +18,11 @@ use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RatingController;
 use App\Http\Controllers\HotmartWebhookController;
 
+// Define the Hotmart webhook route at the top level with custom middleware
+// This middleware bypasses CSRF protection for this route
+Route::post('/cart/hotmart/webhook', [HotmartWebhookController::class, 'handle'])
+    ->middleware(\App\Http\Middleware\HotmartWebhookMiddleware::class);
+
 
 // Página inicial - listagem pública de agentes
 Route::get('/', [AgentController::class, 'index'])->name('home');
@@ -83,8 +88,7 @@ Route::prefix('cart')->name('cart.')->group(function () {
     Route::post('/clear', [CartController::class, 'clearCart'])->name('clear');
     Route::get('/checkout', [CartController::class, 'checkout'])->name('checkout');
     Route::get('/success', [CartController::class, 'checkoutSuccess'])->name('success');
-    // Webhook route excluded from CSRF protection via VerifyCsrfToken middleware
-    Route::post('/hotmart/webhook', [HotmartWebhookController::class, 'handle']);
+    // Webhook route is defined at the top level to bypass all middleware
 });
 
 

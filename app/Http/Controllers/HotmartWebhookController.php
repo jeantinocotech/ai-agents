@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Log;
 
 class HotmartWebhookController extends Controller
 {
+    
     public function handle(Request $request)
     {
         // Log da requisição completa para debug
