@@ -9,6 +9,6 @@ Route::middleware('auth:sanctum')->group(function () {
     // Protected API routes go here
 });
 
-Route::post('/hotmart/webhook', [HotmartWebhookController::class, 'handle']);
+Route::post('/cart/hotmart/webhook', [HotmartWebhookController::class, 'handle']);
 
 
