@@ -19,7 +19,7 @@ use App\Http\Controllers\RatingController;
 use App\Http\Controllers\HotmartWebhookController;
 
 
-Route::post('/cart/hotmart/webhook', [HotmartWebhookController::class, 'handle']);
+//Route::post('/cart/hotmart/webhook', [HotmartWebhookController::class, 'handle']);
 
 // Página inicial - listagem pública de agentes
 Route::get('/', [AgentController::class, 'index'])->name('home');
@@ -85,7 +85,6 @@ Route::prefix('cart')->name('cart.')->group(function () {
     Route::post('/clear', [CartController::class, 'clearCart'])->name('clear');
     Route::get('/checkout', [CartController::class, 'checkout'])->name('checkout');
     Route::get('/success', [CartController::class, 'checkoutSuccess'])->name('success');
-    // Webhook route is defined at the top level to bypass all middleware
 });
 
 
