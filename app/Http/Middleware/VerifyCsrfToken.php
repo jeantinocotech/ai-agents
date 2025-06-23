@@ -12,8 +12,8 @@ class VerifyCsrfToken extends Middleware
      * @var array<int, string>
      */
     protected $except = [
-        '/cart/hotmart/webhook',
-        'cart/hotmart/webhook',
-        'cart/hotmart/webhook/*',
+        'api/cart/hotmart/webhook',
+        'api/cart/hotmart/webhook',
+        'api/cart/hotmart/webhook/*',
     ];
 }
