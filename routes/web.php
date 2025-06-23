@@ -162,4 +162,5 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
 
 
 require __DIR__.'/auth.php';
+require base_path('routes/api.php');
 
