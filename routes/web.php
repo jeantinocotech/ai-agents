@@ -159,8 +159,6 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     return 'Log limpo com sucesso!';
     });
 
-
-
 require __DIR__.'/auth.php';
-require base_path('routes/api.php');
+
 
