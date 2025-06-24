@@ -202,8 +202,15 @@ class CartController extends Controller
  
                  // Cria o pedido na Hotmart
                  $hotmartResponse = $this->hotmartService->createOrder($orderData);
+
+                 log::info('Hotmart response:', [$hotmartResponse ?? 'Nenhuma resposta recebida']);
+ 
+                 // Verifica se a resposta da Hotmart foi bem-sucedida
  
                  if ($hotmartResponse) {
+
+                    log::info('Hotmart response true',[$hotmartResponse ?? 'Nenhuma resposta recebida']);
+                    
                      // Cria ou atualiza a purchase local
                      $purchase = Purchase::updateOrCreate([
                          'user_id' => $user->id,

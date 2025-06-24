@@ -16,10 +16,6 @@ use App\Http\Controllers\CvAnalysisController;
 use App\Http\Controllers\WebCvAnalysisController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RatingController;
-use App\Http\Controllers\HotmartWebhookController;
-
-//Route::post('/teste-hotmart', [HotmartWebhookController::class, 'handle']);
-//Route::post('/cart/hotmart/webhook', [HotmartWebhookController::class, 'handle']);
 
 // Página inicial - listagem pública de agentes
 Route::get('/', [AgentController::class, 'index'])->name('home');
