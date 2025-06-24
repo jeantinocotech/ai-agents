@@ -18,7 +18,7 @@ use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RatingController;
 use App\Http\Controllers\HotmartWebhookController;
 
-Route::post('/teste-hotmart', [HotmartWebhookController::class, 'handle']);
+//Route::post('/teste-hotmart', [HotmartWebhookController::class, 'handle']);
 //Route::post('/cart/hotmart/webhook', [HotmartWebhookController::class, 'handle']);
 
 // Página inicial - listagem pública de agentes
