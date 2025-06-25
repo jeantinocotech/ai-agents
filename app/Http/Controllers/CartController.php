@@ -8,17 +8,17 @@ use App\Models\Purchase;
 use App\Models\PurchaseEvent;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
-use App\Services\HotmartService;
+use App\Services\AsaasService;
 use Illuminate\Support\Facades\DB;
 
 class CartController extends Controller
 {
 
-    protected $hotmartService;
+    protected $asaasService;
 
-    public function __construct(HotmartService $hotmartService)
+    public function __construct(AsaasService $asaasService)
     {
-        $this->hotmartService = $hotmartService;
+        $this->asaasService = $asaasService;
     }
 
     // Exibe o carrinho
@@ -85,7 +85,7 @@ class CartController extends Controller
     }
 
     // Página de checkout (precisa estar logado)
-    // Página de checkout - agora direcionando para Hotmart
+    // Página de checkout
     public function checkout()
     {
         if (!Auth::check()) {
@@ -101,12 +101,6 @@ class CartController extends Controller
         // Busca os agentes completos do banco
         $agentIds = array_keys($cart);
         $agents = Agent::whereIn('id', $agentIds)->get();
-        
-       // Verifica se todos os agentes têm produto na Hotmart configurado
-       $agentsWithoutProduct = $agents->whereNull('hotmart_product_id');
-       if ($agentsWithoutProduct->isNotEmpty()) {
-           return redirect()->route('cart.index')->with('error', 'Alguns agentes não têm produto configurado na Hotmart.');
-       }
 
         $total = array_sum(array_column($cart, 'price'));
         
@@ -130,7 +124,7 @@ class CartController extends Controller
         return view('cart.success');
     }
 
-     // Processa o checkout via API da Hotmart
+     // Processa o checkout via API da Asaas
      public function processCheckout(Request $request)
      {
          if (!Auth::check()) {
@@ -164,53 +158,73 @@ class CartController extends Controller
  
              $results = [];
  
-             foreach ($agents as $agent) {
-                 // Prepara dados do pedido para a Hotmart
-                 $orderData = [
-                     'buyer' => [
-                         'name' => $request->name,
-                         'email' => $request->email,
-                         'phone' => $request->phone,
-                         'document' => $request->document,
-                     ],
-                     'product' => [
-                         'id' => $agent->hotmart_product_id,
-                     ],
-                     'payment' => [
-                         'type' => $request->payment_method,
-                     ],
-                     'offers' => [
-                         [
-                             'key' => 'default',
-                             'options' => [
-                                 'installments' => 1
-                             ]
-                         ]
-                     ]
-                 ];
+             // Primeiro, verifica se o cliente já existe no Asaas ou cria um novo
+             $customerData = [
+                 'name' => $request->name,
+                 'email' => $request->email,
+                 'phone' => $request->phone,
+                 'cpfCnpj' => preg_replace('/[^0-9]/', '', $request->document),
+                 'notificationDisabled' => false,
+             ];
+             
+             $customer = $this->asaasService->findCustomerByEmail($request->email);
+             
+             if (!$customer) {
+                 $customerResponse = $this->asaasService->createCustomer($customerData);
+                 if (!$customerResponse) {
+                     throw new \Exception('Erro ao criar cliente no Asaas');
+                 }
+                 $customerId = $customerResponse['id'];
+             } else {
+                 $customerId = $customer['id'];
+             }
  
+             foreach ($agents as $agent) {
+                 // Prepara metadados para rastreamento
+                 $metadata = [
+                     'user_id' => $user->id,
+                     'agent_id' => $agent->id,
+                 ];
+                 
+                 // Mapeia o método de pagamento para o formato do Asaas
+                 $billingType = $this->mapPaymentMethod($request->payment_method);
+                 
+                 // Prepara dados do pagamento para o Asaas
+                 $paymentData = [
+                     'customer' => $customerId,
+                     'billingType' => $billingType,
+                     'value' => $agent->price,
+                     'dueDate' => date('Y-m-d', strtotime('+1 day')),
+                     'description' => "Compra do agente: {$agent->name}",
+                     'externalReference' => json_encode($metadata),
+                 ];
+                 
                  // Adiciona dados do cartão se for pagamento com cartão
                  if ($request->payment_method === 'credit_card') {
-                     $orderData['payment']['card'] = [
+                     $paymentData['creditCard'] = [
+                         'holderName' => $request->card_holder_name,
                          'number' => str_replace(' ', '', $request->card_number),
-                         'expiry_month' => explode('/', $request->card_expiry)[0],
-                         'expiry_year' => '20' . explode('/', $request->card_expiry)[1],
-                         'cvv' => $request->card_cvv,
-                         'holder_name' => $request->card_holder_name,
+                         'expiryMonth' => explode('/', $request->card_expiry)[0],
+                         'expiryYear' => '20' . explode('/', $request->card_expiry)[1],
+                         'ccv' => $request->card_cvv,
+                     ];
+                     
+                     // Adiciona dados do titular do cartão
+                     $paymentData['creditCardHolderInfo'] = [
+                         'name' => $request->card_holder_name,
+                         'email' => $request->email,
+                         'cpfCnpj' => preg_replace('/[^0-9]/', '', $request->document),
+                         'phone' => $request->phone,
                      ];
                  }
  
-                 // Cria o pedido na Hotmart
-                 $hotmartResponse = $this->hotmartService->createOrder($orderData);
+                 // Cria o pagamento no Asaas
+                 $asaasResponse = $this->asaasService->createPayment($paymentData);
 
-                 log::info('Hotmart response:', [$hotmartResponse ?? 'Nenhuma resposta recebida']);
+                 Log::info('Asaas response:', [$asaasResponse ?? 'Nenhuma resposta recebida']);
  
-                 // Verifica se a resposta da Hotmart foi bem-sucedida
- 
-                 if ($hotmartResponse) {
-
-                    log::info('Hotmart response true',[$hotmartResponse ?? 'Nenhuma resposta recebida']);
-                    
+                 // Verifica se a resposta do Asaas foi bem-sucedida
+                 if ($asaasResponse) {
                      // Cria ou atualiza a purchase local
                      $purchase = Purchase::updateOrCreate([
                          'user_id' => $user->id,
@@ -219,36 +233,36 @@ class CartController extends Controller
                          'active' => false, // Será ativado pelo webhook
                          'paused' => false,
                          'paused_at' => null,
-                         'hotmart_subscription_code' => $hotmartResponse['subscription']['code'] ?? null,
+                         'asaas_subscription_id' => null, // Não é uma assinatura neste caso
                      ]);
  
                      // Registra o evento
                      PurchaseEvent::create([
                          'purchase_id' => $purchase->id,
-                         'event_type' => 'order_created',
+                         'event_type' => 'payment_created',
                          'event_time' => now(),
-                         'note' => 'Pedido criado via API da Hotmart',
-                         'metadata' => json_encode($hotmartResponse)
+                         'note' => 'Pagamento criado via API do Asaas',
+                         'metadata' => json_encode($asaasResponse)
                      ]);
  
                      $results[] = [
                          'agent_id' => $agent->id,
                          'agent_name' => $agent->name,
                          'success' => true,
-                         'hotmart_data' => $hotmartResponse
+                         'asaas_data' => $asaasResponse
                      ];
  
-                     Log::info('Pedido criado na Hotmart', [
+                     Log::info('Pagamento criado no Asaas', [
                          'agent_id' => $agent->id,
                          'user_id' => $user->id,
-                         'hotmart_response' => $hotmartResponse
+                         'asaas_response' => $asaasResponse
                      ]);
                  } else {
                      $results[] = [
                          'agent_id' => $agent->id,
                          'agent_name' => $agent->name,
                          'success' => false,
-                         'error' => 'Erro ao criar pedido na Hotmart'
+                         'error' => 'Erro ao criar pagamento no Asaas'
                      ];
                  }
              }
@@ -260,7 +274,7 @@ class CartController extends Controller
  
              return response()->json([
                  'success' => true,
-                 'message' => 'Pedidos processados com sucesso',
+                 'message' => 'Pagamentos processados com sucesso',
                  'results' => $results
              ]);
  
@@ -279,33 +293,19 @@ class CartController extends Controller
              ], 500);
          }
      }
-
-     // Método para sincronizar preços (pode ser chamado por um comando/job)
-    public function syncPrices()
-    {
-        $results = $this->hotmartService->syncAllProductPrices();
-        
-        Log::info('Sincronização de preços executada', ['results' => $results]);
-        
-        return response()->json([
-            'success' => true,
-            'message' => 'Preços sincronizados com sucesso',
-            'results' => $results
-        ]);
-    }
-
-     // Método para sincronizar preços da Hotmart para o sistema
-     public function syncPricesFromHotmart()
+     
+     /**
+      * Mapeia os métodos de pagamento do frontend para os tipos aceitos pelo Asaas
+      */
+     private function mapPaymentMethod(string $method): string
      {
-         $results = $this->hotmartService->syncPricesFromHotmart();
+         $mapping = [
+             'credit_card' => 'CREDIT_CARD',
+             'pix' => 'PIX',
+             'boleto' => 'BOLETO',
+         ];
          
-         Log::info('Sincronização de preços da Hotmart executada', ['results' => $results]);
-         
-         return response()->json([
-             'success' => true,
-             'message' => 'Preços sincronizados da Hotmart com sucesso',
-             'results' => $results
-         ]);
+         return $mapping[$method] ?? 'UNDEFINED';
      }
 
 }

@@ -102,7 +102,7 @@ class HotmartService
     {
         return $this->isSandbox()
             ? 'https://sandbox.hotmart.com/payments/api/v1/subscriptions'
-            : 'https://developers.hotmart.com/payments/api/v1/subscriptions';
+            : 'https://api-hot-connect.hotmart.com/payments/api/v1/subscriptions';
     }
     
     
