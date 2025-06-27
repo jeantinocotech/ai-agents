@@ -87,6 +87,7 @@ Route::prefix('cart')->name('cart.')->group(function () {
 // Checkout (requer login)
 Route::middleware(['auth'])->group(function () {
     Route::post('/cart/checkout/process', [CartController::class, 'processCheckout'])->name('cart.processCheckout');
+    Route::post('/cart/check-payment-status', [CartController::class, 'checkPaymentStatus'])->name('cart.checkPaymentStatus');
     //Pagamento Hotmart
 });
 

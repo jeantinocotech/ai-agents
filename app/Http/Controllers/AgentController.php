@@ -98,9 +98,23 @@ class AgentController extends Controller
             ->orderBy('created_at', 'desc') // Ordena pela data de criação (mais recente primeiro)
             ->first(); // Obtém apenas a última sessão
 
-        $session->already_rated = AgentRating::where('user_id', auth()->id())
-             ->where('chat_session_id', $session->id)
-            ->exists();
+        // Check if session exists, if not create a new one
+        if (!$session) {
+            $session = ChatSession::create([
+                'user_id' => auth()->id(),
+                'agent_id' => $agent->id,
+                'ai_model' => $agent->model_type,
+                'current_step' => 1,
+                'should_persist' => true,
+                'is_active' => true
+            ]);
+            
+            $session->already_rated = false; // New session is not rated yet
+        } else {
+            $session->already_rated = AgentRating::where('user_id', auth()->id())
+                ->where('chat_session_id', $session->id)
+                ->exists();
+        }
 
         Log::info('Acessando chat do agente', ['agent' => $agent, 'steps' => $steps]);
 

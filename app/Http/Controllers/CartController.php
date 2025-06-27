@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use App\Services\AsaasService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class CartController extends Controller
 {
@@ -137,6 +138,7 @@ class CartController extends Controller
              'phone' => 'required|string|max:20',
              'document' => 'required|string|max:14',
              'payment_method' => 'required|in:credit_card,pix,boleto',
+             'is_subscription' => 'sometimes|boolean',
              // Campos específicos do cartão de crédito
              'card_number' => 'required_if:payment_method,credit_card',
              'card_expiry' => 'required_if:payment_method,credit_card',
@@ -152,6 +154,7 @@ class CartController extends Controller
          $user = Auth::user();
          $agentIds = array_keys($cart);
          $agents = Agent::whereIn('id', $agentIds)->get();
+         $isSubscription = true; // Sempre usar assinatura, independente do valor enviado no request
  
          try {
              DB::beginTransaction();
@@ -170,6 +173,12 @@ class CartController extends Controller
              $customer = $this->asaasService->findCustomerByEmail($request->email);
              
              if (!$customer) {
+                 log::info('Criando cliente no Asaas', [
+                     'email' => $request->email,
+                     'name' => $request->name,
+                     'phone' => $request->phone,
+                     'cpfCnpj' => $request->document,
+                 ]);
                  $customerResponse = $this->asaasService->createCustomer($customerData);
                  if (!$customerResponse) {
                      throw new \Exception('Erro ao criar cliente no Asaas');
@@ -180,6 +189,7 @@ class CartController extends Controller
              }
  
              foreach ($agents as $agent) {
+                 
                  // Prepara metadados para rastreamento
                  $metadata = [
                      'user_id' => $user->id,
@@ -189,87 +199,254 @@ class CartController extends Controller
                  // Mapeia o método de pagamento para o formato do Asaas
                  $billingType = $this->mapPaymentMethod($request->payment_method);
                  
-                 // Prepara dados do pagamento para o Asaas
-                 $paymentData = [
-                     'customer' => $customerId,
-                     'billingType' => $billingType,
-                     'value' => $agent->price,
-                     'dueDate' => date('Y-m-d', strtotime('+1 day')),
-                     'description' => "Compra do agente: {$agent->name}",
-                     'externalReference' => json_encode($metadata),
-                 ];
-                 
-                 // Adiciona dados do cartão se for pagamento com cartão
-                 if ($request->payment_method === 'credit_card') {
-                     $paymentData['creditCard'] = [
-                         'holderName' => $request->card_holder_name,
-                         'number' => str_replace(' ', '', $request->card_number),
-                         'expiryMonth' => explode('/', $request->card_expiry)[0],
-                         'expiryYear' => '20' . explode('/', $request->card_expiry)[1],
-                         'ccv' => $request->card_cvv,
+                 // Verifica se é uma assinatura ou pagamento único
+                 if ($isSubscription) {
+                     // Prepara dados da assinatura para o Asaas
+                     $subscriptionData = [
+                         'customer' => $customerId,
+                         'billingType' => $billingType,
+                         'value' => $agent->price,
+                         'nextDueDate' => date('Y-m-d', strtotime('+1 day')),
+                         'description' => "Assinatura do agente: {$agent->name}",
+                         'externalReference' => "user_{$user->id}_agent_{$agent->id}",
+                         'cycle' => 'MONTHLY', // Ciclo mensal por padrão
                      ];
                      
-                     // Adiciona dados do titular do cartão
-                     $paymentData['creditCardHolderInfo'] = [
-                         'name' => $request->card_holder_name,
-                         'email' => $request->email,
-                         'cpfCnpj' => preg_replace('/[^0-9]/', '', $request->document),
-                         'phone' => $request->phone,
-                     ];
-                 }
- 
-                 // Cria o pagamento no Asaas
-                 $asaasResponse = $this->asaasService->createPayment($paymentData);
+                     // Adiciona dados do cartão se for pagamento com cartão
+                     if ($request->payment_method === 'credit_card') {
+                         $subscriptionData['creditCard'] = [
+                             'holderName' => $request->card_holder_name,
+                             'number' => str_replace(' ', '', $request->card_number),
+                             'expiryMonth' => explode('/', $request->card_expiry)[0],
+                             'expiryYear' => '20' . explode('/', $request->card_expiry)[1],
+                             'ccv' => $request->card_cvv,
+                         ];
+                         
+                         // Adiciona dados do titular do cartão
+                         $subscriptionData['creditCardHolderInfo'] = [
+                             'name' => $request->card_holder_name,
+                             'email' => $request->email,
+                             'cpfCnpj' => preg_replace('/[^0-9]/', '', $request->document),
+                             'phone' => $request->phone,
+                         ];
+                     }
+                     
+                     // Cria a assinatura no Asaas
 
-                 Log::info('Asaas response:', [$asaasResponse ?? 'Nenhuma resposta recebida']);
- 
-                 // Verifica se a resposta do Asaas foi bem-sucedida
-                 if ($asaasResponse) {
-                     // Cria ou atualiza a purchase local
-                     $purchase = Purchase::updateOrCreate([
-                         'user_id' => $user->id,
-                         'agent_id' => $agent->id,
-                     ], [
-                         'active' => false, // Será ativado pelo webhook
-                         'paused' => false,
-                         'paused_at' => null,
-                         'asaas_subscription_id' => null, // Não é uma assinatura neste caso
-                     ]);
- 
-                     // Registra o evento
-                     PurchaseEvent::create([
-                         'purchase_id' => $purchase->id,
-                         'event_type' => 'payment_created',
-                         'event_time' => now(),
-                         'note' => 'Pagamento criado via API do Asaas',
-                         'metadata' => json_encode($asaasResponse)
-                     ]);
- 
-                     $results[] = [
-                         'agent_id' => $agent->id,
-                         'agent_name' => $agent->name,
-                         'success' => true,
-                         'asaas_data' => $asaasResponse
-                     ];
- 
-                     Log::info('Pagamento criado no Asaas', [
-                         'agent_id' => $agent->id,
-                         'user_id' => $user->id,
-                         'asaas_response' => $asaasResponse
-                     ]);
+                     Log::info('Asaas subscription request :', [$subscriptionData]);
+
+                     $asaasResponse = $this->asaasService->createSubscription($subscriptionData);
+                     
+                     Log::info('Asaas subscription response:', [$asaasResponse ?? 'Nenhuma resposta recebida']);
+                     
+                     // Verifica se a resposta do Asaas foi bem-sucedida
+                     if ($asaasResponse) {
+                         // Cria ou atualiza a purchase local
+                         $purchase = Purchase::updateOrCreate([
+                             'user_id' => $user->id,
+                             'agent_id' => $agent->id,
+                         ], [
+                             'active' => false, // Será ativado pelo webhook
+                             'paused' => false,
+                             'paused_at' => null,
+                             'asaas_subscription_id' => $asaasResponse['id'],
+                         ]);
+                         
+                         // Registra o evento
+                         PurchaseEvent::create([
+                             'purchase_id' => $purchase->id,
+                             'event_type' => 'subscription_created',
+                             'event_time' => now(),
+                             'note' => 'Assinatura criada via API do Asaas',
+                             'metadata' => json_encode($asaasResponse)
+                         ]);
+                         
+                         $results[] = [
+                             'agent_id' => $agent->id,
+                             'agent_name' => $agent->name,
+                             'success' => true,
+                             'asaas_data' => $asaasResponse,
+                             'type' => 'subscription'
+                         ];
+                         
+                         Log::info('Assinatura criada no Asaas', [
+                             'agent_id' => $agent->id,
+                             'user_id' => $user->id,
+                             'asaas_response' => $asaasResponse
+                         ]);
+                     } else {
+                         $results[] = [
+                             'agent_id' => $agent->id,
+                             'agent_name' => $agent->name,
+                             'success' => false,
+                             'error' => 'Erro ao criar assinatura no Asaas',
+                             'type' => 'subscription'
+                         ];
+                     }
                  } else {
-                     $results[] = [
-                         'agent_id' => $agent->id,
-                         'agent_name' => $agent->name,
-                         'success' => false,
-                         'error' => 'Erro ao criar pagamento no Asaas'
+                     // Prepara dados do pagamento para o Asaas (pagamento único)
+                     $paymentData = [
+                         'customer' => $customerId,
+                         'billingType' => $billingType,
+                         'value' => $agent->price,
+                         'dueDate' => date('Y-m-d', strtotime('+1 day')),
+                         'description' => "Compra do agente: {$agent->name}",
+                         'externalReference' => json_encode($metadata),
                      ];
+                     
+                     // Adiciona dados do cartão se for pagamento com cartão
+                     if ($request->payment_method === 'credit_card') {
+                         $paymentData['creditCard'] = [
+                             'holderName' => $request->card_holder_name,
+                             'number' => str_replace(' ', '', $request->card_number),
+                             'expiryMonth' => explode('/', $request->card_expiry)[0],
+                             'expiryYear' => '20' . explode('/', $request->card_expiry)[1],
+                             'ccv' => $request->card_cvv,
+                         ];
+                         
+                         // Adiciona dados do titular do cartão
+                         $paymentData['creditCardHolderInfo'] = [
+                             'name' => $request->card_holder_name,
+                             'email' => $request->email,
+                             'cpfCnpj' => preg_replace('/[^0-9]/', '', $request->document),
+                             'phone' => $request->phone,
+                         ];
+                     }
+                     
+                     // Cria o pagamento no Asaas
+                     $asaasResponse = $this->asaasService->createPayment($paymentData);
+                     
+                     Log::info('Asaas payment response:', [$asaasResponse ?? 'Nenhuma resposta recebida']);
+                     
+                     // Verifica se a resposta do Asaas foi bem-sucedida
+                     if ($asaasResponse) {
+                         // Cria ou atualiza a purchase local
+                         $purchase = Purchase::updateOrCreate([
+                             'user_id' => $user->id,
+                             'agent_id' => $agent->id,
+                         ], [
+                             'active' => false, // Será ativado pelo webhook
+                             'paused' => false,
+                             'paused_at' => null,
+                             'asaas_subscription_id' => null, // Não é uma assinatura neste caso
+                         ]);
+                         
+                         // Registra o evento
+                         PurchaseEvent::create([
+                             'purchase_id' => $purchase->id,
+                             'event_type' => 'payment_created',
+                             'event_time' => now(),
+                             'note' => 'Pagamento criado via API do Asaas',
+                             'metadata' => json_encode($asaasResponse)
+                         ]);
+                         
+                         $results[] = [
+                             'agent_id' => $agent->id,
+                             'agent_name' => $agent->name,
+                             'success' => true,
+                             'asaas_data' => $asaasResponse,
+                             'type' => 'payment'
+                         ];
+                         
+                         Log::info('Pagamento criado no Asaas', [
+                             'agent_id' => $agent->id,
+                             'user_id' => $user->id,
+                             'asaas_response' => $asaasResponse
+                         ]);
+                     } else {
+                         $results[] = [
+                             'agent_id' => $agent->id,
+                             'agent_name' => $agent->name,
+                             'success' => false,
+                             'error' => 'Erro ao criar pagamento no Asaas',
+                             'type' => 'payment'
+                         ];
+                     }
                  }
              }
  
              DB::commit();
  
-             // Limpa o carrinho após o processamento
+             // Para pagamentos PIX, gera um QR code estático
+             if ($request->payment_method === 'pix' && !empty($results)) {
+                 try {
+                     // 1. Verifica se existe uma chave PIX
+                     $pixKeys = $this->asaasService->listPixKeys();
+                     $pixKey = null;
+                     
+                     if ($pixKeys && isset($pixKeys['data']) && !empty($pixKeys['data'])) {
+                         // Procura por uma chave ativa
+                         foreach ($pixKeys['data'] as $key) {
+                             if ($key['status'] === 'ACTIVE') {
+                                 $pixKey = $key;
+                                 break;
+                             }
+                         }
+                     }
+                     
+                     // Se não encontrou uma chave ativa, cria uma nova
+                     if (!$pixKey) {
+                         $newKey = $this->asaasService->createPixKey();
+                         if ($newKey && isset($newKey['key'])) {
+                             $pixKey = $newKey;
+                         } else {
+                             throw new \Exception('Não foi possível criar uma chave PIX');
+                         }
+                     }
+                     
+                     // 2. Cria um QR code estático para o pagamento
+                     if ($pixKey && isset($pixKey['key'])) {
+                         // Encontra o primeiro pagamento bem-sucedido para obter os detalhes
+                         $firstSuccessfulPayment = null;
+                         foreach ($results as $result) {
+                             if ($result['success']) {
+                                 $firstSuccessfulPayment = $result;
+                                 break;
+                             }
+                         }
+                         
+                         if ($firstSuccessfulPayment) {
+                             $agent = Agent::find($firstSuccessfulPayment['agent_id']);
+                             
+                             // Prepara os dados para o QR code estático
+                             $qrCodeData = [
+                                 'addressKey' => $pixKey['key'],
+                                 'description' => Str::limit("Compra do agente: {$agent->name}", 37),
+                                 'value' => $agent->price,
+                                 'format' => 'ALL',
+                                 'expirationSeconds' => 3600, // 1 hora
+                                 'allowsMultiplePayments' => false,
+                                 'externalReference' => "user_{$user->id}_agent_{$agent->id}"
+                             ];
+                             
+                             $pixQrCode = $this->asaasService->createStaticPixQrCode($qrCodeData);
+                             
+                             if ($pixQrCode) {
+                                 Log::info('QR Code PIX estático gerado com sucesso', [
+                                     'user_id' => $user->id,
+                                     'agent_id' => $agent->id,
+                                     'qr_code' => $pixQrCode
+                                 ]);
+                                 
+                                 return response()->json([
+                                     'success' => true,
+                                     'message' => 'Pagamento PIX gerado com sucesso',
+                                     'is_pix' => true,
+                                     'pix_info' => $pixQrCode,
+                                     'results' => $results
+                                 ]);
+                             }
+                         }
+                     }
+                 } catch (\Exception $e) {
+                     Log::error('Erro ao gerar QR Code PIX', [
+                         'error' => $e->getMessage(),
+                         'user_id' => $user->id
+                     ]);
+                 }
+             }
+             
+             // Para outros métodos de pagamento, limpa o carrinho e retorna sucesso
              session()->forget('cart');
  
              return response()->json([
@@ -294,6 +471,7 @@ class CartController extends Controller
          }
      }
      
+     
      /**
       * Mapeia os métodos de pagamento do frontend para os tipos aceitos pelo Asaas
       */
@@ -308,4 +486,44 @@ class CartController extends Controller
          return $mapping[$method] ?? 'UNDEFINED';
      }
 
+    /**
+     * Verifica o status de um pagamento
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function checkPaymentStatus(Request $request)
+    {
+        $request->validate([
+            'payment_id' => 'required|string',
+        ]);
+
+        $paymentId = $request->payment_id;
+        
+        // Busca o status do pagamento no Asaas
+        $paymentInfo = $this->asaasService->getPayment($paymentId);
+        
+        if (!$paymentInfo) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Não foi possível obter informações do pagamento',
+            ], 404);
+        }
+        
+        $status = $paymentInfo['status'] ?? 'UNKNOWN';
+        $isPaid = in_array($status, ['CONFIRMED', 'RECEIVED']);
+        
+        // Se o pagamento foi confirmado, limpa o carrinho
+        if ($isPaid) {
+            session()->forget('cart');
+        }
+        
+        return response()->json([
+            'success' => true,
+            'payment_id' => $paymentId,
+            'status' => $status,
+            'is_paid' => $isPaid,
+            'payment_info' => $paymentInfo,
+        ]);
+    }
 }

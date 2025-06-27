@@ -272,23 +272,49 @@ class AsaasWebhookController extends Controller
         return response()->json(['status' => 'payment refunded']);
     }
 
+    /**
+     * Parse the external reference string to extract user_id and agent_id
+     * Format: "user_{user_id}_agent_{agent_id}"
+     */
+    private function parseExternalReference(string $externalReference): array
+    {
+        $userId = null;
+        $agentId = null;
+        
+        // Try to parse as JSON first (for backward compatibility)
+        $metadata = json_decode($externalReference, true);
+        if (is_array($metadata) && isset($metadata['user_id']) && isset($metadata['agent_id'])) {
+            return [$metadata['user_id'], $metadata['agent_id']];
+        }
+        
+        // Try to parse the new string format
+        if (preg_match('/user_(\d+)_agent_(\d+)/', $externalReference, $matches)) {
+            if (count($matches) === 3) {
+                $userId = (int)$matches[1];
+                $agentId = (int)$matches[2];
+            }
+        }
+        
+        return [$userId, $agentId];
+    }
+    
     private function handleSubscriptionCreated($subscriptionData)
     {
         // Extract customer and metadata
         $customerId = $subscriptionData['customer'] ?? null;
-        $metadata = json_decode($subscriptionData['externalReference'] ?? '{}', true);
+        $externalReference = $subscriptionData['externalReference'] ?? '';
         
-        if (!$customerId || !isset($metadata['user_id']) || !isset($metadata['agent_id'])) {
+        // Try to parse the external reference
+        list($userId, $agentId) = $this->parseExternalReference($externalReference);
+        
+        if (!$customerId || !$userId || !$agentId) {
             Log::warning('Missing required data in subscription webhook', [
                 'subscription_id' => $subscriptionData['id'] ?? null,
                 'customer_id' => $customerId,
-                'metadata' => $metadata
+                'external_reference' => $externalReference
             ]);
             return response()->json(['status' => 'missing data'], 400);
         }
-        
-        $userId = $metadata['user_id'];
-        $agentId = $metadata['agent_id'];
         
         // Find user and agent
         $user = User::find($userId);
@@ -307,7 +333,7 @@ class AsaasWebhookController extends Controller
             'user_id' => $user->id,
             'agent_id' => $agent->id,
         ], [
-            'active' => true,
+            'active' => false, // Set to false initially, will be activated when payment is confirmed
             'paused' => false,
             'paused_at' => null,
             'asaas_subscription_id' => $subscriptionData['id'] ?? null,
@@ -336,19 +362,19 @@ class AsaasWebhookController extends Controller
     {
         // Extract customer and metadata
         $customerId = $subscriptionData['customer'] ?? null;
-        $metadata = json_decode($subscriptionData['externalReference'] ?? '{}', true);
+        $externalReference = $subscriptionData['externalReference'] ?? '';
         
-        if (!$customerId || !isset($metadata['user_id']) || !isset($metadata['agent_id'])) {
+        // Try to parse the external reference
+        list($userId, $agentId) = $this->parseExternalReference($externalReference);
+        
+        if (!$customerId || !$userId || !$agentId) {
             Log::warning('Missing required data in subscription webhook', [
                 'subscription_id' => $subscriptionData['id'] ?? null,
                 'customer_id' => $customerId,
-                'metadata' => $metadata
+                'external_reference' => $externalReference
             ]);
             return response()->json(['status' => 'missing data'], 400);
         }
-        
-        $userId = $metadata['user_id'];
-        $agentId = $metadata['agent_id'];
         
         // Find user and agent
         $user = User::find($userId);
@@ -399,19 +425,19 @@ class AsaasWebhookController extends Controller
     {
         // Extract customer and metadata
         $customerId = $subscriptionData['customer'] ?? null;
-        $metadata = json_decode($subscriptionData['externalReference'] ?? '{}', true);
+        $externalReference = $subscriptionData['externalReference'] ?? '';
         
-        if (!$customerId || !isset($metadata['user_id']) || !isset($metadata['agent_id'])) {
+        // Try to parse the external reference
+        list($userId, $agentId) = $this->parseExternalReference($externalReference);
+        
+        if (!$customerId || !$userId || !$agentId) {
             Log::warning('Missing required data in subscription webhook', [
                 'subscription_id' => $subscriptionData['id'] ?? null,
                 'customer_id' => $customerId,
-                'metadata' => $metadata
+                'external_reference' => $externalReference
             ]);
             return response()->json(['status' => 'missing data'], 400);
         }
-        
-        $userId = $metadata['user_id'];
-        $agentId = $metadata['agent_id'];
         
         // Find user and agent
         $user = User::find($userId);
@@ -461,19 +487,19 @@ class AsaasWebhookController extends Controller
     {
         // Extract customer and metadata
         $customerId = $subscriptionData['customer'] ?? null;
-        $metadata = json_decode($subscriptionData['externalReference'] ?? '{}', true);
+        $externalReference = $subscriptionData['externalReference'] ?? '';
         
-        if (!$customerId || !isset($metadata['user_id']) || !isset($metadata['agent_id'])) {
+        // Try to parse the external reference
+        list($userId, $agentId) = $this->parseExternalReference($externalReference);
+        
+        if (!$customerId || !$userId || !$agentId) {
             Log::warning('Missing required data in subscription webhook', [
                 'subscription_id' => $subscriptionData['id'] ?? null,
                 'customer_id' => $customerId,
-                'metadata' => $metadata
+                'external_reference' => $externalReference
             ]);
             return response()->json(['status' => 'missing data'], 400);
         }
-        
-        $userId = $metadata['user_id'];
-        $agentId = $metadata['agent_id'];
         
         // Find user and agent
         $user = User::find($userId);

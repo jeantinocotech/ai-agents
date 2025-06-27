@@ -24,6 +24,7 @@ class Agent extends Model
         'is_active',
         'hotmart_checkout_url',
         'hotmart_product_id',
+        'asaas_product_id',
     ];
     
     /**

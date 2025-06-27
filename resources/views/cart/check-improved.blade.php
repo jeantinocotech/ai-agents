@@ -47,6 +47,23 @@
                         </div>
                     </div>
 
+                    <!-- Tipo de Pagamento (Somente Assinatura) -->
+                    <div class="mt-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-3">Tipo de Pagamento</label>
+                        
+                        <div class="space-y-2">
+                            <label class="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-gray-50">
+                                <input type="radio" name="payment_type" value="subscription" class="mr-3" checked>
+                                <div class="flex items-center">
+                                    <svg class="w-6 h-6 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                                    </svg>
+                                    <span class="font-medium">Assinatura Mensal (Acesso Recorrente)</span>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+
                     <!-- Método de Pagamento -->
                     <div class="mt-6">
                         <label class="block text-sm font-medium text-gray-700 mb-3">Método de Pagamento</label>
@@ -162,6 +179,50 @@
         </div>
     </div>
 
+    <!-- Modal para exibir o QR Code do PIX -->
+    <div id="pix-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold text-gray-900">Pagamento via PIX</h3>
+                <button id="close-pix-modal" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="text-center mb-4">
+                <p class="text-gray-600 mb-4">Escaneie o QR Code abaixo com o aplicativo do seu banco para realizar o pagamento:</p>
+                
+                <div id="pix-qrcode-container" class="flex justify-center mb-4">
+                    <img id="pix-qrcode" src="" alt="QR Code PIX" class="w-48 h-48 border p-2">
+                </div>
+                
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600 mb-1">Ou copie o código PIX abaixo:</p>
+                    <div class="flex">
+                        <input id="pix-code" type="text" readonly class="w-full px-3 py-2 border border-gray-300 rounded-l-md bg-gray-50 text-sm">
+                        <button id="copy-pix-code" class="bg-blue-600 text-white px-3 py-2 rounded-r-md hover:bg-blue-700">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="payment-status" class="mt-4 p-3 bg-yellow-50 text-yellow-800 rounded-md">
+                    <p>Aguardando confirmação do pagamento...</p>
+                    <div class="mt-2">
+                        <svg class="animate-spin h-5 w-5 text-yellow-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- JavaScript para manipulação do formulário -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -172,6 +233,18 @@
             const spinner = document.getElementById('spinner');
             const cardDetails = document.getElementById('card-details');
             const paymentMethods = document.querySelectorAll('input[name="payment_method"]');
+            
+            // Elementos do modal PIX
+            const pixModal = document.getElementById('pix-modal');
+            const closePixModal = document.getElementById('close-pix-modal');
+            const pixQrcode = document.getElementById('pix-qrcode');
+            const pixCode = document.getElementById('pix-code');
+            const copyPixCode = document.getElementById('copy-pix-code');
+            const paymentStatus = document.getElementById('payment-status');
+            
+            // Variáveis para controle do polling
+            let paymentId = null;
+            let pollingInterval = null;
             
             // Mostrar/ocultar detalhes do cartão com base no método de pagamento
             paymentMethods.forEach(method => {
@@ -190,6 +263,57 @@
                 cardDetails.classList.add('hidden');
             }
             
+            // Fechar modal PIX
+            closePixModal.addEventListener('click', function() {
+                pixModal.classList.add('hidden');
+            });
+            
+            // Copiar código PIX
+            copyPixCode.addEventListener('click', function() {
+                pixCode.select();
+                document.execCommand('copy');
+                alert('Código PIX copiado para a área de transferência!');
+            });
+            
+            // Função para verificar o status do pagamento
+            function checkPaymentStatus() {
+                if (!paymentId) return;
+                
+                const formData = new FormData();
+                formData.append('payment_id', paymentId);
+                
+                fetch('{{ route("cart.checkPaymentStatus") }}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.is_paid) {
+                        // Pagamento confirmado
+                        clearInterval(pollingInterval);
+                        
+                        // Atualizar status
+                        paymentStatus.innerHTML = `
+                            <div class="bg-green-50 text-green-800 p-3 rounded-md">
+                                <p class="font-medium">Pagamento confirmado!</p>
+                                <p class="text-sm mt-1">Você será redirecionado em instantes...</p>
+                            </div>
+                        `;
+                        
+                        // Redirecionar para página de sucesso após 2 segundos
+                        setTimeout(function() {
+                            window.location.href = '/cart/success';
+                        }, 2000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erro ao verificar status do pagamento:', error);
+                });
+            }
+            
             // Manipular envio do formulário
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
@@ -202,6 +326,9 @@
                 // Coletar dados do formulário
                 const formData = new FormData(form);
                 
+                // Sempre usar assinatura como tipo de pagamento
+                formData.append('is_subscription', '1');
+                
                 // Enviar dados via AJAX
                 fetch(form.dataset.url, {
                     method: 'POST',
@@ -213,7 +340,36 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        window.location.href = '/cart/success';
+                        // Verificar se é pagamento PIX
+                        if (data.is_pix && data.pix_info) {
+                            // Configurar modal PIX
+                            paymentId = data.payment_id;
+                            
+                            // Exibir QR code e código PIX
+                            if (data.pix_info.encodedImage) {
+                                pixQrcode.src = `data:image/png;base64,${data.pix_info.encodedImage}`;
+                            }
+                            
+                            if (data.pix_info.payload) {
+                                pixCode.value = data.pix_info.payload;
+                            } else if (data.pix_info.copyPaste) {
+                                pixCode.value = data.pix_info.copyPaste;
+                            }
+                            
+                            // Mostrar modal
+                            pixModal.classList.remove('hidden');
+                            
+                            // Iniciar polling para verificar status do pagamento
+                            pollingInterval = setInterval(checkPaymentStatus, 5000); // Verificar a cada 5 segundos
+                            
+                            // Reativar botão
+                            submitButton.disabled = false;
+                            buttonText.classList.remove('hidden');
+                            spinner.classList.add('hidden');
+                        } else {
+                            // Para outros métodos de pagamento, redirecionar para página de sucesso
+                            window.location.href = '/cart/success';
+                        }
                     } else {
                         // Mostrar erro
                         alert(data.error || 'Ocorreu um erro ao processar o pagamento. Tente novamente.');

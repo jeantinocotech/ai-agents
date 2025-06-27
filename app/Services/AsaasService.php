@@ -168,6 +168,40 @@ class AsaasService
     }
 
     /**
+     * List PIX keys
+     */
+    public function listPixKeys(): ?array
+    {
+        return $this->makeRequest('get', 'pix/addressKeys');
+    }
+
+    /**
+     * Create a PIX key
+     */
+    public function createPixKey(string $type = 'EVP'): ?array
+    {
+        return $this->makeRequest('post', 'pix/addressKeys', [
+            'type' => $type
+        ]);
+    }
+
+    /**
+     * Create a static PIX QR code
+     */
+    public function createStaticPixQrCode(array $qrCodeData): ?array
+    {
+        return $this->makeRequest('post', 'pix/qrCodes/static', $qrCodeData);
+    }
+
+    /**
+     * Get PIX QR code for a payment
+     */
+    public function getPixQrCode(string $paymentId): ?array
+    {
+        return $this->makeRequest('get', "payments/{$paymentId}/pixQrCode");
+    }
+
+    /**
      * Create a subscription in Asaas
      */
     public function createSubscription(array $subscriptionData): ?array
