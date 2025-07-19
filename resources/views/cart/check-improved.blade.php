@@ -278,9 +278,11 @@
             // Função para verificar o status do pagamento
             function checkPaymentStatus() {
                 if (!paymentId) return;
-                
+
+    
                 const formData = new FormData();
                 formData.append('payment_id', paymentId);
+                formData.append('asaas_subscription_id', paymentId);
                 
                 fetch('{{ route("cart.checkPaymentStatus") }}', {
                     method: 'POST',
@@ -343,7 +345,8 @@
                         // Verificar se é pagamento PIX
                         if (data.is_pix && data.pix_info) {
                             // Configurar modal PIX
-                            paymentId = data.payment_id;
+                            //paymentId = data.payment_id;
+                            paymentId = data.asaas_subscription_id; 
                             
                             // Exibir QR code e código PIX
                             if (data.pix_info.encodedImage) {

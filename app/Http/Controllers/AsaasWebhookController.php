@@ -21,6 +21,7 @@ class AsaasWebhookController extends Controller
 
     public function handle(Request $request)
     {
+        
         // Log the complete request for debugging
         Log::info('Asaas Webhook received', [
             'headers' => $request->headers->all(),
@@ -93,181 +94,239 @@ class AsaasWebhookController extends Controller
         return true;
     }
 
+    private function findPurchaseFromData($data): ?Purchase
+    {
+        $externalReference = $data['externalReference'] ?? '';
+        $customerId = $data['customer'] ?? null;
+        
+        // First try: Find by external reference (purchase ID)
+        if (!empty($externalReference) && is_numeric($externalReference)) {
+            $purchase = Purchase::find($externalReference);
+            if ($purchase) {
+                Log::info('Purchase found by external reference', [
+                    'purchase_id' => $purchase->id,
+                    'external_reference' => $externalReference
+                ]);
+                return $purchase;
+            }
+        }
+        
+        // Second try: Find by customer ID if it matches a user
+        if ($customerId) {
+            // Try to find user by Asaas customer ID
+            $user = User::where('asaas_customer_id', $customerId)->first();
+            if ($user) {
+                // If subscription data has subscription ID, try to find by that
+                if (isset($data['id'])) {
+                    $purchase = Purchase::where('user_id', $user->id)
+                        ->where('asaas_subscription_id', $data['id'])
+                        ->first();
+                    if ($purchase) {
+                        Log::info('Purchase found by user and subscription ID', [
+                            'purchase_id' => $purchase->id,
+                            'user_id' => $user->id,
+                            'subscription_id' => $data['id']
+                        ]);
+                        return $purchase;
+                    }
+                }
+                
+                // Find the most recent active purchase for this user
+                $purchase = Purchase::where('user_id', $user->id)
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+                if ($purchase) {
+                    Log::info('Purchase found by user (most recent)', [
+                        'purchase_id' => $purchase->id,
+                        'user_id' => $user->id
+                    ]);
+                    return $purchase;
+                }
+            }
+        }
+        
+        // Third try: Parse external reference as JSON (backward compatibility)
+        if (!empty($externalReference)) {
+            $metadata = json_decode($externalReference, true);
+            if (is_array($metadata) && isset($metadata['user_id']) && isset($metadata['agent_id'])) {
+                $purchase = Purchase::where('user_id', $metadata['user_id'])
+                    ->where('agent_id', $metadata['agent_id'])
+                    ->first();
+                if ($purchase) {
+                    Log::info('Purchase found by JSON metadata', [
+                        'purchase_id' => $purchase->id,
+                        'user_id' => $metadata['user_id'],
+                        'agent_id' => $metadata['agent_id']
+                    ]);
+                    return $purchase;
+                }
+            }
+        }
+        
+        Log::warning('Purchase not found', [
+            'external_reference' => $externalReference,
+            'customer_id' => $customerId,
+            'data_id' => $data['id'] ?? null
+        ]);
+        
+        return null;
+    }
+
     private function handlePaymentConfirmed($paymentData)
     {
-        // Extract customer and metadata
-        $customerId = $paymentData['customer'] ?? null;
+       
+        Log::info('INICIO handlePaymentConfirmed', [
+            'paymentData' => $paymentData
+        ]);
+    
+        $subscriptionId = $paymentData['subscription'] ?? null;
+
+        Log::info('subscriptionId extraído', ['subscriptionId' => $subscriptionId]);
+    
+        if ($subscriptionId) {
+
+            
+            Log::info('Buscando purchase por asaas_subscription_id...');
+            $purchase = Purchase::where('asaas_subscription_id', $subscriptionId)->first();
+            Log::info('Resultado da busca:', ['purchase' => $purchase]);
+    
+
+            if ($purchase) {
+                $purchase->active = true;
+                $purchase->paused = false;
+                $purchase->paused_at = null;
+                $purchase->save();
+
+                Log::info('Purchase ativado via webhook de pagamento', [
+                    'purchase_id' => $purchase->id,
+                    'asaas_subscription_id' => $subscriptionId
+                ]);
+
+                PurchaseEvent::create([
+                    'purchase_id' => $purchase->id,
+                    'event_type' => 'payment_confirmed',
+                    'event_time' => now(),
+                    'note' => 'Payment confirmed via Asaas webhook.',
+                    'metadata' => json_encode($paymentData)
+                ]);
+
+                return response()->json(['status' => 'payment confirmed']);
+            } else {
+                Log::warning('Purchase não encontrado pelo asaas_subscription_id no pagamento', [
+                    'asaas_subscription_id' => $subscriptionId,
+                    'payment_id' => $paymentData['id'] ?? null
+                ]);
+                return response()->json(['ok' => true]);
+            }
+        }
+
+    
+        // Fallback antigo: buscar por externalReference se não vier subscription
         $metadata = json_decode($paymentData['externalReference'] ?? '{}', true);
-        
-        if (!$customerId || !isset($metadata['user_id']) || !isset($metadata['agent_id'])) {
-            Log::warning('Missing required data in payment webhook', [
-                'payment_id' => $paymentData['id'] ?? null,
-                'customer_id' => $customerId,
-                'metadata' => $metadata
-            ]);
-            return response()->json(['status' => 'missing data'], 400);
+        if (isset($metadata['user_id']) && isset($metadata['agent_id'])) {
+            $userId = $metadata['user_id'];
+            $agentId = $metadata['agent_id'];
+            $purchase = Purchase::where('user_id', $userId)
+                ->where('agent_id', $agentId)
+                ->orderBy('created_at', 'desc')
+                ->first();
+            if ($purchase) {
+                $purchase->active = true;
+                $purchase->paused = false;
+                $purchase->paused_at = null;
+                $purchase->save();
+
+                Log::info('Purchase ativado via webhook de pagamento (fallback)', [
+                    'purchase_id' => $purchase->id,
+                    'user_id' => $userId,
+                    'agent_id' => $agentId
+                ]);
+
+                PurchaseEvent::create([
+                    'purchase_id' => $purchase->id,
+                    'event_type' => 'payment_confirmed',
+                    'event_time' => now(),
+                    'note' => 'Payment confirmed via Asaas webhook.',
+                    'metadata' => json_encode($paymentData)
+                ]);
+
+                return response()->json(['status' => 'payment confirmed (fallback)']);
+            }
         }
-        
-        $userId = $metadata['user_id'];
-        $agentId = $metadata['agent_id'];
-        
-        // Find user and agent
-        $user = User::find($userId);
-        $agent = Agent::find($agentId);
-        
-        if (!$user || !$agent) {
-            Log::warning('User or agent not found', [
-                'user_id' => $userId,
-                'agent_id' => $agentId
-            ]);
-            return response()->json(['status' => 'user or agent not found'], 404);
-        }
-        
-        // Create or update purchase record
-        $purchase = Purchase::updateOrCreate([
-            'user_id' => $user->id,
-            'agent_id' => $agent->id,
-        ], [
-            'active' => true,
-            'paused' => false,
-            'paused_at' => null,
-            'asaas_subscription_id' => $metadata['subscription_id'] ?? null,
+
+        Log::warning('Purchase não encontrado para ativação no webhook de pagamento', [
+            'payment_id' => $paymentData['id'] ?? null,
+            'subscriptionId' => $subscriptionId,
+            'externalReference' => $paymentData['externalReference'] ?? null
         ]);
-        
-        // Record the event
-        PurchaseEvent::create([
-            'purchase_id' => $purchase->id,
-            'event_type' => 'payment_confirmed',
-            'event_time' => now(),
-            'note' => 'Payment confirmed via Asaas webhook.',
-            'metadata' => json_encode($paymentData)
-        ]);
-        
-        Log::info('Payment confirmed and recorded', [
-            'purchase_id' => $purchase->id,
-            'user_id' => $user->id,
-            'agent_id' => $agent->id,
-            'payment_id' => $paymentData['id'] ?? null
-        ]);
-        
-        return response()->json(['status' => 'payment confirmed']);
-    }
+    return response()->json(['ok' => true]);
+}
 
     private function handlePaymentOverdue($paymentData)
     {
-        // Extract customer and metadata
-        $customerId = $paymentData['customer'] ?? null;
-        $metadata = json_decode($paymentData['externalReference'] ?? '{}', true);
+        $purchase = $this->findPurchaseFromData($paymentData);
         
-        if (!$customerId || !isset($metadata['user_id']) || !isset($metadata['agent_id'])) {
-            Log::warning('Missing required data in payment webhook', [
-                'payment_id' => $paymentData['id'] ?? null,
-                'customer_id' => $customerId,
-                'metadata' => $metadata
+        if (!$purchase) {
+            Log::warning('Purchase not found for payment overdue', [
+                'payment_data' => $paymentData
             ]);
-            return response()->json(['status' => 'missing data'], 400);
+
+            //return response()->json(['status' => 'purchase not found'], 404);
+            return response()->json(['status' => 'payment not found for overdue recorded']);
         }
         
-        $userId = $metadata['user_id'];
-        $agentId = $metadata['agent_id'];
+        // Record the event but don't change status yet
+        PurchaseEvent::create([
+            'purchase_id' => $purchase->id,
+            'event_type' => 'payment_overdue',
+            'event_time' => now(),
+            'note' => 'Payment overdue via Asaas webhook.',
+            'metadata' => json_encode($paymentData)
+        ]);
         
-        // Find user and agent
-        $user = User::find($userId);
-        $agent = Agent::find($agentId);
-        
-        if (!$user || !$agent) {
-            Log::warning('User or agent not found', [
-                'user_id' => $userId,
-                'agent_id' => $agentId
-            ]);
-            return response()->json(['status' => 'user or agent not found'], 404);
-        }
-        
-        // Find purchase record
-        $purchase = Purchase::where('user_id', $user->id)
-            ->where('agent_id', $agent->id)
-            ->first();
-            
-        if ($purchase) {
-            // Record the event but don't change status yet
-            PurchaseEvent::create([
-                'purchase_id' => $purchase->id,
-                'event_type' => 'payment_overdue',
-                'event_time' => now(),
-                'note' => 'Payment overdue via Asaas webhook.',
-                'metadata' => json_encode($paymentData)
-            ]);
-            
-            Log::info('Payment overdue recorded', [
-                'purchase_id' => $purchase->id,
-                'user_id' => $user->id,
-                'agent_id' => $agent->id,
-                'payment_id' => $paymentData['id'] ?? null
-            ]);
-        }
+        Log::info('Payment overdue recorded', [
+            'purchase_id' => $purchase->id,
+            'user_id' => $purchase->user_id,
+            'agent_id' => $purchase->agent_id,
+            'payment_id' => $paymentData['id'] ?? null
+        ]);
         
         return response()->json(['status' => 'payment overdue recorded']);
     }
 
     private function handlePaymentRefunded($paymentData)
     {
-        // Extract customer and metadata
-        $customerId = $paymentData['customer'] ?? null;
-        $metadata = json_decode($paymentData['externalReference'] ?? '{}', true);
+        $purchase = $this->findPurchaseFromData($paymentData);
         
-        if (!$customerId || !isset($metadata['user_id']) || !isset($metadata['agent_id'])) {
-            Log::warning('Missing required data in payment webhook', [
-                'payment_id' => $paymentData['id'] ?? null,
-                'customer_id' => $customerId,
-                'metadata' => $metadata
+        if (!$purchase) {
+            Log::warning('Purchase not found for payment refund', [
+                'payment_data' => $paymentData
             ]);
-            return response()->json(['status' => 'missing data'], 400);
+            return response()->json(['status' => 'purchase not found'], 200);
         }
         
-        $userId = $metadata['user_id'];
-        $agentId = $metadata['agent_id'];
+        // Update purchase status
+        $purchase->update([
+            'active' => false,
+            'paused' => true,
+            'paused_at' => now(),
+        ]);
         
-        // Find user and agent
-        $user = User::find($userId);
-        $agent = Agent::find($agentId);
+        // Record the event
+        PurchaseEvent::create([
+            'purchase_id' => $purchase->id,
+            'event_type' => 'payment_refunded',
+            'event_time' => now(),
+            'note' => 'Payment refunded via Asaas webhook.',
+            'metadata' => json_encode($paymentData)
+        ]);
         
-        if (!$user || !$agent) {
-            Log::warning('User or agent not found', [
-                'user_id' => $userId,
-                'agent_id' => $agentId
-            ]);
-            return response()->json(['status' => 'user or agent not found'], 404);
-        }
-        
-        // Find purchase record
-        $purchase = Purchase::where('user_id', $user->id)
-            ->where('agent_id', $agent->id)
-            ->first();
-            
-        if ($purchase) {
-            // Update purchase status
-            $purchase->update([
-                'active' => false,
-                'paused' => true,
-                'paused_at' => now(),
-            ]);
-            
-            // Record the event
-            PurchaseEvent::create([
-                'purchase_id' => $purchase->id,
-                'event_type' => 'payment_refunded',
-                'event_time' => now(),
-                'note' => 'Payment refunded via Asaas webhook.',
-                'metadata' => json_encode($paymentData)
-            ]);
-            
-            Log::info('Payment refunded and purchase deactivated', [
-                'purchase_id' => $purchase->id,
-                'user_id' => $user->id,
-                'agent_id' => $agent->id,
-                'payment_id' => $paymentData['id'] ?? null
-            ]);
-        }
+        Log::info('Payment refunded and purchase deactivated', [
+            'purchase_id' => $purchase->id,
+            'user_id' => $purchase->user_id,
+            'agent_id' => $purchase->agent_id,
+            'payment_id' => $paymentData['id'] ?? null
+        ]);
         
         return response()->json(['status' => 'payment refunded']);
     }
@@ -300,43 +359,21 @@ class AsaasWebhookController extends Controller
     
     private function handleSubscriptionCreated($subscriptionData)
     {
-        // Extract customer and metadata
-        $customerId = $subscriptionData['customer'] ?? null;
-        $externalReference = $subscriptionData['externalReference'] ?? '';
+        $purchase = $this->findPurchaseFromData($subscriptionData);
         
-        // Try to parse the external reference
-        list($userId, $agentId) = $this->parseExternalReference($externalReference);
-        
-        if (!$customerId || !$userId || !$agentId) {
-            Log::warning('Missing required data in subscription webhook', [
-                'subscription_id' => $subscriptionData['id'] ?? null,
-                'customer_id' => $customerId,
-                'external_reference' => $externalReference
+        if (!$purchase) {
+            Log::warning('Purchase not found for subscription creation', [
+                'subscription_data' => $subscriptionData
             ]);
-            return response()->json(['status' => 'missing data'], 400);
+            return response()->json(['status' => 'purchase not found'], 200);
         }
         
-        // Find user and agent
-        $user = User::find($userId);
-        $agent = Agent::find($agentId);
-        
-        if (!$user || !$agent) {
-            Log::warning('User or agent not found', [
-                'user_id' => $userId,
-                'agent_id' => $agentId
-            ]);
-            return response()->json(['status' => 'user or agent not found'], 404);
-        }
-        
-        // Create or update purchase record
-        $purchase = Purchase::updateOrCreate([
-            'user_id' => $user->id,
-            'agent_id' => $agent->id,
-        ], [
+        // Update purchase record with subscription ID
+        $purchase->update([
+            'asaas_subscription_id' => $subscriptionData['id'] ?? null,
             'active' => false, // Set to false initially, will be activated when payment is confirmed
             'paused' => false,
             'paused_at' => null,
-            'asaas_subscription_id' => $subscriptionData['id'] ?? null,
         ]);
         
         // Record the event
@@ -350,8 +387,8 @@ class AsaasWebhookController extends Controller
         
         Log::info('Subscription created and recorded', [
             'purchase_id' => $purchase->id,
-            'user_id' => $user->id,
-            'agent_id' => $agent->id,
+            'user_id' => $purchase->user_id,
+            'agent_id' => $purchase->agent_id,
             'subscription_id' => $subscriptionData['id'] ?? null
         ]);
         
@@ -360,187 +397,109 @@ class AsaasWebhookController extends Controller
 
     private function handleSubscriptionCancelled($subscriptionData)
     {
-        // Extract customer and metadata
-        $customerId = $subscriptionData['customer'] ?? null;
-        $externalReference = $subscriptionData['externalReference'] ?? '';
+        $purchase = $this->findPurchaseFromData($subscriptionData);
         
-        // Try to parse the external reference
-        list($userId, $agentId) = $this->parseExternalReference($externalReference);
-        
-        if (!$customerId || !$userId || !$agentId) {
-            Log::warning('Missing required data in subscription webhook', [
-                'subscription_id' => $subscriptionData['id'] ?? null,
-                'customer_id' => $customerId,
-                'external_reference' => $externalReference
+        if (!$purchase) {
+            Log::warning('Purchase not found for subscription cancellation', [
+                'subscription_data' => $subscriptionData
             ]);
-            return response()->json(['status' => 'missing data'], 400);
+            return response()->json(['status' => 'purchase not found'], 200);
         }
         
-        // Find user and agent
-        $user = User::find($userId);
-        $agent = Agent::find($agentId);
+        // Update purchase status
+        $purchase->update([
+            'active' => false,
+            'paused' => true,
+            'paused_at' => now(),
+        ]);
         
-        if (!$user || !$agent) {
-            Log::warning('User or agent not found', [
-                'user_id' => $userId,
-                'agent_id' => $agentId
-            ]);
-            return response()->json(['status' => 'user or agent not found'], 404);
-        }
+        // Record the event
+        PurchaseEvent::create([
+            'purchase_id' => $purchase->id,
+            'event_type' => 'subscription_cancelled',
+            'event_time' => now(),
+            'note' => 'Subscription cancelled via Asaas webhook.',
+            'metadata' => json_encode($subscriptionData)
+        ]);
         
-        // Find purchase record
-        $purchase = Purchase::where('user_id', $user->id)
-            ->where('agent_id', $agent->id)
-            ->first();
-            
-        if ($purchase) {
-            // Update purchase status
-            $purchase->update([
-                'active' => false,
-                'paused' => true,
-                'paused_at' => now(),
-            ]);
-            
-            // Record the event
-            PurchaseEvent::create([
-                'purchase_id' => $purchase->id,
-                'event_type' => 'subscription_cancelled',
-                'event_time' => now(),
-                'note' => 'Subscription cancelled via Asaas webhook.',
-                'metadata' => json_encode($subscriptionData)
-            ]);
-            
-            Log::info('Subscription cancelled and purchase deactivated', [
-                'purchase_id' => $purchase->id,
-                'user_id' => $user->id,
-                'agent_id' => $agent->id,
-                'subscription_id' => $subscriptionData['id'] ?? null
-            ]);
-        }
+        Log::info('Subscription cancelled and purchase deactivated', [
+            'purchase_id' => $purchase->id,
+            'user_id' => $purchase->user_id,
+            'agent_id' => $purchase->agent_id,
+            'subscription_id' => $subscriptionData['id'] ?? null
+        ]);
         
         return response()->json(['status' => 'subscription cancelled']);
     }
 
+
     private function handleSubscriptionPaused($subscriptionData)
     {
-        // Extract customer and metadata
-        $customerId = $subscriptionData['customer'] ?? null;
-        $externalReference = $subscriptionData['externalReference'] ?? '';
+        $purchase = $this->findPurchaseFromData($subscriptionData);
         
-        // Try to parse the external reference
-        list($userId, $agentId) = $this->parseExternalReference($externalReference);
-        
-        if (!$customerId || !$userId || !$agentId) {
-            Log::warning('Missing required data in subscription webhook', [
-                'subscription_id' => $subscriptionData['id'] ?? null,
-                'customer_id' => $customerId,
-                'external_reference' => $externalReference
+        if (!$purchase) {
+            Log::warning('Purchase not found for subscription pause', [
+                'subscription_data' => $subscriptionData
             ]);
-            return response()->json(['status' => 'missing data'], 400);
+            return response()->json(['status' => 'purchase not found'], 200);
         }
         
-        // Find user and agent
-        $user = User::find($userId);
-        $agent = Agent::find($agentId);
+        // Update purchase status
+        $purchase->update([
+            'paused' => true,
+            'paused_at' => now(),
+        ]);
         
-        if (!$user || !$agent) {
-            Log::warning('User or agent not found', [
-                'user_id' => $userId,
-                'agent_id' => $agentId
-            ]);
-            return response()->json(['status' => 'user or agent not found'], 404);
-        }
+        // Record the event
+        PurchaseEvent::create([
+            'purchase_id' => $purchase->id,
+            'event_type' => 'subscription_paused',
+            'event_time' => now(),
+            'note' => 'Subscription paused via Asaas webhook.',
+            'metadata' => json_encode($subscriptionData)
+        ]);
         
-        // Find purchase record
-        $purchase = Purchase::where('user_id', $user->id)
-            ->where('agent_id', $agent->id)
-            ->first();
-            
-        if ($purchase) {
-            // Update purchase status
-            $purchase->update([
-                'paused' => true,
-                'paused_at' => now(),
-            ]);
-            
-            // Record the event
-            PurchaseEvent::create([
-                'purchase_id' => $purchase->id,
-                'event_type' => 'subscription_paused',
-                'event_time' => now(),
-                'note' => 'Subscription paused via Asaas webhook.',
-                'metadata' => json_encode($subscriptionData)
-            ]);
-            
-            Log::info('Subscription paused', [
-                'purchase_id' => $purchase->id,
-                'user_id' => $user->id,
-                'agent_id' => $agent->id,
-                'subscription_id' => $subscriptionData['id'] ?? null
-            ]);
-        }
+        Log::info('Subscription paused', [
+            'purchase_id' => $purchase->id,
+            'user_id' => $purchase->user_id,
+            'agent_id' => $purchase->agent_id,
+            'subscription_id' => $subscriptionData['id'] ?? null
+        ]);
         
         return response()->json(['status' => 'subscription paused']);
     }
-
     private function handleSubscriptionResumed($subscriptionData)
     {
-        // Extract customer and metadata
-        $customerId = $subscriptionData['customer'] ?? null;
-        $externalReference = $subscriptionData['externalReference'] ?? '';
+        $purchase = $this->findPurchaseFromData($subscriptionData);
         
-        // Try to parse the external reference
-        list($userId, $agentId) = $this->parseExternalReference($externalReference);
-        
-        if (!$customerId || !$userId || !$agentId) {
-            Log::warning('Missing required data in subscription webhook', [
-                'subscription_id' => $subscriptionData['id'] ?? null,
-                'customer_id' => $customerId,
-                'external_reference' => $externalReference
+        if (!$purchase) {
+            Log::warning('Purchase not found for subscription resume', [
+                'subscription_data' => $subscriptionData
             ]);
-            return response()->json(['status' => 'missing data'], 400);
+            return response()->json(['status' => 'purchase not found'], 200);
         }
         
-        // Find user and agent
-        $user = User::find($userId);
-        $agent = Agent::find($agentId);
+        // Update purchase status
+        $purchase->update([
+            'paused' => false,
+            'paused_at' => null,
+        ]);
         
-        if (!$user || !$agent) {
-            Log::warning('User or agent not found', [
-                'user_id' => $userId,
-                'agent_id' => $agentId
-            ]);
-            return response()->json(['status' => 'user or agent not found'], 404);
-        }
+        // Record the event
+        PurchaseEvent::create([
+            'purchase_id' => $purchase->id,
+            'event_type' => 'subscription_resumed',
+            'event_time' => now(),
+            'note' => 'Subscription resumed via Asaas webhook.',
+            'metadata' => json_encode($subscriptionData)
+        ]);
         
-        // Find purchase record
-        $purchase = Purchase::where('user_id', $user->id)
-            ->where('agent_id', $agent->id)
-            ->first();
-            
-        if ($purchase) {
-            // Update purchase status
-            $purchase->update([
-                'paused' => false,
-                'paused_at' => null,
-            ]);
-            
-            // Record the event
-            PurchaseEvent::create([
-                'purchase_id' => $purchase->id,
-                'event_type' => 'subscription_resumed',
-                'event_time' => now(),
-                'note' => 'Subscription resumed via Asaas webhook.',
-                'metadata' => json_encode($subscriptionData)
-            ]);
-            
-            Log::info('Subscription resumed', [
-                'purchase_id' => $purchase->id,
-                'user_id' => $user->id,
-                'agent_id' => $agent->id,
-                'subscription_id' => $subscriptionData['id'] ?? null
-            ]);
-        }
+        Log::info('Subscription resumed', [
+            'purchase_id' => $purchase->id,
+            'user_id' => $purchase->user_id,
+            'agent_id' => $purchase->agent_id,
+            'subscription_id' => $subscriptionData['id'] ?? null
+        ]);
         
         return response()->json(['status' => 'subscription resumed']);
     }

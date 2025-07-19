@@ -15,6 +15,8 @@ class Purchase extends Model
         'agent_id',
         'paused',
         'paused_at',
+        'active',
+        'asaas_subscription_id'
     ];
     
     protected $casts = [

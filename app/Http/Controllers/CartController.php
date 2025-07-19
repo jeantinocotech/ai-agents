@@ -116,7 +116,6 @@ class CartController extends Controller
         return view('cart.check-improved', compact('agents', 'total', 'user'));
     }
 
-    // Página de sucesso após checkout
      // Página de sucesso após checkout
     public function checkoutSuccess()
     {
@@ -160,6 +159,7 @@ class CartController extends Controller
              DB::beginTransaction();
  
              $results = [];
+             $externalRef = "user_{$user->id}";
  
              // Primeiro, verifica se o cliente já existe no Asaas ou cria um novo
              $customerData = [
@@ -168,16 +168,20 @@ class CartController extends Controller
                  'phone' => $request->phone,
                  'cpfCnpj' => preg_replace('/[^0-9]/', '', $request->document),
                  'notificationDisabled' => false,
+                 'externalReference' => $externalRef
              ];
              
-             $customer = $this->asaasService->findCustomerByEmail($request->email);
+             //$customer = $this->asaasService->findCustomerByEmail($request->email);
              
+             $customer = $this->asaasService->findCustomerByExternalReference($externalRef);
+
              if (!$customer) {
                  log::info('Criando cliente no Asaas', [
                      'email' => $request->email,
                      'name' => $request->name,
                      'phone' => $request->phone,
                      'cpfCnpj' => $request->document,
+                     'externalReference' => $externalRef
                  ]);
                  $customerResponse = $this->asaasService->createCustomer($customerData);
                  if (!$customerResponse) {
@@ -207,10 +211,14 @@ class CartController extends Controller
                          'billingType' => $billingType,
                          'value' => $agent->price,
                          'nextDueDate' => date('Y-m-d', strtotime('+1 day')),
-                         'description' => "Assinatura do agente: {$agent->name}",
+                         'description' =>   Str::limit("Assinatura do agente: {$agent->name}", 36),
                          'externalReference' => "user_{$user->id}_agent_{$agent->id}",
                          'cycle' => 'MONTHLY', // Ciclo mensal por padrão
                      ];
+
+                     log::info('Subscripton:', [
+                        'description 36' => $subscriptionData['description'],
+                    ]);
                      
                      // Adiciona dados do cartão se for pagamento com cartão
                      if ($request->payment_method === 'credit_card') {
@@ -290,7 +298,7 @@ class CartController extends Controller
                          'billingType' => $billingType,
                          'value' => $agent->price,
                          'dueDate' => date('Y-m-d', strtotime('+1 day')),
-                         'description' => "Compra do agente: {$agent->name}",
+                         'description' =>   Str::limit("Compra do agente: {$agent->name}", 36),
                          'externalReference' => json_encode($metadata),
                      ];
                      
@@ -404,21 +412,40 @@ class CartController extends Controller
                                  break;
                              }
                          }
+
+
+                         // Armazena o primeiro pagamento bem-sucedido para uso posterior
+                         $paymentData = $firstSuccessfulPayment;
                          
-                         if ($firstSuccessfulPayment) {
-                             $agent = Agent::find($firstSuccessfulPayment['agent_id']);
-                             
+                         if ($paymentData) {
+                         Log::info('First successful payment found and stored in paymentData variable.: ', [    
+                          $paymentData,]);
+                         }
+
+                         if ($paymentData['success']) {
+                            Log::info('Prepara QR Code PIX estático');
+
+                             $agent = Agent::find($paymentData['agent_id']);
+
+                             Log::info('Agent: ', [    
+                                'agent' => $agent
+                            ]);
+
                              // Prepara os dados para o QR code estático
                              $qrCodeData = [
                                  'addressKey' => $pixKey['key'],
-                                 'description' => Str::limit("Compra do agente: {$agent->name}", 37),
+                                 'description' => Str::limit("Compra do agente: {$agent->name}", 30),
                                  'value' => $agent->price,
                                  'format' => 'ALL',
                                  'expirationSeconds' => 3600, // 1 hora
                                  'allowsMultiplePayments' => false,
                                  'externalReference' => "user_{$user->id}_agent_{$agent->id}"
                              ];
-                             
+
+                             Log::info('QR Code PIX estático antes de criar', [    
+                                'qr_code' => $qrCodeData
+                            ]);
+
                              $pixQrCode = $this->asaasService->createStaticPixQrCode($qrCodeData);
                              
                              if ($pixQrCode) {
@@ -433,9 +460,14 @@ class CartController extends Controller
                                      'message' => 'Pagamento PIX gerado com sucesso',
                                      'is_pix' => true,
                                      'pix_info' => $pixQrCode,
-                                     'results' => $results
+                                     'results' => $results,
+                                     'asaas_subscription_id' => $asaasResponse['id'] // <-- Adicione isso!
                                  ]);
-                             }
+                         } else {
+                             Log::info('ERRO QR Code PIX estático', [    
+                                 'qr_code' => $qrCodeData
+                             ]);
+                         }
                          }
                      }
                  } catch (\Exception $e) {
@@ -495,35 +527,31 @@ class CartController extends Controller
     public function checkPaymentStatus(Request $request)
     {
         $request->validate([
-            'payment_id' => 'required|string',
+            'asaas_subscription_id' => 'required|string',
         ]);
+
+
+        $subscriptionId = $request->asaas_subscription_id;
 
         $paymentId = $request->payment_id;
         
         // Busca o status do pagamento no Asaas
-        $paymentInfo = $this->asaasService->getPayment($paymentId);
+        //$paymentInfo = $this->asaasService->getPayment($subscriptionId);
+
+        $purchase = Purchase::where('asaas_subscription_id', $subscriptionId)->first();
         
-        if (!$paymentInfo) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Não foi possível obter informações do pagamento',
-            ], 404);
-        }
-        
-        $status = $paymentInfo['status'] ?? 'UNKNOWN';
-        $isPaid = in_array($status, ['CONFIRMED', 'RECEIVED']);
-        
-        // Se o pagamento foi confirmado, limpa o carrinho
-        if ($isPaid) {
+        if ($purchase && $purchase->active) {
             session()->forget('cart');
+            return response()->json([
+                'success' => true,
+                'is_paid' => true,
+            ]);
         }
         
         return response()->json([
             'success' => true,
-            'payment_id' => $paymentId,
-            'status' => $status,
-            'is_paid' => $isPaid,
-            'payment_info' => $paymentInfo,
+            'is_paid' => false,
         ]);
+   
     }
 }

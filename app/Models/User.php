@@ -21,6 +21,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'asaas_customer_id', // Adicione este campo
     ];
 
     /**
@@ -55,5 +56,18 @@ class User extends Authenticatable
     {
         return $this->hasMany(Purchase::class);
     }
+    public function activePurchases()
+    {
+        return $this->hasMany(Purchase::class)->where('active', true);
+    }
+
+    public function hasActivePurchaseForAgent($agentId): bool
+    {
+        return $this->purchases()
+            ->where('agent_id', $agentId)
+            ->where('active', true)
+            ->exists();
+    }
+
 
 }

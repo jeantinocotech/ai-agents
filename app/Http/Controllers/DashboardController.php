@@ -2,14 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Agent;
 use Illuminate\Http\Request;
 use App\Models\Purchase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use App\Models\User;
-use App\Models\Chat;
-use App\Models\ChatMessage;
 
 
 class DashboardController extends Controller
@@ -18,6 +15,7 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
         $agents = Purchase::where('user_id', $user->id)
+        ->where('active', true) 
         ->with('agent')
         ->get()
         ->pluck('agent'); // Retorna só os agentes

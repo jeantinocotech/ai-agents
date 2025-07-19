@@ -32,7 +32,9 @@ class AgentController extends Controller
        
     
         if ($user) {
-            $purchasedAgentIds = $user->purchases()->pluck('agent_id')->toArray(); }
+            $purchasedAgentIds = $user->purchases()
+            ->where('active', true)
+            ->pluck('agent_id')->toArray(); }
     
             $agents = Agent::withAvg('ratings', 'rating')
             ->where('is_active', true)
@@ -54,6 +56,7 @@ class AgentController extends Controller
         $purchase = $user 
         ? Purchase::where('user_id', $user->id)
                  ->where('agent_id', $agent->id)
+                 ->where('active', true)
                  ->first()
         : null;
 
