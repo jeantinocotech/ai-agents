@@ -1,123 +1,230 @@
 <x-app-layout>
 
-@vite('resources/css/app.css')
-@vite('resources/css/minimalist.css')
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
- 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            @if(session('success'))
-                <div class="mb-4 p-4 bg-green-200 text-green-800 rounded">
-                    {{ session('success') }}
-                </div>
-            @endif
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    <h2 class="text-2xl font-bold mb-6">Nossos Assistentes de IA</h2>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    @foreach ($agents as $agent)
-
-                        @if($agent->is_active)
-
-                            @php
-                                $jaPossui = in_array($agent->id, $purchasedAgentIds ?? []);
-                            @endphp
-
-                            <div class="bg-gray-100 rounded-lg overflow-hidden shadow-md relative">
-                                
-                                @if($jaPossui)
-                                    <div class="absolute top-2 right-2 bg-green-600 text-white text-xs px-2 py-1 rounded">
-                                        ✅ assinado
-                                    </div>
-                                @endif
-
-                                <!-- Imagem -->
-                                <div class="h-48 bg-gray-200">
-                                    <img src="{{ asset('storage/' . $agent->image_path) }}" alt="{{ $agent->name }}" 
-                                        class="w-full h-full object-cover">
-                                </div>
-                                
-                                <div class="p-4">
-                                    <h3 class="text-xl font-bold mb-2">{{ $agent->name }}</h3>
-                                    <!-- Estrelas -->
-                                    @php
-                                        $media = round($agent->ratings_avg_rating ?? 0, 1);
-                                    @endphp
-
-                                    <div class="flex items-center mb-2">
-                                        @for ($i = 1; $i <= 5; $i++)
-                                            @if ($i <= floor($media))
-                                                <svg class="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
-                                                    <polygon points="10,1 12,7 18,7 13,11 15,17 10,13 5,17 7,11 2,7 8,7" />
-                                                </svg>
-                                            @else
-                                                <svg class="w-4 h-4 text-gray-300 fill-current" viewBox="0 0 20 20">
-                                                    <polygon points="10,1 12,7 18,7 13,11 15,17 10,13 5,17 7,11 2,7 8,7" />
-                                                </svg>
-                                            @endif
-                                        @endfor
-                                        <span class="ml-2 text-sm text-gray-600">({{ $media }}/5)</span>
-                                    </div>
-
-                                    <p class="text-gray-700 mb-4">{{ $agent->description }}</p>
-
-                                    @if(!$jaPossui)
-                                        <div class="text-lg font-semibold mb-4">R$ {{ number_format($agent->price, 2, ',', '.') }}</div>
-                                    @else
-                                        <div class="text-gray-600 text-decoration: line-through mb-4">R$ {{ number_format($agent->price, 2, ',', '.') }} </div>
-                                    @endif    
-
-                                    @if(!$jaPossui)
-                                        <form method="POST" action="{{ route('agents.addToCart', $agent->id) }}">
-                                            @csrf
-                                            <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 mb-4">
-                                                Adicionar ao Carrinho
-                                            </button>
-                                        </form>
-                                    @endif
-                                </div>
-
-                                <!-- YouTube -->
-                                <div class="p-4 border-t border-gray-200">
-                                    <div class="aspect-w-16 aspect-h-9">
-                                        <iframe 
-                                            src="{{ $agent->youtube_url }}" 
-                                            frameborder="0" 
-                                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                            allowfullscreen
-                                            class="w-full h-48"
-                                        ></iframe>
-                                    </div>
-                                </div>
-                            </div>
-
-                        @endif
-
-                    @endforeach
-
-                    </div>
-                    
-                    @guest
-                        <div class="mt-8 text-center">
-                            <p class="mb-4">Para acessar todos os assistentes, crie uma conta ou faça login.</p>
-                            <div class="flex justify-center gap-4">
-                                <a href="{{ route('register') }}" 
-                                   class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
-                                    Criar conta
-                                </a>
-                                <a href="{{ route('login') }}" 
-                                   class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
-                                    Fazer login
-                                </a>
-                            </div>
-                        </div>
-                    @endguest
-                </div>
-            </div>
+<!-- HERO / CHAMADA PRINCIPAL -->
+<section class="bg-[#1a1c1e] py-20">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between">
+        <div class="md:w-2/3 text-white">
+            <h1 class="text-4xl md:text-5xl font-extrabold mb-4">Potencialize suas atividades com nossos assistentes de IA</h1>
+            <p class="text-xl text-gray-300 mb-8">Aumente suas chances de conseguir uma entrevista de emprego identificando as palavras-chave e passando pelo filtro do ATS.</p>
+            <a href="#agentes" class="inline-block px-8 py-3 rounded-full bg-white text-black font-semibold shadow hover:bg-gray-200 transition">Ver Agentes</a>
+        </div>
+        <div class="md:w-1/3 mt-10 md:mt-0 flex justify-center">
+            <img src="https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=400&q=80" alt="IA" class="rounded-xl shadow-xl w-full max-w-xs object-cover grayscale" />
         </div>
     </div>
+</section>
 
+<div class="py-12 bg-gray-50 min-h-screen">
+    <div class="max-w-7xl mx-auto px-4">
+        @if(session('success'))
+            <div class="mb-4 p-4 bg-green-200 text-green-800 rounded">
+                {{ session('success') }}
+            </div>
+        @endif
+
+        <h2 id="agentes" class="text-2xl font-bold mb-8 text-gray-900 text-center">Nossos Assistentes de IA</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            @foreach ($agents as $agent)
+                @if($agent->is_active)
+                    @php
+                        $jaPossui = in_array($agent->id, $purchasedAgentIds ?? []);
+                        $media = round($agent->ratings_avg_rating ?? 0, 1);
+                    @endphp
+
+                    <div class="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition relative flex flex-col h-full">
+                        @if($jaPossui)
+                            <div class="absolute top-2 right-2 bg-green-600 text-white text-xs px-2 py-1 rounded shadow">✅ Assinado</div>
+                        @endif
+
+                        <!-- Imagem -->
+                        <div class="h-48 bg-gray-200 flex items-center justify-center">
+                            <img src="{{ asset('storage/' . $agent->image_path) }}" alt="{{ $agent->name }}" class="w-full h-full object-cover">
+                        </div>
+
+                        <div class="p-6 flex-1 flex flex-col">
+                            <h3 class="text-xl font-bold mb-1 text-gray-900">{{ $agent->name }}</h3>
+                            <!-- Estrelas -->
+                            <div class="flex items-center mb-2">
+                                @for ($i = 1; $i <= 5; $i++)
+                                    @if ($i <= floor($media))
+                                        <svg class="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
+                                            <polygon points="10,1 12,7 18,7 13,11 15,17 10,13 5,17 7,11 2,7 8,7" />
+                                        </svg>
+                                    @else
+                                        <svg class="w-4 h-4 text-gray-300 fill-current" viewBox="0 0 20 20">
+                                            <polygon points="10,1 12,7 18,7 13,11 15,17 10,13 5,17 7,11 2,7 8,7" />
+                                        </svg>
+                                    @endif
+                                @endfor
+                                <span class="ml-2 text-sm text-gray-600">({{ $media }}/5)</span>
+                            </div>
+
+                            <p class="text-gray-700 mb-4">{{ $agent->description }}</p>
+                            @if(!$jaPossui)
+                                <div class="text-lg font-semibold mb-4">R$ {{ number_format($agent->price, 2, ',', '.') }}</div>
+                            @else
+                                <div class="text-gray-400 line-through mb-4">R$ {{ number_format($agent->price, 2, ',', '.') }}</div>
+                            @endif
+
+                            @if(!$jaPossui)
+                                <form method="POST" action="{{ route('agents.addToCart', $agent->id) }}" class="mt-auto">
+                                    @csrf
+                                    <button type="submit" class="w-full px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition mb-2">
+                                        Adicionar ao Carrinho
+                                    </button>
+                                </form>
+                            @endif
+                        </div>
+
+                        <!-- YouTube -->
+                        @if($agent->youtube_url)
+                        <div class="p-4 border-t border-gray-200 bg-gray-50">
+                            <div class="aspect-w-16 aspect-h-9">
+                                <iframe 
+                                    src="{{ $agent->youtube_url }}" 
+                                    frameborder="0" 
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                                    allowfullscreen
+                                    class="w-full h-48"
+                                ></iframe>
+                            </div>
+                        </div>
+                        @endif
+                    </div>
+                @endif
+            @endforeach
+        </div>
+
+        @guest
+            <div class="mt-12 text-center">
+                <p class="mb-4 text-gray-700">Para acessar todos os assistentes, crie uma conta ou faça login.</p>
+                <div class="flex justify-center gap-4">
+                    <a href="{{ route('register') }}" class="bg-black hover:bg-gray-800 text-white px-4 py-2 rounded">
+                        Criar conta
+                    </a>
+                    <a href="{{ route('login') }}" class="bg-gray-800 hover:bg-black text-white px-4 py-2 rounded">
+                        Fazer login
+                    </a>
+                </div>
+            </div>
+        @endguest
+
+        <!-- Call to Action no final -->
+        <div class="mt-20 text-center">
+            <h2 class="text-2xl font-extrabold text-gray-900 mb-4">Desbloqueie todo o potencial da IA</h2>
+            <p class="text-gray-600 mb-6">Assine agora e tenha acesso imediato aos melhores agentes do mercado!</p>
+            <a href="#agentes" class="inline-block px-8 py-3 rounded-full bg-black text-white font-semibold shadow hover:bg-gray-800 transition">
+                Ver Planos de Assinatura
+            </a>
+        </div>
+
+        <!-- Depoimentos -->
+        <section class="py-16 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+            <h2 class="text-3xl font-extrabold text-gray-900">O que dizem nossos usuários</h2>
+            <p class="mt-4 max-w-2xl mx-auto text-xl text-gray-500">
+                Experiências reais de quem já usa GratoAI!
+            </p>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <!-- Depoimento 1 -->
+            <div class="bg-gray-50 rounded-lg p-6 shadow-sm">
+                <div class="flex items-center mb-4">
+                <img class="h-12 w-12 rounded-full object-cover" src="https://randomuser.me/api/portraits/women/68.jpg" alt="Usuário 1">
+                <div class="ml-4">
+                    <h4 class="text-lg font-medium text-gray-900">Ana Luiza</h4>
+                    <p class="text-gray-600 text-sm">Produtora de conteúdo</p>
+                </div>
+                </div>
+                <p class="text-gray-700">
+                “O GratoAI me poupa tempo toda semana! Os agentes são realmente úteis e fáceis de usar.”
+                </p>
+            </div>
+            <!-- Depoimento 2 -->
+            <div class="bg-gray-50 rounded-lg p-6 shadow-sm">
+                <div class="flex items-center mb-4">
+                <img class="h-12 w-12 rounded-full object-cover" src="https://randomuser.me/api/portraits/men/56.jpg" alt="Usuário 2">
+                <div class="ml-4">
+                    <h4 class="text-lg font-medium text-gray-900">Carlos Silva</h4>
+                    <p class="text-gray-600 text-sm">Empreendedor</p>
+                </div>
+                </div>
+                <p class="text-gray-700">
+                “Simplesmente revolucionou a forma como faço pesquisas. Recomendo a todos!”
+                </p>
+            </div>
+            <!-- Depoimento 3 -->
+            <div class="bg-gray-50 rounded-lg p-6 shadow-sm">
+                <div class="flex items-center mb-4">
+                <img class="h-12 w-12 rounded-full object-cover" src="https://randomuser.me/api/portraits/women/52.jpg" alt="Usuário 3">
+                <div class="ml-4">
+                    <h4 class="text-lg font-medium text-gray-900">Paula Menezes</h4>
+                    <p class="text-gray-600 text-sm">Estudante de Marketing</p>
+                </div>
+                </div>
+                <p class="text-gray-700">
+                “Os conselhos personalizados me ajudaram a crescer profissionalmente. Gratidão!”
+                </p>
+            </div>
+            </div>
+        </div>
+        </section>
+
+        <footer class="bg-black text-gray-300 mt-20">
+        <div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+            <!-- Logo e descrição -->
+            <div>
+                <div class="flex items-center mb-2">
+                <img src="{{ asset('img/gratoai_black.png') }}" alt="GratoAI" class="h-10 w-auto mr-2">
+                <span class="text-xl font-bold text-white">GratoAI</span>
+                </div>
+                <p class="text-gray-400 mt-2">IA para apoiar, facilitar e transformar sua rotina. A gratidão da tecnologia ao seu lado.</p>
+            </div>
+            <!-- Links rápidos -->
+            <div>
+                <h3 class="text-lg font-semibold text-white mb-4">Links</h3>
+                <ul class="space-y-2">
+                <li><a href="#agentes" class="hover:text-white">Agentes</a></li>
+                <li><a href="{{ route('register') }}" class="hover:text-white">Cadastrar</a></li>
+                <li><a href="{{ route('login') }}" class="hover:text-white">Entrar</a></li>
+                </ul>
+            </div>
+            <!-- Contato -->
+            <div>
+                <h3 class="text-lg font-semibold text-white mb-4">Contato</h3>
+                <ul class="space-y-2 text-gray-400">
+                <li>
+                    <span class="inline-block w-5"><i class="fas fa-envelope"></i></span>
+                    <a href="mailto:contato@gratoai.com" class="hover:text-white">contato@gratoai.com</a>
+                </li>
+                <li>
+                    <span class="inline-block w-5"><i class="fas fa-map-marker-alt"></i></span>
+                    Rua Exemplo, 123 - São Paulo/SP
+                </li>
+                </ul>
+            </div>
+            <!-- Siga-nos -->
+            <div>
+                <h3 class="text-lg font-semibold text-white mb-4">Siga-nos</h3>
+                <div class="flex space-x-4 mt-2">
+                <a href="#" class="hover:text-white text-2xl"><i class="fab fa-facebook-f"></i></a>
+                <a href="#" class="hover:text-white text-2xl"><i class="fab fa-instagram"></i></a>
+                <a href="#" class="hover:text-white text-2xl"><i class="fab fa-linkedin-in"></i></a>
+                </div>
+            </div>
+            </div>
+            <div class="mt-10 border-t border-gray-800 pt-6 flex flex-col md:flex-row justify-between items-center">
+            <p class="text-gray-500">&copy; {{ date('Y') }} GratoAI. Todos os direitos reservados.</p>
+            <div class="flex space-x-6 mt-2 md:mt-0">
+                <a href="#" class="text-gray-400 hover:text-white">Termos de uso</a>
+                <a href="#" class="text-gray-400 hover:text-white">Política de Privacidade</a>
+            </div>
+            </div>
+        </div>
+        </footer>
+    </div>
+</div>
 </x-app-layout>
