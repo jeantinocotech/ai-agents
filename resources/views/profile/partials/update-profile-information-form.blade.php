@@ -1,11 +1,11 @@
 <section>
     <header>
         <h2 class="text-lg font-medium text-gray-900">
-            {{ __('Profile Information') }}
+            {{ __('Informação do Perfil') }}
         </h2>
 
         <p class="mt-1 text-sm text-gray-600">
-            {{ __("Update your account's profile information and email address.") }}
+            {{ __("Mantenha suas informações atualiyadas.") }}
         </p>
     </header>
 
@@ -13,9 +13,31 @@
         @csrf
     </form>
 
-    <form method="post" action="{{ route('profile.update') }}" class="mt-6 space-y-6">
+    <form method="post" action="{{ route('profile.update') }}" class="mt-6 space-y-6" enctype="multipart/form-data">
+
         @csrf
-        @method('patch')
+        @method('PATCH')
+
+        <div>
+            <div class="flex flex-col items-start">
+                <img id="profile-photo-preview"
+                    src="{{ $user->profile_photo ? asset('storage/' . $user->profile_photo) : 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&background=23272a&color=fff&size=128' }}"
+                    class="w-24 h-24 rounded-full border mb-2 object-cover"
+                    alt="Profile Photo">
+                
+                <!-- Input escondido -->
+                <input id="profile_photo" name="profile_photo" type="file" accept="image/*" class="hidden" onchange="showFileName(this)">
+                
+                <!-- Botão customizado -->
+                <label for="profile_photo"
+                    class="inline-flex items-center justify-center px-4 py-2 bg-black border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-800 focus:outline-none focus:border-gray-900 focus:ring ring-gray-300 disabled:opacity-25 transition ease-in-out duration-150"
+                    style="font-family: 'Inter', 'Figtree', Arial, sans-serif;">
+                    {{ __('Foto') }}
+                </label>
+
+            </div>
+            <x-input-error class="mt-2" :messages="$errors->get('profile_photo')" />
+        </div>
 
         <div>
             <x-input-label for="name" :value="__('Name')" />
@@ -62,3 +84,22 @@
         </div>
     </form>
 </section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const input = document.getElementById('profile_photo');
+        const preview = document.getElementById('profile-photo-preview');
+
+        input.addEventListener('change', function (e) {
+            const [file] = input.files;
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    preview.src = e.target.result;
+                    preview.classList.remove('hidden');
+                }
+                reader.readAsDataURL(file);
+            }
+        });
+    });
+</script>

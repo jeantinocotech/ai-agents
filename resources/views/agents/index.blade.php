@@ -120,57 +120,48 @@
         </div>
 
         <!-- Depoimentos -->
-        <section class="py-16 bg-white">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="text-center mb-12">
-            <h2 class="text-3xl font-extrabold text-gray-900">O que dizem nossos usuários</h2>
-            <p class="mt-4 max-w-2xl mx-auto text-xl text-gray-500">
-                Experiências reais de quem já usa GratoAI!
-            </p>
-            </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <!-- Depoimento 1 -->
-            <div class="bg-gray-50 rounded-lg p-6 shadow-sm">
-                <div class="flex items-center mb-4">
-                <img class="h-12 w-12 rounded-full object-cover" src="https://randomuser.me/api/portraits/women/68.jpg" alt="Usuário 1">
-                <div class="ml-4">
-                    <h4 class="text-lg font-medium text-gray-900">Ana Luiza</h4>
-                    <p class="text-gray-600 text-sm">Produtora de conteúdo</p>
+        @if($testimonials->count())
+            <section class="py-16 bg-white">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="text-center mb-12">
+                        <h2 class="text-3xl font-extrabold text-gray-900">O que dizem nossos usuários</h2>
+                        <p class="mt-4 max-w-2xl mx-auto text-xl text-gray-500">
+                            Experiências reais de quem já usa GratoAI!
+                        </p>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        @foreach($testimonials as $testimonial)
+                            <div class="bg-gray-50 rounded-lg p-6 shadow-sm">
+                                <div class="flex items-center mb-4">
+                                    @if($testimonial->author_image)
+                                        <img class="h-12 w-12 rounded-full object-cover" src="{{ asset('storage/'.$testimonial->author_image) }}" alt="{{ $testimonial->author_name }}">
+                                    @else
+                                        <div class="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-400">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                    @endif
+                                    <div class="ml-4">
+                                        <h4 class="text-lg font-medium text-gray-900">{{ $testimonial->author_name ?? 'Usuário GratoAI' }}</h4>
+                                        @if($testimonial->author_role)
+                                            <p class="text-gray-600 text-sm">{{ $testimonial->author_role }}</p>
+                                        @endif
+                                    </div>
+                                </div>
+                                <p class="text-gray-700">
+                                    “{{ $testimonial->content }}”
+                                </p>
+                                @if($testimonial->agent && $testimonial->agent->name)
+                                    <p class="mt-2 text-xs text-gray-400">
+                                        (Sobre o agente: <span class="font-semibold">{{ $testimonial->agent->name }}</span>)
+                                    </p>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
                 </div>
-                </div>
-                <p class="text-gray-700">
-                “O GratoAI me poupa tempo toda semana! Os agentes são realmente úteis e fáceis de usar.”
-                </p>
-            </div>
-            <!-- Depoimento 2 -->
-            <div class="bg-gray-50 rounded-lg p-6 shadow-sm">
-                <div class="flex items-center mb-4">
-                <img class="h-12 w-12 rounded-full object-cover" src="https://randomuser.me/api/portraits/men/56.jpg" alt="Usuário 2">
-                <div class="ml-4">
-                    <h4 class="text-lg font-medium text-gray-900">Carlos Silva</h4>
-                    <p class="text-gray-600 text-sm">Empreendedor</p>
-                </div>
-                </div>
-                <p class="text-gray-700">
-                “Simplesmente revolucionou a forma como faço pesquisas. Recomendo a todos!”
-                </p>
-            </div>
-            <!-- Depoimento 3 -->
-            <div class="bg-gray-50 rounded-lg p-6 shadow-sm">
-                <div class="flex items-center mb-4">
-                <img class="h-12 w-12 rounded-full object-cover" src="https://randomuser.me/api/portraits/women/52.jpg" alt="Usuário 3">
-                <div class="ml-4">
-                    <h4 class="text-lg font-medium text-gray-900">Paula Menezes</h4>
-                    <p class="text-gray-600 text-sm">Estudante de Marketing</p>
-                </div>
-                </div>
-                <p class="text-gray-700">
-                “Os conselhos personalizados me ajudaram a crescer profissionalmente. Gratidão!”
-                </p>
-            </div>
-            </div>
-        </div>
-        </section>
+            </section>
+        @endif
+
 
         <footer class="bg-black text-gray-300 mt-20">
         <div class="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8">

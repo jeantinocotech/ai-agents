@@ -16,6 +16,7 @@ use PhpOffice\PhpWord\IOFactory as WordLoader;
 use App\Models\Purchase;
 use phpDocumentor\Reflection\PseudoTypes\False_;
 use App\Models\AgentRating;
+use App\Models\Testimonial;
 
 class AgentController extends Controller
 {
@@ -29,6 +30,12 @@ class AgentController extends Controller
 
         $user = auth()->user();
         $purchasedAgentIds = [];
+
+        $testimonials = Testimonial::where('is_approved', true)
+        ->where('is_featured', true)
+        ->inRandomOrder()
+        ->limit(3)
+        ->get();
        
     
         if ($user) {
@@ -42,7 +49,7 @@ class AgentController extends Controller
 
         Log::info('Purchased Agent IDs: ' , [$purchasedAgentIds], [$agents]);
     
-        return view('agents.index', compact('agents', 'purchasedAgentIds'));
+        return view('agents.index', compact('agents', 'purchasedAgentIds', 'testimonials'));
     }
 
     public function show($id)

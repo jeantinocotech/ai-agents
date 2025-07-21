@@ -16,6 +16,13 @@ use App\Http\Controllers\CvAnalysisController;
 use App\Http\Controllers\WebCvAnalysisController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RatingController;
+use App\Http\Controllers\TestimonialController;
+
+
+//Testimonials
+Route::get('/depoimento', [TestimonialController::class, 'create'])->name('testimonials.create');
+Route::post('/depoimento', [TestimonialController::class, 'store'])->name('testimonials.store');
+Route::get('/meus-depoimentos', [TestimonialController::class, 'mine'])->name('testimonials.mine')->middleware('auth');
 
 // Página inicial - listagem pública de agentes
 Route::get('/', [AgentController::class, 'index'])->name('home');

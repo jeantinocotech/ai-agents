@@ -29,6 +29,9 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         Dashboard
                     </x-nav-link>
+                    <x-nav-link :href="route('testimonials.mine')" :active="request()->routeIs('testimonials.mine')" class="font-semibold">
+                        <i class="fas fa-comment-dots mr-1"></i> Meus Depoimentos
+                    </x-nav-link>
                 @endauth
 
                 <!-- Administração (apenas para admin) -->
