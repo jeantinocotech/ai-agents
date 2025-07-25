@@ -17,6 +17,8 @@ use App\Http\Controllers\WebCvAnalysisController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RatingController;
 use App\Http\Controllers\TestimonialController;
+use App\Http\Controllers\Admin\TestimonialAdminController;
+use App\Http\Controllers\PrivacyController;
 
 
 //Testimonials
@@ -87,6 +89,7 @@ Route::prefix('cart')->name('cart.')->group(function () {
     Route::post('/remove/{id}', [CartController::class, 'removeFromCart'])->name('remove');
     Route::post('/clear', [CartController::class, 'clearCart'])->name('clear');
     Route::get('/checkout', [CartController::class, 'checkout'])->name('checkout');
+    Route::get('/checkout/guest', [CartController::class, 'checkoutGuest'])->name('checkout.guest');
     Route::get('/success', [CartController::class, 'checkoutSuccess'])->name('success');
 });
 
@@ -132,9 +135,13 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
         Route::delete('/{step}', [AgentStepController::class, 'destroy'])->name('destroy');
     });
 
-    //busca preco no hotmart e atualiza tabela de agentes
   
-    Route::post('/agents/update-prices', [AdminDashboardController::class, 'updateAllHotmartPrices'])->name('agents.updatePrices');
+    Route::get('admin/testimonials', [TestimonialAdminController::class, 'index'])->name('testimonials.index');
+    Route::patch('testimonials/{testimonial}/approve', [TestimonialAdminController::class, 'approve'])->name('testimonials.approve');
+    Route::patch('testimonials/{testimonial}/reject', [TestimonialAdminController::class, 'reject'])->name('testimonials.reject');
+    Route::patch('testimonials/{testimonial}/feature', [TestimonialAdminController::class, 'feature'])->name('testimonials.feature');
+
+
 
 });
 
@@ -156,6 +163,13 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
         ->middleware('auth')
         ->name('purchase.resume');
     });
+
+    // Politica de privacidade
+    Route::view('/privacidade', 'privacidade')->name('privacidade');
+    Route::post('/aceite-privacidade', [PrivacyController::class, 'accept'])->name('privacy.accept');
+    Route::post('/privacy/sync', [PrivacyController::class, 'syncConsent'])
+    ->name('privacy.sync')
+    ->middleware('auth');
 
 
     Route::get('/clear-log', function () {

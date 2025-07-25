@@ -1,95 +1,94 @@
 {{-- resources/views/testimonials/create.blade.php --}}
 
 <x-app-layout>
-    <div class="max-w-2xl mx-auto py-12 px-4">
-        <h2 class="text-2xl font-bold mb-8 text-gray-900">Envie seu depoimento</h2>
+    <x-slot name="header">
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">Enviar Depoimento</h2>
+    </x-slot>
 
-        @if(session('success'))
-            <div class="mb-4 p-4 bg-green-200 text-green-800 rounded">
+    <div class="max-w-2xl mx-auto mt-8 p-6 bg-white rounded-lg shadow">
+        @if (session('success'))
+            <div class="mb-4 p-4 bg-green-200 text-green-900 rounded">
                 {{ session('success') }}
             </div>
         @endif
 
-        <form method="POST" action="{{ route('testimonials.store') }}" enctype="multipart/form-data" class="space-y-6 bg-white p-8 rounded-xl shadow">
+        <form method="POST" action="{{ route('testimonials.store') }}" enctype="multipart/form-data" class="space-y-6">
             @csrf
 
-            <!-- Nome -->
+            {{-- Escolher imagem --}}
             <div>
-                <label class="block font-semibold mb-2">Seu nome</label>
-                <input type="text" name="author_name" class="w-full border-gray-300 rounded" value="{{ old('author_name', Auth::user()->name ?? '') }}" required>
-            </div>
+                <x-input-label value="Escolha sua foto ou avatar" />
+                <div class="flex flex-wrap gap-4 mt-3">
 
-            <!-- Papel -->
-            <div>
-                <label class="block font-semibold mb-2">Profissão/Cargo (opcional)</label>
-                <input type="text" name="author_role" class="w-full border-gray-300 rounded" value="{{ old('author_role') }}">
-            </div>
-
-            <!-- Depoimento -->
-            <div>
-                <label class="block font-semibold mb-2">Depoimento</label>
-                <textarea name="content" rows="5" class="w-full border-gray-300 rounded" required>{{ old('content') }}</textarea>
-            </div>
-
-            <!-- Selecionar agente -->
-            <div>
-                <label class="block font-semibold mb-2">Sobre qual agente? <span class="text-gray-400 text-xs">(opcional)</span></label>
-                <select name="agent_id" class="w-full border-gray-300 rounded">
-                    <option value="">Geral / Plataforma</option>
-                    @foreach($agents as $agent)
-                        <option value="{{ $agent->id }}">{{ $agent->name }}</option>
-                    @endforeach
-                </select>
-            </div>
-
-            <!-- Escolha imagem/avatar -->
-            <div>
-                <label class="block font-semibold mb-2">Foto de perfil ou Avatar</label>
-                @php
-                    $current_avatar = old('author_image', $selected_avatar ?? Auth::user()?->profile_photo_url);
-                @endphp
-
-                <div class="flex items-center space-x-6">
-                    {{-- Imagem do usuário --}}
-                    @if(Auth::user()?->profile_photo_url)
-                        <label class="flex items-center space-x-2">
-                            <input type="radio" name="author_image" value="{{ Auth::user()->profile_photo_url }}"
-                                {{ $current_avatar == Auth::user()->profile_photo_url ? 'checked' : '' }}>
-                            <img src="{{ Auth::user()->profile_photo_url }}" class="h-10 w-10 rounded-full object-cover border">
-                            <span class="text-gray-600 text-sm">Usar minha foto</span>
+                    {{-- Foto de perfil --}}
+                    @if($userPhoto)
+                        <label>
+                            <input type="radio" name="author_image" value="profile_photo"
+                                {{ old('author_image', $selected_avatar) == 'profile_photo' ? 'checked' : '' }}>
+                            <img src="{{ $userPhoto }}" class="w-16 h-16 rounded-full border-2 border-blue-500 mx-auto">
+                            <div class="text-xs text-center mt-1">Foto do Perfil</div>
                         </label>
                     @endif
 
-                    {{-- Avatares padrão --}}
-                    <div class="mb-4">
-                        <label class="block font-medium mb-2">Escolha um avatar</label>
-                        <div class="flex flex-wrap gap-4">
-                            @foreach($avatars as $avatar)
-                                <label class="flex flex-col items-center cursor-pointer">
-                                    <input type="radio" name="author_image" value="{{ $avatar }}" class="hidden"
-                                        {{ old('author_image', $selectedAvatar ?? '') === $avatar ? 'checked' : '' }}>
-                                    <img src="{{ asset($avatar) }}" alt="Avatar" class="w-16 h-16 rounded-full border-2
-                                        border-transparent hover:border-blue-400
-                                        {{ old('author_image', $selectedAvatar ?? '') === $avatar ? 'border-blue-600' : '' }}">
-                                </label>
-                            @endforeach
-                        </div>
-                        <p class="text-sm text-gray-500 mt-2">
-                            Ou <a href="{{ route('profile.edit') }}" class="text-blue-500 underline">adicione uma foto no perfil</a> para usar como avatar.
-                        </p>
-                    </div>
-                    
+                    {{-- Avatares --}}
+                    @foreach($avatars as $avatar)
+                        <label>
+                            <input type="radio" name="author_image" value="{{ $avatar }}"
+                                {{ old('author_image', $selected_avatar) == $avatar ? 'checked' : '' }}>
+                            <img src="{{ asset($avatar) }}" class="w-16 h-16 rounded-full border mx-auto">
+                            <div class="text-xs text-center mt-1">Avatar</div>
+                        </label>
+                    @endforeach
+
+                    {{-- Upload personalizado --}}
+                    <label>
+                        <input type="radio" name="author_image" value="upload" {{ old('author_image') == 'upload' ? 'checked' : '' }}>
+                        <input type="file" name="author_image_upload" accept="image/*" class="mt-2 block">
+                        <div class="text-xs text-center mt-1">Upload</div>
+                    </label>
                 </div>
-                <small class="text-gray-400">Sua foto nunca será publicada sem sua permissão. Se preferir, escolha um avatar.</small>
+                <x-input-error class="mt-2" :messages="$errors->get('author_image')" />
+                <x-input-error class="mt-2" :messages="$errors->get('author_image_upload')" />
             </div>
 
-            <!-- Botão enviar -->
+            {{-- Nome a exibir --}}
             <div>
-                <button type="submit" class="bg-black text-white px-6 py-2 rounded hover:bg-gray-800 transition">
-                    Enviar depoimento
-                </button>
+                <x-input-label for="author_name" :value="'Nome a exibir'" />
+                <x-text-input id="author_name" name="author_name" type="text" class="block w-full"
+                    value="{{ old('author_name', Auth::user()->name) }}" required />
+                <x-input-error class="mt-2" :messages="$errors->get('author_name')" />
             </div>
+
+            {{-- Ocupação --}}
+            <div>
+                <x-input-label for="author_role" :value="'Ocupação (opcional)'" />
+                <x-text-input id="author_role" name="author_role" type="text" class="block w-full"
+                    value="{{ old('author_role') }}" />
+                <x-input-error class="mt-2" :messages="$errors->get('author_role')" />
+            </div>
+
+            {{-- Depoimento --}}
+            <div>
+                <x-input-label for="content" :value="'Depoimento'" />
+                <textarea id="content" name="content" class="block w-full mt-1" rows="4" required>{{ old('content') }}</textarea>
+                <x-input-error class="mt-2" :messages="$errors->get('content')" />
+            </div>
+
+            {{-- Sobre qual agente --}}
+            <div>
+                <x-input-label for="agent_id" :value="'Sobre qual agente (opcional)'" />
+                <select name="agent_id" id="agent_id" class="block w-full">
+                    <option value="">Geral</option>
+                    @foreach($agents as $agent)
+                        <option value="{{ $agent->id }}" {{ old('agent_id') == $agent->id ? 'selected' : '' }}>{{ $agent->name }}</option>
+                    @endforeach
+                </select>
+                <x-input-error class="mt-2" :messages="$errors->get('agent_id')" />
+            </div>
+
+            <x-primary-button>Enviar depoimento</x-primary-button>
         </form>
     </div>
 </x-app-layout>
+
 

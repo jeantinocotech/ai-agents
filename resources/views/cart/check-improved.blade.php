@@ -47,6 +47,52 @@
                         </div>
                     </div>
 
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="cep" class="block text-sm font-medium text-gray-700 mb-1">CEP</label>
+                            <input type="text" id="cep" name="cep"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                placeholder="00000-000"
+                                value="{{ old('cep', $user->cep ?? '') }}"
+                            >
+                        </div>
+                        <div>
+                            <label for="address" class="block text-sm font-medium text-gray-700 mb-1">Endereço</label>
+                            <input type="text" id="address" name="address"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value="{{ old('address', $user->address ?? '') }}"
+                            >
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label for="number" class="block text-sm font-medium text-gray-700 mb-1">Número</label>
+                            <input type="text" id="number" name="number"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value="{{ old('number', $user->number ?? '') }}"
+                            >
+                        </div>
+                        <div>
+                            <label for="city" class="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
+                            <input type="text" id="city" name="city"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value="{{ old('city', $user->city ?? '') }}"
+                            >
+                        </div>
+                        <div>
+                            <label for="state" class="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                            <input type="text" id="state" name="state"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                value="{{ old('state', $user->state ?? '') }}"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="flex items-center mt-4">
+                        <input type="checkbox" id="save_profile_data" name="save_profile_data" value="1" class="mr-2" checked>
+                        <label for="save_profile_data" class="text-sm text-gray-700">Salvar estes dados no meu perfil para futuras compras</label>
+                    </div>
+
                     <!-- Tipo de Pagamento (Somente Assinatura) -->
                     <div class="mt-6">
                         <label class="block text-sm font-medium text-gray-700 mb-3">Tipo de Pagamento</label>
@@ -394,5 +440,22 @@
                 });
             });
         });
+
+        document.getElementById('cep').addEventListener('blur', function () {
+        let cep = this.value.replace(/\D/g, '');
+        if (cep.length === 8) {
+            fetch('https://viacep.com.br/ws/' + cep + '/json/')
+            .then(response => response.json())
+            .then(data => {
+                if (!data.erro) {
+                    document.getElementById('address').value = data.logradouro;
+                    document.getElementById('city').value = data.localidade;
+                    document.getElementById('state').value = data.uf;
+                }
+            });
+        }
+        });
+
     </script>
+
 </x-app-layout>

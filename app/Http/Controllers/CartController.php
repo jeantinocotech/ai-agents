@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Agent;
+use App\Models\User;
 use App\Models\Purchase;
 use App\Models\PurchaseEvent;
 use Illuminate\Support\Facades\Auth;
@@ -89,8 +90,11 @@ class CartController extends Controller
     // Página de checkout
     public function checkout()
     {
+        
         if (!Auth::check()) {
-            return redirect()->route('login')->with('message', 'Você precisa estar logado para finalizar a compra.');
+            // Salva para onde redirecionar depois do login
+            session(['url.intended' => route('cart.checkout')]);
+            return redirect()->route('cart.checkout.guest');
         }
 
         $cart = session()->get('cart', []);
@@ -116,6 +120,12 @@ class CartController extends Controller
         return view('cart.check-improved', compact('agents', 'total', 'user'));
     }
 
+    public function checkoutGuest()
+    {
+        // Mostra tela amigável para login/cadastro
+        return view('cart.checkout-guest');
+    }
+
      // Página de sucesso após checkout
     public function checkoutSuccess()
     {
@@ -136,6 +146,11 @@ class CartController extends Controller
              'email' => 'required|email',
              'phone' => 'required|string|max:20',
              'document' => 'required|string|max:14',
+             'cep' => 'nullable|string|max:9',      // Novo campo
+             'address' => 'nullable|string|max:255', // Novo campo
+             'number' => 'nullable|string|max:10',   // Novo campo
+             'city' => 'nullable|string|max:60',     // Novo campo
+             'state' => 'nullable|string|max:2',     // Novo campo
              'payment_method' => 'required|in:credit_card,pix,boleto',
              'is_subscription' => 'sometimes|boolean',
              // Campos específicos do cartão de crédito
@@ -144,6 +159,18 @@ class CartController extends Controller
              'card_cvv' => 'required_if:payment_method,credit_card',
              'card_holder_name' => 'required_if:payment_method,credit_card',
          ]);
+
+         if ($request->has('save_profile_data') && Auth::check()) {
+            $user = Auth::user();
+            $user->phone = $request->input('phone');
+            $user->cpf = $request->input('document'); // Ou document, ajuste para o campo correto do seu banco
+            $user->cep = $request->input('cep');
+            $user->address = $request->input('address');
+            $user->number = $request->input('number');
+            $user->city = $request->input('city');
+            $user->state = $request->input('state');
+            $user->save();
+        }
  
          $cart = session()->get('cart', []);
          if (empty($cart)) {
@@ -168,7 +195,10 @@ class CartController extends Controller
                  'phone' => $request->phone,
                  'cpfCnpj' => preg_replace('/[^0-9]/', '', $request->document),
                  'notificationDisabled' => false,
-                 'externalReference' => $externalRef
+                 'externalReference' => $externalRef,
+                 'postalCode' => preg_replace('/[^0-9]/', '', $request->cep),
+                 'address'    => $request->address,
+                 'addressNumber' => $request->number
              ];
              
              //$customer = $this->asaasService->findCustomerByEmail($request->email);

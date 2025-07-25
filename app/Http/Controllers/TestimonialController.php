@@ -48,16 +48,21 @@ class TestimonialController extends Controller
             'author_role' => 'nullable|string|max:60',
             'content' => 'required|string|max:500',
             'agent_id' => 'nullable|exists:agents,id',
-            'image_option' => 'required|in:profile,avatar',
-            'author_avatar' => 'nullable|string', // só valida se avatar
+            'author_image' => 'required',
+            'author_image_upload' => 'nullable|image|max:2048',
         ]);
 
+        $authorImage = null;
+
         // Decide a imagem do autor:
-        if ($request->image_option === 'avatar' && $request->author_avatar) {
-            $authorImage = asset('avatars/' . $request->author_avatar);
+        if ($request->author_image == 'profile_photo') {
+            $authorImage = Auth::user()->profile_photo ? 'storage/' . Auth::user()->profile_photo : null;
+        } elseif ($request->author_image == 'upload' && $request->hasFile('author_image_upload')) {
+            $authorImage = $request->file('author_image_upload')->store('testimonials', 'public');
+            $authorImage = 'storage/' . $authorImage;
         } else {
-            // Usa foto de perfil do usuário
-            $authorImage = Auth::user()->profile_photo_url ?? asset('img/default-avatar.png');
+            // Assume que foi selecionado um avatar
+            $authorImage = $request->author_image;
         }
 
         Testimonial::create([

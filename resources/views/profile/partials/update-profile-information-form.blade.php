@@ -69,6 +69,47 @@
             @endif
         </div>
 
+        <!-- CEP -->
+        <div>
+            <x-input-label for="cep" :value="__('CEP')" />
+            <x-text-input id="cep" name="cep" type="text" class="mt-1 block w-full"
+                :value="old('cep', $user->cep)" autocomplete="cep" maxlength="9" />
+            <x-input-error class="mt-2" :messages="$errors->get('cep')" />
+        </div>
+
+        <!-- Endereço -->
+        <div>
+            <x-input-label for="address" :value="__('Endereço')" />
+            <x-text-input id="address" name="address" type="text" class="mt-1 block w-full"
+                :value="old('address', $user->address)" autocomplete="address" />
+            <x-input-error class="mt-2" :messages="$errors->get('address')" />
+        </div>
+
+        <!-- Número -->
+        <div>
+            <x-input-label for="number" :value="__('Número')" />
+            <x-text-input id="number" name="number" type="text" class="mt-1 block w-full"
+                :value="old('number', $user->number)" autocomplete="number" />
+            <x-input-error class="mt-2" :messages="$errors->get('number')" />
+        </div>
+
+        <!-- Cidade -->
+        <div>
+            <x-input-label for="city" :value="__('Cidade')" />
+            <x-text-input id="city" name="city" type="text" class="mt-1 block w-full"
+                :value="old('city', $user->city)" autocomplete="city" />
+            <x-input-error class="mt-2" :messages="$errors->get('city')" />
+        </div>
+
+        <!-- Estado -->
+        <div>
+            <x-input-label for="state" :value="__('Estado')" />
+            <x-text-input id="state" name="state" type="text" class="mt-1 block w-full"
+                :value="old('state', $user->state)" autocomplete="state" />
+            <x-input-error class="mt-2" :messages="$errors->get('state')" />
+        </div>
+
+
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('Save') }}</x-primary-button>
 
@@ -102,4 +143,30 @@
             }
         });
     });
+
+    document.addEventListener("DOMContentLoaded", function() {
+        const cepInput = document.getElementById('postal_code');
+        const addressInput = document.getElementById('address');
+        const provinceInput = document.getElementById('province');
+        const cityInput = document.getElementById('city');
+        const stateInput = document.getElementById('state');
+
+        cepInput.addEventListener('blur', function() {
+            let cep = cepInput.value.replace(/\D/g, '');
+
+            if (cep.length === 8) {
+                fetch(`https://viacep.com.br/ws/${cep}/json/`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (!data.erro) {
+                            addressInput.value = data.logradouro || '';
+                            provinceInput.value = data.bairro || '';
+                            cityInput.value = data.localidade || '';
+                            stateInput.value = data.uf || '';
+                        }
+                    });
+            }
+        });
+    });
+
 </script>

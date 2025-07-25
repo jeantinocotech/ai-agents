@@ -35,8 +35,7 @@ class AgentController extends Controller
         ->where('is_featured', true)
         ->inRandomOrder()
         ->limit(3)
-        ->get();
-       
+        ->get();       
     
         if ($user) {
             $purchasedAgentIds = $user->purchases()

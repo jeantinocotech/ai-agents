@@ -28,6 +28,14 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        // Após o login bem-sucedido, verifica se precisa sincronizar o consentimento
+        $user = Auth::user();
+        if (!$user->privacy_accepted_at) {
+            // Adiciona um flag para o JavaScript verificar
+            $request->session()->put('check_privacy_consent', true);
+        }
+
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 

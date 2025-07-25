@@ -30,6 +30,13 @@ class ProfileController extends Controller
         $user = $request->user();
         $data = $request->validated();
 
+        // Adicione os campos extras
+        $extra = $request->only([
+                'phone', 'document', 'address', 'address_number', 'complement',
+                'province', 'postal_code', 'city', 'state'
+        ]);
+        $data = array_merge($data, $extra);
+
         // Upload da imagem
         if ($request->hasFile('profile_photo')) {
             // Remove a foto antiga, se quiser:

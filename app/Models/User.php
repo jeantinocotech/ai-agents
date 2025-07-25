@@ -23,6 +23,7 @@ class User extends Authenticatable
         'password',
         'asaas_customer_id', // Adicione este campo
         'profile_photo',
+        'name', 'email', 'password', 'phone', 'cpf', 'cep', 'address', 'number', 'city', 'state'
     ];
 
     /**

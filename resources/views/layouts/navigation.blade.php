@@ -53,6 +53,9 @@
                                 <x-dropdown-link :href="route('admin.agents.index')">
                                     🤖 Gerenciar Agentes
                                 </x-dropdown-link>
+                                <x-dropdown-link :href="route('admin.testimonials.index')">
+                                    📝 Aprovar Depoimentos
+                                </x-dropdown-link>
                             </x-slot>
                         </x-dropdown>
                     @endif

@@ -4,7 +4,7 @@
 <section class="bg-[#1a1c1e] py-20">
     <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between">
         <div class="md:w-2/3 text-white">
-            <h1 class="text-4xl md:text-5xl font-extrabold mb-4">Potencialize suas atividades com nossos assistentes de IA</h1>
+            <h1 class="text-4xl md:text-5xl font-extrabold mb-4">Potencialize suas atividades com nossos assistentes de AI</h1>
             <p class="text-xl text-gray-300 mb-8">Aumente suas chances de conseguir uma entrevista de emprego identificando as palavras-chave e passando pelo filtro do ATS.</p>
             <a href="#agentes" class="inline-block px-8 py-3 rounded-full bg-white text-black font-semibold shadow hover:bg-gray-200 transition">Ver Agentes</a>
         </div>
@@ -22,7 +22,7 @@
             </div>
         @endif
 
-        <h2 id="agentes" class="text-2xl font-bold mb-8 text-gray-900 text-center">Nossos Assistentes de IA</h2>
+        <h2 id="agentes" class="text-2xl font-bold mb-8 text-gray-900 text-center">Nossos Assistentes</h2>
 
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             @foreach ($agents as $agent)
@@ -112,7 +112,7 @@
 
         <!-- Call to Action no final -->
         <div class="mt-20 text-center">
-            <h2 class="text-2xl font-extrabold text-gray-900 mb-4">Desbloqueie todo o potencial da IA</h2>
+            <h2 class="text-2xl font-extrabold text-gray-900 mb-4">Desbloqueie todo o potencial da AI</h2>
             <p class="text-gray-600 mb-6">Assine agora e tenha acesso imediato aos melhores agentes do mercado!</p>
             <a href="#agentes" class="inline-block px-8 py-3 rounded-full bg-black text-white font-semibold shadow hover:bg-gray-800 transition">
                 Ver Planos de Assinatura
@@ -133,13 +133,16 @@
                         @foreach($testimonials as $testimonial)
                             <div class="bg-gray-50 rounded-lg p-6 shadow-sm">
                                 <div class="flex items-center mb-4">
-                                    @if($testimonial->author_image)
-                                        <img class="h-12 w-12 rounded-full object-cover" src="{{ asset('storage/'.$testimonial->author_image) }}" alt="{{ $testimonial->author_name }}">
-                                    @else
-                                        <div class="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-400">
-                                            <i class="fas fa-user"></i>
-                                        </div>
-                                    @endif
+                                    @php
+                                        // Detecta se é avatar ou foto de perfil (armazenada em storage)
+                                        $img = '';
+                                        if ($testimonial->author_image) {
+                                            $img = asset($testimonial->author_image);
+                                        } else {
+                                            $img = 'https://ui-avatars.com/api/?name=' . urlencode($testimonial->author_name) . '&background=23272a&color=fff&size=128';
+                                        }
+                                    @endphp
+                                    <img class="h-12 w-12 rounded-full object-cover" src="{{ $img }}" alt="{{ $testimonial->author_name }}">
                                     <div class="ml-4">
                                         <h4 class="text-lg font-medium text-gray-900">{{ $testimonial->author_name ?? 'Usuário GratoAI' }}</h4>
                                         @if($testimonial->author_role)
@@ -219,3 +222,6 @@
     </div>
 </div>
 </x-app-layout>
+
+
+
