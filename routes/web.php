@@ -171,6 +171,10 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
     ->name('privacy.sync')
     ->middleware('auth');
 
+    // Termos de uso
+    Route::get('/termos-uso', function () {
+        return view('termos-uso');
+    })->name('termos-uso');
 
     Route::get('/clear-log', function () {
     file_put_contents(storage_path('logs/laravel.log'), '');

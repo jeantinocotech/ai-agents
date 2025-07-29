@@ -194,10 +194,6 @@
                     <span class="inline-block w-5"><i class="fas fa-envelope"></i></span>
                     <a href="mailto:contato@gratoai.com" class="hover:text-white">contato@gratoai.com</a>
                 </li>
-                <li>
-                    <span class="inline-block w-5"><i class="fas fa-map-marker-alt"></i></span>
-                    Rua Exemplo, 123 - São Paulo/SP
-                </li>
                 </ul>
             </div>
             <!-- Siga-nos -->
@@ -213,8 +209,8 @@
             <div class="mt-10 border-t border-gray-800 pt-6 flex flex-col md:flex-row justify-between items-center">
             <p class="text-gray-500">&copy; {{ date('Y') }} GratoAI. Todos os direitos reservados.</p>
             <div class="flex space-x-6 mt-2 md:mt-0">
-                <a href="#" class="text-gray-400 hover:text-white">Termos de uso</a>
-                <a href="#" class="text-gray-400 hover:text-white">Política de Privacidade</a>
+                <a href="{{ route('termos-uso') }}" class="text-gray-400 hover:text-white">Termos de uso</a>
+                <a href="{{ route('privacidade') }}"  class="text-gray-400 hover:text-white">Política de Privacidade</a>
             </div>
             </div>
         </div>
