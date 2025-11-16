@@ -1,4 +1,4 @@
-!/bin/bash
+#!/bin/bash
 
 echo "⏳ Corrigindo link simbólico do Laravel..."
 rm -f /app/public/storage
