@@ -1,6 +1,7 @@
 # Etapa 1: build frontend com Vite
 FROM node:18-alpine as frontend
 
+
 WORKDIR /app
 COPY package*.json ./
 RUN npm install

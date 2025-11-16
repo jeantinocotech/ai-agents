@@ -1,24 +1,10 @@
-#!/usr/bin/env bash
-set -e
+!/bin/bash
 
-cd /app
+echo "⏳ Corrigindo link simbólico do Laravel..."
+rm -f /app/public/storage
+ln -s /app/storage/app/public /app/public/storage
+echo "✅ Symlink recriado com sucesso."
 
-# Garantir permissões básicas (opcional, mas ajuda)
-chown -R application:application /app || true
-chmod -R 775 storage bootstrap/cache || true
-
-# Link do storage (ignora se já existir)
-php artisan storage:link || true
-
-# Limpa e recompila caches
-php artisan config:clear && php artisan cache:clear && php artisan route:clear && php artisan view:clear
-
-# Migrações (não derruba o container se não houver nada a migrar)
-php artisan migrate --force || true
-
-# Recria caches para prod
-php artisan config:cache && php artisan route:cache || true
-
-# depois (delega ao entrypoint ORIGINAL da imagem webdevops)
-exec /opt/docker/bin/entrypoint supervisord -n
+# Executa o Apache (comando padrão da imagem php:8.2-apache)
+exec apache2-foreground
 
