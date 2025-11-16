@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Log;
 use App\Services\AsaasService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use App\Models\Testimonial;
 
 class CartController extends Controller
 {
@@ -26,8 +27,15 @@ class CartController extends Controller
     // Exibe o carrinho
     public function index()
     {
+        $testimonials = Testimonial::where('is_approved', true)
+        ->where('is_featured', true)
+        ->inRandomOrder()
+        ->limit(3)
+        ->get();       
+        
         $cart = session()->get('cart', []);
-        return view('cart.index', compact('cart'));
+        //dd($testimonials);
+        return view('cart.index', compact('cart','testimonials' ));
     }
 
     // Adiciona agente ao carrinho

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Agent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use App\Models\Testimonial;
 
 class AgentsPublicController extends Controller
 {
@@ -15,6 +16,12 @@ class AgentsPublicController extends Controller
         
         $user = auth()->user();
         $purchasedAgentIds = [];
+
+        $testimonials = Testimonial::where('is_approved', true)
+        ->where('is_featured', true)
+        ->inRandomOrder()
+        ->limit(3)
+        ->get();    
     
         if ($user) {
             $purchasedAgentIds = $user->purchases()->pluck('agent_id')->toArray(); }
@@ -26,7 +33,7 @@ class AgentsPublicController extends Controller
 
         Log::info('Purchased Agent IDs: ' , [$purchasedAgentIds], [$agents]);
     
-        return view('agents.index', compact('agents', 'purchasedAgentIds'));
+        return view('agents.index', compact('agents', 'purchasedAgentIds',  'testimonials'));
 
     }
     
