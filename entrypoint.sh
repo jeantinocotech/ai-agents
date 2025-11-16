@@ -19,6 +19,6 @@ php artisan migrate --force || true
 # Recria caches para prod
 php artisan config:cache && php artisan route:cache || true
 
-# Deixa o Apache/supervisord da imagem assumir (NÃO coloque mais nada depois deste exec)
-exec /usr/bin/supervisord -n
+# depois (delega ao entrypoint ORIGINAL da imagem webdevops)
+exec /opt/docker/bin/entrypoint supervisord -n
 
