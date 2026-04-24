@@ -22,6 +22,11 @@
                         </div>
                     @endif
                     
+                    @php
+                        $integrationValue = old('integration', $agent->integration ?? \App\Models\Agent::INTEGRATION_OPENAI);
+                        $showChatkitFields = $integrationValue === \App\Models\Agent::INTEGRATION_CHATKIT_WORKFLOW;
+                    @endphp
+
                     <form action="{{ route('admin.agents.update', $agent->id) }}" method="POST" enctype="multipart/form-data">
                         @csrf
                         @method('PUT')
@@ -36,6 +41,47 @@
                             <label for="description" class="block text-gray-700 text-sm font-bold mb-2">Descrição</label>
                             <textarea name="description" id="description" rows="4" 
                                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">{{ old('description', $agent->description) }}</textarea>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="integration" class="block text-gray-700 text-sm font-bold mb-2">Integração do chat</label>
+                            <select name="integration" id="integration"
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                <option value="{{ \App\Models\Agent::INTEGRATION_OPENAI }}" {{ $integrationValue === \App\Models\Agent::INTEGRATION_OPENAI ? 'selected' : '' }}>
+                                    OpenAI (chat / assistente — comportamento atual)
+                                </option>
+                                <option value="{{ \App\Models\Agent::INTEGRATION_CHATKIT_WORKFLOW }}" {{ $integrationValue === \App\Models\Agent::INTEGRATION_CHATKIT_WORKFLOW ? 'selected' : '' }}>
+                                    ChatKit — workflow do Agent Builder (wf_…)
+                                </option>
+                            </select>
+                            <p class="text-sm text-gray-500 mt-1">ChatKit embute o widget; configure Workflow ID e uma API key com acesso ao ChatKit.</p>
+                            <p class="text-sm text-amber-800 mt-1">Com <strong>OpenAI</strong> selecionado, os campos de workflow ficam ocultos. Escolha <strong>ChatKit</strong> para editar o Workflow ID e a versão.</p>
+                        </div>
+
+                        <div id="chatkit-fields" @class([
+                            'mb-4 space-y-4 rounded border border-amber-200 bg-amber-50/50 p-4',
+                            'hidden' => ! $showChatkitFields,
+                        ])>
+                            <div>
+                                <label for="chatkit_workflow_id" class="block text-gray-700 text-sm font-bold mb-2">Workflow ID</label>
+                                <input type="text" name="chatkit_workflow_id" id="chatkit_workflow_id" value="{{ old('chatkit_workflow_id', $agent->chatkit_workflow_id) }}"
+                                       placeholder="wf_…"
+                                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline font-mono text-sm">
+                            </div>
+                            <div>
+                                <label for="chatkit_workflow_version" class="block text-gray-700 text-sm font-bold mb-2">Versão do workflow</label>
+                                <input type="text" name="chatkit_workflow_version" id="chatkit_workflow_version" value="{{ old('chatkit_workflow_version', $agent->chatkit_workflow_version ?? '1') }}"
+                                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-32">
+                            </div>
+                            <p class="text-xs text-gray-600 leading-relaxed border-t border-amber-200/80 pt-3 mt-2">
+                                <strong>API de integração</strong> (<code class="text-xs bg-white px-1 rounded">/api/chatkit/profile-documents</code>):
+                                envie <code class="text-xs bg-white px-1 rounded">agent_id</code> = <span class="font-mono">{{ $agent->id }}</span>
+                                e <code class="text-xs bg-white px-1 rounded">user</code> no formato
+                                <span class="font-mono">user_</span><em>id_do_utilizador</em><span class="font-mono">_agent_{{ $agent->id }}</span>
+                                (o mesmo valor que a sessão ChatKit envia à OpenAI; exemplo para o utilizador 12:
+                                <span class="font-mono">user_12_agent_{{ $agent->id }}</span>).
+                                O fluxo do Builder pode montar <code class="text-xs">user</code> a partir do contexto da sessão em vez de pedir ao utilizador final.
+                            </p>
                         </div>
 
                         <div class="mb-4">
@@ -222,52 +268,63 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        const intSel = document.getElementById('integration');
+        if (intSel) {
+            function toggleChatKitFields() {
+                const box = document.getElementById('chatkit-fields');
+                if (!box) {
+                    return;
+                }
+                box.classList.toggle('hidden', intSel.value !== '{{ \App\Models\Agent::INTEGRATION_CHATKIT_WORKFLOW }}');
+            }
+            intSel.addEventListener('change', toggleChatKitFields);
+            toggleChatKitFields();
+        }
+
         const priceInput = document.getElementById('price');
         const priceFormattedInput = document.getElementById('price_formatted');
-        
+
+        if (! priceInput || ! priceFormattedInput) {
+            return;
+        }
+
         function formatPrice(input) {
             let value = input.value.replace(/\D/g, '');
-            
+
             if (value === '') {
                 input.value = '';
                 priceFormattedInput.value = '0';
+
                 return;
             }
-            
-            // Limita a 10 dígitos (até 99.999.999,99)
+
             if (value.length > 10) {
                 value = value.slice(0, 10);
             }
-            
+
             let numericValue = parseInt(value, 10);
             let formattedValue = (numericValue / 100).toFixed(2);
-            
-            // Formatação brasileira para exibição
+
             let parts = formattedValue.split('.');
             parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-            
+
             input.value = parts.join(',');
-            
-            // Valor para o servidor (formato americano)
+
             priceFormattedInput.value = formattedValue;
         }
-        
-        // Formatar ao digitar
+
         priceInput.addEventListener('input', function() {
             formatPrice(this);
         });
-        
-        // Formatar valor inicial se existir
+
         if (priceInput.value) {
-            // Remove formatação existente e reforma
             let cleanValue = priceInput.value.replace(/\D/g, '');
             if (cleanValue) {
                 priceInput.value = cleanValue;
                 formatPrice(priceInput);
             }
         }
-        
-        // Impede colagem de texto inválido
+
         priceInput.addEventListener('paste', function(e) {
             e.preventDefault();
             let paste = (e.clipboardData || window.clipboardData).getData('text');
@@ -277,8 +334,7 @@
                 formatPrice(this);
             }
         });
-        
-        // Previne entrada de caracteres inválidos
+
         priceInput.addEventListener('keypress', function(e) {
             if (!/\d/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
                 if (!(e.key === 'a' && e.ctrlKey) && !(e.key === 'c' && e.ctrlKey) && !(e.key === 'v' && e.ctrlKey)) {
@@ -286,11 +342,11 @@
                 }
             }
         });
-        
-        // Antes de submeter o formulário, garantir que o valor está correto
-        document.querySelector('form').addEventListener('submit', function() {
-            // O valor já está sendo atualizado no campo hidden, então não precisa fazer nada
-        });
+
+        const form = document.querySelector('form[action*="admin/agents"]') || document.querySelector('form');
+        if (form) {
+            form.addEventListener('submit', function() {});
+        }
     });
 </script>
 

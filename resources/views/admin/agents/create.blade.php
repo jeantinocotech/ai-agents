@@ -38,6 +38,34 @@
                         </div>
 
                         <div class="mb-4">
+                            <label for="integration" class="block text-gray-700 text-sm font-bold mb-2">Integração do chat</label>
+                            <select name="integration" id="integration"
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                <option value="{{ \App\Models\Agent::INTEGRATION_OPENAI }}" {{ old('integration', \App\Models\Agent::INTEGRATION_OPENAI) === \App\Models\Agent::INTEGRATION_OPENAI ? 'selected' : '' }}>
+                                    OpenAI (chat / assistente — comportamento atual)
+                                </option>
+                                <option value="{{ \App\Models\Agent::INTEGRATION_CHATKIT_WORKFLOW }}" {{ old('integration') === \App\Models\Agent::INTEGRATION_CHATKIT_WORKFLOW ? 'selected' : '' }}>
+                                    ChatKit — workflow do Agent Builder (wf_…)
+                                </option>
+                            </select>
+                            <p class="text-sm text-gray-500 mt-1">ChatKit usa o widget oficial e a sessão criada na API OpenAI; o prompt do workflow fica no Builder.</p>
+                        </div>
+
+                        <div id="chatkit-fields" class="mb-4 hidden space-y-4 rounded border border-amber-200 bg-amber-50/50 p-4">
+                            <div>
+                                <label for="chatkit_workflow_id" class="block text-gray-700 text-sm font-bold mb-2">Workflow ID</label>
+                                <input type="text" name="chatkit_workflow_id" id="chatkit_workflow_id" value="{{ old('chatkit_workflow_id') }}"
+                                       placeholder="wf_…"
+                                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline font-mono text-sm">
+                            </div>
+                            <div>
+                                <label for="chatkit_workflow_version" class="block text-gray-700 text-sm font-bold mb-2">Versão do workflow</label>
+                                <input type="text" name="chatkit_workflow_version" id="chatkit_workflow_version" value="{{ old('chatkit_workflow_version', '1') }}"
+                                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline w-32">
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
                             <label for="organization" class="block text-gray-700 text-sm font-bold mb-2">Organization</label>
                             <textarea name="organization" id="organization" rows="1" 
                                       class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">{{ old('organization') }}</textarea>
@@ -112,6 +140,20 @@
 </x-app-layout>
 
 <script>
+function toggleChatKitFields() {
+    const sel = document.getElementById('integration');
+    const box = document.getElementById('chatkit-fields');
+    if (!sel || !box) return;
+    box.classList.toggle('hidden', sel.value !== '{{ \App\Models\Agent::INTEGRATION_CHATKIT_WORKFLOW }}');
+}
+document.addEventListener('DOMContentLoaded', function () {
+    const sel = document.getElementById('integration');
+    if (sel) {
+        sel.addEventListener('change', toggleChatKitFields);
+        toggleChatKitFields();
+    }
+});
+
 function previewImage(event) {
     const imagePreview = document.getElementById('agent-image-preview');
     const file = event.target.files[0];

@@ -34,6 +34,9 @@
                                     Tipo de Modelo
                                 </th>
                                 <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Integração
+                                </th>
+                                <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Data de Criação
                                 </th>
                                 <th class="py-3 px-4 border-b border-gray-200 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -57,6 +60,13 @@
                                     </td>
                                     <td class="py-4 px-4 border-b border-gray-200">
                                         {{ $agent->model_type }}
+                                    </td>
+                                    <td class="py-4 px-4 border-b border-gray-200 text-sm">
+                                        @if($agent->isChatKitWorkflow())
+                                            <span class="inline-flex rounded-full bg-amber-100 px-2 py-0.5 text-amber-900">ChatKit</span>
+                                        @else
+                                            <span class="inline-flex rounded-full bg-slate-100 px-2 py-0.5 text-slate-700">OpenAI</span>
+                                        @endif
                                     </td>
                                     <td class="py-4 px-4 border-b border-gray-200">
                                         {{ $agent->created_at->format('d/m/Y H:i') }}

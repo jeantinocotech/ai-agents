@@ -15,19 +15,22 @@
                 <x-nav-link :href="url('/#agentes')" :active="request()->is('#agentes')">
                     Agentes
                 </x-nav-link>
-                <x-nav-link :href="route('cart.index')" :active="request()->routeIs('cart.index')">
-                    🛒 Carrinho
-                    @if(session('cart_count', 0) > 0)
-                        <span class="ml-1 bg-green-500 text-xs text-white rounded-full px-2">
-                            {{ session('cart_count', 0) }}
-                        </span>
-                    @endif
-                </x-nav-link>
+                @auth
+                    <x-nav-link :href="route('tokens.purchase')" :active="request()->routeIs('tokens.purchase')">
+                        Comprar tokens
+                    </x-nav-link>
+                @endauth
 
                 <!-- Sempre mostra Dashboard para usuário logado -->
                 @auth
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         Dashboard
+                    </x-nav-link>
+                    <x-nav-link :href="route('career-trail.index')" :active="request()->routeIs('career-trail.index') || request()->routeIs('career-trail.advance') || request()->routeIs('career-trail.back')">
+                        Trilha
+                    </x-nav-link>
+                    <x-nav-link :href="route('career-trail.cv')" :active="request()->routeIs('career-trail.cv*')">
+                        Meu CV
                     </x-nav-link>
                     <x-nav-link :href="route('testimonials.mine')" :active="request()->routeIs('testimonials.mine')" class="font-semibold">
                         <i class="fas fa-comment-dots mr-1"></i> Meus Depoimentos
@@ -55,6 +58,9 @@
                                 </x-dropdown-link>
                                 <x-dropdown-link :href="route('admin.testimonials.index')">
                                     📝 Aprovar Depoimentos
+                                </x-dropdown-link>
+                                <x-dropdown-link :href="route('admin.settings.tokens.edit')">
+                                    ⚙️ Parâmetros de tokens
                                 </x-dropdown-link>
                             </x-slot>
                         </x-dropdown>
@@ -120,12 +126,20 @@
             <x-responsive-nav-link :href="url('/#agentes')" :active="request()->is('#agentes')">
                 Agentes
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="route('cart.index')" :active="request()->routeIs('cart.index')">
-                🛒 Carrinho
-            </x-responsive-nav-link>
+            @auth
+                <x-responsive-nav-link :href="route('tokens.purchase')" :active="request()->routeIs('tokens.purchase')">
+                    Comprar tokens
+                </x-responsive-nav-link>
+            @endauth
             @auth
                 <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                     Dashboard
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('career-trail.index')" :active="request()->routeIs('career-trail.index') || request()->routeIs('career-trail.advance') || request()->routeIs('career-trail.back')">
+                    Trilha
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('career-trail.cv')" :active="request()->routeIs('career-trail.cv*')">
+                    Meu CV
                 </x-responsive-nav-link>
                 @if(Auth::user()->is_admin)
                     <x-responsive-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')">

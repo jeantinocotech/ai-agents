@@ -35,4 +35,17 @@ return [
         ],
     ],
 
+    'openai' => [
+        'api_key' => env('OPENAI_API_KEY'),
+    ],
+
+    /*
+    | ChatKit (Agent Builder): header beta pode mudar — ver documentação atual.
+    | https://developers.openai.com/api/docs/guides/chatkit
+    */
+    'chatkit' => [
+        'beta_header' => env('CHATKIT_OPENAI_BETA', 'chatkit_beta=v1'),
+        'integration_api_secret' => env('CHATKIT_INTEGRATION_API_SECRET'),
+    ],
+
 ];

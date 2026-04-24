@@ -46,6 +46,13 @@
         </div>
 
         <div>
+            <x-input-label for="linkedin_url" value="LinkedIn (URL do perfil)" />
+            <x-text-input id="linkedin_url" name="linkedin_url" type="url" class="mt-1 block w-full" :value="old('linkedin_url', $user->linkedin_url)" autocomplete="url" placeholder="https://www.linkedin.com/in/…" />
+            <x-input-error class="mt-2" :messages="$errors->get('linkedin_url')" />
+            <p class="mt-1 text-xs text-gray-500">Opcional. Pode também atualizar na área <a href="{{ route('career-trail.cv') }}" class="text-indigo-600 hover:underline">Trilha — Meu CV</a>.</p>
+        </div>
+
+        <div>
             <x-input-label for="email" :value="__('Email')" />
             <x-text-input id="email" name="email" type="email" class="mt-1 block w-full" :value="old('email', $user->email)" required autocomplete="username" />
             <x-input-error class="mt-2" :messages="$errors->get('email')" />

@@ -21,6 +21,18 @@
                 {{ session('success') }}
             </div>
         @endif
+        @if(session('info'))
+            <div class="mb-4 p-4 bg-blue-100 text-blue-800 rounded">
+                {{ session('info') }}
+            </div>
+        @endif
+
+        @auth
+            <div class="mb-6 text-center text-gray-800">
+                Seu saldo: <strong class="text-green-700">{{ number_format(auth()->user()->token_balance, 0, ',', '.') }}</strong> tokens
+                — <a href="{{ route('tokens.purchase') }}" class="text-blue-600 underline">comprar mais</a>
+            </div>
+        @endauth
 
         <h2 id="agentes" class="text-2xl font-bold mb-8 text-gray-900 text-center">Nossos Assistentes</h2>
 
@@ -28,14 +40,10 @@
             @foreach ($agents as $agent)
                 @if($agent->is_active)
                     @php
-                        $jaPossui = in_array($agent->id, $purchasedAgentIds ?? []);
                         $media = round($agent->ratings_avg_rating ?? 0, 1);
                     @endphp
 
                     <div class="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl transition relative flex flex-col h-full">
-                        @if($jaPossui)
-                            <div class="absolute top-2 right-2 bg-green-600 text-white text-xs px-2 py-1 rounded shadow">✅ Assinado</div>
-                        @endif
 
                         <!-- Imagem -->
                         <div class="h-48 bg-gray-200 flex items-center justify-center">
@@ -61,20 +69,17 @@
                             </div>
 
                             <p class="text-gray-700 mb-4">{{ $agent->description }}</p>
-                            @if(!$jaPossui)
-                                <div class="text-lg font-semibold mb-4">R$ {{ number_format($agent->price, 2, ',', '.') }}</div>
-                            @else
-                                <div class="text-gray-400 line-through mb-4">R$ {{ number_format($agent->price, 2, ',', '.') }}</div>
-                            @endif
 
-                            @if(!$jaPossui)
-                                <form method="POST" action="{{ route('agents.addToCart', $agent->id) }}" class="mt-auto">
-                                    @csrf
-                                    <button type="submit" class="w-full px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition mb-2">
-                                        Adicionar ao Carrinho
-                                    </button>
-                                </form>
-                            @endif
+                            @auth
+                                <div class="mt-auto space-y-2">
+                                    <a href="{{ route('agents.show', $agent->id) }}"
+                                       class="block w-full text-center px-4 py-2 bg-black text-white rounded hover:bg-gray-800 transition">
+                                        Ver detalhes e conversar
+                                    </a>
+                                </div>
+                            @else
+                                <p class="text-sm text-gray-600 mt-auto">Faça login para usar este agente com seus tokens.</p>
+                            @endauth
                         </div>
 
                         <!-- YouTube -->
@@ -113,10 +118,16 @@
         <!-- Call to Action no final -->
         <div class="mt-20 text-center">
             <h2 class="text-2xl font-extrabold text-gray-900 mb-4">Desbloqueie todo o potencial da AI</h2>
-            <p class="text-gray-600 mb-6">Assine agora e tenha acesso imediato aos melhores agentes do mercado!</p>
-            <a href="#agentes" class="inline-block px-8 py-3 rounded-full bg-black text-white font-semibold shadow hover:bg-gray-800 transition">
-                Ver Planos de Assinatura
-            </a>
+            <p class="text-gray-600 mb-6">Compre tokens e use os melhores agentes do mercado quando precisar.</p>
+            @auth
+                <a href="{{ route('tokens.purchase') }}" class="inline-block px-8 py-3 rounded-full bg-black text-white font-semibold shadow hover:bg-gray-800 transition">
+                    Comprar tokens
+                </a>
+            @else
+                <a href="{{ route('register') }}" class="inline-block px-8 py-3 rounded-full bg-black text-white font-semibold shadow hover:bg-gray-800 transition">
+                    Criar conta
+                </a>
+            @endauth
         </div>
 
         <!-- Depoimentos -->

@@ -4,6 +4,8 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -20,10 +22,11 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'linkedin_url',
         'password',
         'asaas_customer_id', // Adicione este campo
         'profile_photo',
-        'name', 'email', 'password', 'phone', 'cpf', 'cep', 'address', 'number', 'city', 'state'
+        'phone', 'cpf', 'cep', 'address', 'number', 'city', 'state',
     ];
 
     /**
@@ -46,9 +49,10 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'tokens_next_renewal_at' => 'datetime',
         ];
     }
-    
+
     public function isAdmin(): bool
     {
         return (bool) $this->is_admin;
@@ -58,6 +62,7 @@ class User extends Authenticatable
     {
         return $this->hasMany(Purchase::class);
     }
+
     public function activePurchases()
     {
         return $this->hasMany(Purchase::class)->where('active', true);
@@ -71,5 +76,23 @@ class User extends Authenticatable
             ->exists();
     }
 
+    public function tokenTransactions()
+    {
+        return $this->hasMany(TokenTransaction::class);
+    }
 
+    public function tokenPackOrders()
+    {
+        return $this->hasMany(TokenPackOrder::class);
+    }
+
+    public function careerTrailProgress(): HasOne
+    {
+        return $this->hasOne(UserCareerTrailProgress::class);
+    }
+
+    public function userCvs(): HasMany
+    {
+        return $this->hasMany(UserCv::class);
+    }
 }

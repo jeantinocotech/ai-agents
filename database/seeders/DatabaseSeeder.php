@@ -23,11 +23,13 @@ class DatabaseSeeder extends Seeder
                 'email_verified_at' => now(),
                 'password' => Hash::make('password'),
                 'is_admin' => false,
-            
+
             ]
         );
-    
+
         $this->call([
+            TokenSettingsSeeder::class,
+            CareerTrailStepsSeeder::class,
             AgentSeeder::class,
             AdminUserSeeder::class,
         ]);

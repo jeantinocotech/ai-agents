@@ -1,9 +1,8 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -12,6 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            return;
+        }
+
         // Modify the event_type enum to include all event types used in AsaasWebhookController
         DB::statement("ALTER TABLE purchase_events MODIFY COLUMN event_type ENUM(
             'paused',
@@ -31,6 +34,10 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            return;
+        }
+
         // Revert back to original enum values
         DB::statement("ALTER TABLE purchase_events MODIFY COLUMN event_type ENUM(
             'paused',

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Services\TokenWalletService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -41,9 +42,13 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
+        $wallet = app(TokenWalletService::class);
+        $wallet->grantWelcome($user);
+        $wallet->scheduleNextRenewal($user->fresh());
+
         event(new Registered($user));
 
-        Auth::login($user);
+        Auth::login($user->fresh());
 
         return redirect()->intended(route('agents.index'));
     }

@@ -6,19 +6,11 @@
                 <div class="p-6 lg:p-8 bg-white border-b border-gray-200">
                     <h1 class="text-3xl font-bold text-gray-900 mb-8">Painel de Administração</h1>
 
-                     <!-- Atualiza precos do Hotmart -->
                     @if(session('success'))
                         <div class="mb-4 p-4 bg-green-200 text-green-800 rounded">
                             {{ session('success') }}
                         </div>
                     @endif
-
-                    <form method="POST" action="{{ route('admin.agents.updatePrices') }}" class="mb-6 inline-block">
-                        @csrf
-                        <button type="submit" class="bg-yellow-500 hover:bg-yellow-600 text-white text-sm px-4 py-2 rounded">
-                            🔄 Atualizar preços Hotmart
-                        </button>
-                    </form>
 
                     
                     <!-- Cards de Estatísticas Gerais -->

@@ -3,13 +3,54 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
-                    <div class="flex items-center mb-6">
-                        <a href="{{ route('agents.show', $agent->id) }}" class="text-blue-500 hover:underline mr-4">
-                            &larr; Voltar para detalhes
-                        </a>
-                        <h2 class="text-2xl font-bold">Chat com {{ $agent->name }}</h2>
+                    <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+                        <div class="flex min-w-0 flex-wrap items-center gap-3">
+                            <a href="{{ route('agents.show', $agent->id) }}" class="shrink-0 text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline">
+                                &larr; Voltar
+                            </a>
+                            <h2 class="text-2xl font-bold tracking-tight text-slate-900">Chat com {{ $agent->name }}</h2>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 sm:justify-end">
+                            @if($agent->isChatKitWorkflow())
+                                <div id="token-balance-pill" class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 text-sm shadow-sm ring-1 ring-slate-100">
+                                    <div class="flex items-baseline gap-1.5">
+                                        <span class="text-xs font-medium uppercase tracking-wide text-slate-500">Saldo</span>
+                                        <strong id="token-balance-value" class="text-base font-semibold tabular-nums text-slate-900">{{ number_format($tokenBalance ?? 0, 0, ',', '.') }}</strong>
+                                    </div>
+                                    <span class="hidden h-4 w-px bg-slate-200 sm:block" aria-hidden="true"></span>
+                                    <div class="flex items-baseline gap-1.5">
+                                        <span class="text-xs font-medium uppercase tracking-wide text-slate-500">Nesta visita</span>
+                                        <strong id="chatkit-session-tokens-used" class="text-base font-semibold tabular-nums text-amber-700">0</strong>
+                                    </div>
+                                </div>
+                            @else
+                                <span id="token-balance-pill" class="inline-flex items-center gap-2 rounded-2xl border border-slate-200/90 bg-slate-50 px-4 py-2 text-sm shadow-sm">
+                                    <span class="text-xs font-medium uppercase tracking-wide text-slate-500">Saldo</span>
+                                    <strong id="token-balance-value" class="font-semibold tabular-nums text-slate-900">{{ number_format($tokenBalance ?? 0, 0, ',', '.') }}</strong>
+                                </span>
+                            @endif
+                            <a href="{{ route('tokens.purchase') }}"
+                               class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-500/25 transition hover:from-indigo-500 hover:to-violet-500 hover:shadow-lg hover:shadow-indigo-500/30 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                                <svg class="h-4 w-4 shrink-0 opacity-90" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />
+                                </svg>
+                                Comprar tokens
+                            </a>
+                        </div>
                     </div>
-                    
+
+                    @if($agent->isChatKitWorkflow())
+                    @php
+                        $ckLib = $documentLibrary ?? ['cvs' => [], 'jds' => [], 'defaults' => ['cv_document_id' => null, 'jd_document_id' => null]];
+                        $ckDefCv = $ckLib['defaults']['cv_document_id'] ?? null;
+                        $ckDefJd = $ckLib['defaults']['jd_document_id'] ?? null;
+                        $ckMaxCv = (int) ($ckLib['max_cv_body_chars'] ?? config('agent_documents.max_cv_body_chars', 60000));
+                        $ckMaxJd = (int) ($ckLib['max_jd_body_chars'] ?? config('agent_documents.max_jd_body_chars', 60000));
+                        $ckConsultTokens = (int) ($chatkitConsultationTokens ?? 0);
+                    @endphp
+                    @include('agents.partials.chatkit-workspace')
+                    @else
+                    <div id="cv-reuse-banner" class="hidden mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950"></div>
                     <!-- Interface de chat -->
                     <div class="border border-gray-300 rounded-lg">
                         <!-- Área de exibição do chat -->
@@ -38,7 +79,7 @@
 
                             @if(!$session->already_rated)
                                 <div class="flex left mr-4 mt-2">
-                                     <button onclick="showRatingModal({{ $session->id }}, '{{ $session->agent->name }}')"
+                                     <button onclick="showRatingModal({{ $session->id }}, @js($session->agent->name))"
                                             class="px-2 py-1 bg-yellow-500 text-white text-xs rounded hover:bg-yellow-600">
                                         Avaliar
                                     </button>
@@ -49,7 +90,8 @@
 
                         </div>
                     </div>
-                   
+                    @endif
+
                 </div>
             </div>
         </div>
@@ -58,11 +100,14 @@
 </x-app-layout>
 
 
+@unless($agent->isChatKitWorkflow())
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+@endunless
 
+@if(!$agent->isChatKitWorkflow())
 <script>
-   
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM carregado');
     
@@ -87,7 +132,65 @@ document.addEventListener('DOMContentLoaded', function() {
     const userMessageInput = document.getElementById('userMessage');
     const dynamicInputsContainer = document.getElementById('dynamic-inputs');
 
-    
+    async function clearSavedCvProfile() {
+        if (!confirm('Remover o CV guardado para este agente? Na próxima conversa voltará a pedir o CV.')) {
+            return;
+        }
+        const res = await fetch('{{ route('chat.savedCv.destroy') }}?agent_id=' + encodeURIComponent(agentId), {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json',
+            },
+        });
+        const data = await res.json().catch(function () { return {}; });
+        if (res.ok) {
+            if (window.chatApp) {
+                window.chatApp.showSuccessMessage(data.message || 'CV removido.');
+            }
+            location.reload();
+        } else if (window.chatApp) {
+            window.chatApp.showErrorMessage(data.message || 'Não foi possível remover o CV guardado.');
+        }
+    }
+
+    function promptSaveCvAfterUpload() {
+        const wrap = document.createElement('div');
+        wrap.className = 'border border-green-200 bg-green-50 p-3 my-2 rounded text-sm text-gray-800';
+        wrap.innerHTML = '<p class="mb-2">Quer <strong>guardar este CV</strong> no sistema? Nas próximas conversas com este agente só precisará enviar a <strong>nova vaga (JD)</strong>.</p>' +
+            '<button type="button" class="btn-save-cv-yes mr-2 bg-green-600 text-white px-3 py-1 rounded text-sm">Sim, guardar</button>' +
+            '<button type="button" class="btn-save-cv-no bg-gray-200 px-3 py-1 rounded text-sm">Não</button>';
+        chatBox.appendChild(wrap);
+        chatBox.scrollTop = chatBox.scrollHeight;
+
+        wrap.querySelector('.btn-save-cv-no').addEventListener('click', function () {
+            wrap.remove();
+        });
+        wrap.querySelector('.btn-save-cv-yes').addEventListener('click', async function () {
+            try {
+                const res = await fetch('{{ route('chat.savedCv.store') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({ agent_id: agentId, session_id: chatSessionId }),
+                });
+                const data = await res.json().catch(function () { return {}; });
+                if (res.ok && window.chatApp) {
+                    window.chatApp.showSuccessMessage(data.message || 'CV guardado.');
+                } else if (window.chatApp) {
+                    window.chatApp.showErrorMessage(data.message || 'Não foi possível guardar o CV.');
+                }
+            } catch (e) {
+                if (window.chatApp) {
+                    window.chatApp.showErrorMessage('Erro ao guardar o CV.');
+                }
+            }
+            wrap.remove();
+        });
+    }
 
     // Inicialização
     initChat();
@@ -121,7 +224,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 } 
 
                 console.log('Sessão ativa encontrada:', chatSessionId, 'Passo atual:', currentStepIndex);
-                
+
+                const banner = document.getElementById('cv-reuse-banner');
+                if (banner) {
+                    if (data.reused_saved_cv) {
+                        banner.classList.remove('hidden');
+                        banner.innerHTML = '<p class="mb-2">Usamos o <strong>CV predefinido</strong> da sua biblioteca para este agente. Envie apenas a <strong>nova vaga (JD)</strong> abaixo.</p>' +
+                            '<button type="button" class="text-sm text-red-700 underline" id="btn-clear-saved-cv">Apagar todos os CVs da biblioteca e voltar a pedir CV na próxima vez</button>';
+                        const clearBtn = document.getElementById('btn-clear-saved-cv');
+                        if (clearBtn) {
+                            clearBtn.addEventListener('click', clearSavedCvProfile);
+                        }
+                    } else {
+                        banner.classList.add('hidden');
+                        banner.innerHTML = '';
+                    }
+                }
+
                 // Se há um input requerido neste passo, renderiza-o
                 console.log('Current_Step: ', data.current_step);
                 if (data.upload_file) {
@@ -363,7 +482,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Session ID atualizado:', chatSessionId);
             }
 
-            currentStepIndex
+            if (data.next_required_input && data.next_required_input !== 'continue') {
+                if (data.next_upload_file) {
+                    renderDynamicInputs(data.next_required_input);
+                }
+            }
+
+            if (data.offer_save_cv) {
+                promptSaveCvAfterUpload();
+            }
 
             // Limpa o campo de mensagem
             userMessageInput.value = '';
@@ -444,12 +571,16 @@ document.addEventListener('DOMContentLoaded', function() {
             body: formData
         })
         .then(async response => {
+            const data = await response.json().catch(() => ({}));
             if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Erro da API:', errorText);
-                throw new Error('Erro na resposta do servidor');
+                if (response.status === 402 && data.error === 'insufficient_tokens') {
+                    const msg = data.message || 'Tokens insuficientes.';
+                    throw new Error('TOKENS:' + msg);
+                }
+                console.error('Erro da API:', data);
+                throw new Error(data.message || 'Erro na resposta do servidor');
             }
-            return response.json();
+            return data;
         })
         .then(data => {
             // Remove o indicador de carregamento
@@ -493,6 +624,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Session ID atualizado:', chatSessionId);
             }
 
+            if (typeof data.token_balance === 'number') {
+                const el = document.getElementById('token-balance-value');
+                if (el) el.textContent = data.token_balance.toLocaleString('pt-BR');
+            }
 
             // Limpa o campo de mensagem
             userMessageInput.value = '';
@@ -506,8 +641,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 chatBox.removeChild(loadingIndicator);
             }
 
-            // Exibe mensagem de erro
-            chatBox.innerHTML += `<div class="text-red-600 p-2">❌ Erro ao enviar mensagem. Por favor, tente novamente.</div>`;
+            let errMsg = '❌ Erro ao enviar mensagem. Por favor, tente novamente.';
+            if (error.message && error.message.startsWith('TOKENS:')) {
+                errMsg = '⚠️ ' + error.message.replace(/^TOKENS:/, '');
+            }
+            chatBox.innerHTML += `<div class="text-red-600 p-2">${errMsg}</div>`;
             chatBox.scrollTop = chatBox.scrollHeight;
             
             isSending = false;
@@ -541,171 +679,9 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
 });
-
-// Função para mostrar o modal de avaliação (global)
-window.showRatingModal = function(chatSessionId, agentName) {
-    console.log('Abrindo modal de avaliação:', chatSessionId, agentName);
-    
-    fetch(`/ratings/quick-modal/${chatSessionId}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Erro na resposta do servidor');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.html) {
-                document.getElementById('modal-container').innerHTML = data.html;
-                
-                // Aguarda um momento para o HTML ser renderizado
-                setTimeout(() => {
-                    const modal = document.getElementById('ratingModal');
-                    if (modal) {
-                        modal.style.display = 'block';
-                        initializeRatingModal();
-                    } else {
-                        console.error('Modal não encontrado após inserção do HTML');
-                    }
-                }, 100);
-            } else {
-                console.error('Resposta inválida:', data);
-                window.chatApp.showErrorMessage('Erro ao carregar formulário de avaliação');
-            }
-        })
-        .catch(error => {
-            console.error('Erro ao carregar modal:', error);
-            window.chatApp.showErrorMessage('Erro ao carregar formulário de avaliação');
-        });
-};
-
-// Função para inicializar o modal de avaliação
-function initializeRatingModal() {
-    const modal = document.getElementById('ratingModal');
-    const form = document.getElementById('quickRatingForm');
-    
-    if (!modal || !form) {
-        console.error('Elementos do modal não encontrados');
-        return;
-    }
-
-    // Inicializar estrelas
-    initializeQuickRatingStars();
-    
-    // Event listener para o formulário
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        const formData = new FormData(this);
-        const submitButton = this.querySelector('button[type="submit"]');
-        const originalText = submitButton.textContent;
-        
-        // Desabilitar botão durante envio
-        submitButton.disabled = true;
-        submitButton.textContent = 'Enviando...';
-        
-        fetch('/ratings/quick-store', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                window.chatApp.showSuccessMessage(data.message);
-                closeRatingModal();
-                
-                // Atualizar o botão de avaliação se estiver na página
-                const evaluateButton = document.querySelector('button[onclick*="showRatingModal"]');
-                if (evaluateButton) {
-                    evaluateButton.style.display = 'none';
-                    const parent = evaluateButton.parentElement;
-                    parent.innerHTML = '<span class="text-sm text-green-600">✅ Avaliado</span>';
-                }
-            } else {
-                window.chatApp.showErrorMessage(data.message || 'Erro ao salvar avaliação');
-            }
-        })
-        .catch(error => {
-            console.error('Erro:', error);
-            window.chatApp.showErrorMessage('Erro ao salvar avaliação');
-        })
-        .finally(() => {
-            // Reabilitar botão
-            submitButton.disabled = false;
-            submitButton.textContent = originalText;
-        });
-    });
-
-    // Fechar modal ao clicar fora dele
-    modal.addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeRatingModal();
-        }
-    });
-}
-
-// Função para fechar o modal
-window.closeRatingModal = function() {
-    const modal = document.getElementById('ratingModal');
-    if (modal) {
-        modal.style.display = 'none';
-    }
-    // Limpar o container do modal
-    document.getElementById('modal-container').innerHTML = '';
-};
-
-// Função para inicializar as estrelas
-function initializeQuickRatingStars() {
-    const stars = document.querySelectorAll('.quick-star-button');
-    const ratingInput = document.getElementById('quickRatingValue');
-    
-    if (!stars.length || !ratingInput) {
-        console.error('Elementos das estrelas não encontrados');
-        return;
-    }
-    
-    stars.forEach(star => {
-        star.addEventListener('click', (e) => {
-            e.preventDefault();
-            const value = parseInt(star.dataset.value);
-            ratingInput.value = value;
-            
-            // Atualizar visualização das estrelas
-            updateStarDisplay(stars, value);
-        });
-        
-        star.addEventListener('mouseover', () => {
-            const value = parseInt(star.dataset.value);
-            updateStarDisplay(stars, value, true);
-        });
-        
-        star.addEventListener('mouseout', () => {
-            const currentRating = parseInt(ratingInput.value);
-            updateStarDisplay(stars, currentRating);
-        });
-    });
-}
-
-// Função para atualizar a visualização das estrelas
-function updateStarDisplay(stars, rating, isHover = false) {
-    stars.forEach((star, index) => {
-        const svg = star.querySelector('svg');
-        if (svg) {
-            svg.classList.remove('text-yellow-500', 'text-yellow-400', 'text-gray-300');
-            
-            if (index < rating) {
-                if (isHover) {
-                    svg.classList.add('text-yellow-400');
-                } else {
-                    svg.classList.add('text-yellow-500');
-                }
-            } else {
-                svg.classList.add('text-gray-300');
-            }
-        }
-    });
-}
-
 </script>
+@else
+@include('agents.partials.chatkit-main-scripts')
+@endif
+
+@include('agents.partials.chatkit-rating-scripts')

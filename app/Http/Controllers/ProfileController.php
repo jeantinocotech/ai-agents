@@ -7,8 +7,8 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Redirect;
-use Illuminate\View\View;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
@@ -29,11 +29,15 @@ class ProfileController extends Controller
     {
         $user = $request->user();
         $data = $request->validated();
+        if (array_key_exists('linkedin_url', $data)) {
+            $li = trim((string) $data['linkedin_url']);
+            $data['linkedin_url'] = $li !== '' ? $li : null;
+        }
 
         // Adicione os campos extras
         $extra = $request->only([
-                'phone', 'document', 'address', 'address_number', 'complement',
-                'province', 'postal_code', 'city', 'state'
+            'phone', 'document', 'address', 'address_number', 'complement',
+            'province', 'postal_code', 'city', 'state',
         ]);
         $data = array_merge($data, $extra);
 
@@ -52,7 +56,7 @@ class ProfileController extends Controller
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;
         }
-    
+
         $user->save();
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');

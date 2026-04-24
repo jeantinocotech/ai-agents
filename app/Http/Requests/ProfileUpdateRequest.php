@@ -17,6 +17,7 @@ class ProfileUpdateRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
+            'linkedin_url' => ['nullable', 'string', 'max:512'],
             'email' => [
                 'required',
                 'string',

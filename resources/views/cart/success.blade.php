@@ -23,9 +23,9 @@
                         <div class="text-left">
                             <h3 class="text-green-900 font-medium mb-2">Próximos passos:</h3>
                             <ul class="text-green-800 text-sm space-y-1">
-                                <li>• Seu acesso será liberado automaticamente em alguns minutos</li>
-                                <li>• Você receberá um email de confirmação da Hotmart</li>
-                                <li>• Os agentes comprados aparecerão no seu dashboard</li>
+                                <li>• Se o pagamento foi confirmado, seu saldo de tokens será atualizado em instantes</li>
+                                <li>• Você pode receber um e-mail do provedor de pagamento (Asaas)</li>
+                                <li>• Use seus tokens nos agentes a partir do dashboard ou da página inicial</li>
                                 <li>• Em caso de dúvidas, entre em contato com nosso suporte</li>
                             </ul>
                         </div>

@@ -5,15 +5,16 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Agent;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
-
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class AgentController extends Controller
 {
     public function index()
     {
         $agents = Agent::all();
+
         return view('admin.agents.index', compact('agents'));
     }
 
@@ -27,7 +28,7 @@ class AgentController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'required|string',
-            'organization' => 'required|string',
+            'organization' => 'nullable|string',
             'project_id' => 'nullable|string',
             'system_prompt' => 'nullable|string',
             'price' => 'nullable|numeric|min:0',
@@ -36,9 +37,25 @@ class AgentController extends Controller
             'api_key' => 'nullable|string',
             'assistant_id' => 'nullable|string',
             'model_type' => 'required|string',
+            'integration' => ['required', 'string', Rule::in([Agent::INTEGRATION_OPENAI, Agent::INTEGRATION_CHATKIT_WORKFLOW])],
+            'chatkit_workflow_id' => 'nullable|string|max:255',
+            'chatkit_workflow_version' => 'nullable|string|max:32',
         ]);
 
+        if (($validated['integration'] ?? '') === Agent::INTEGRATION_CHATKIT_WORKFLOW) {
+            $request->validate([
+                'chatkit_workflow_id' => 'required|string|max:255',
+            ]);
+        }
+
         $imagePath = $request->file('image')->store('agents/images', 'public');
+
+        $chatkitWorkflowId = $validated['integration'] === Agent::INTEGRATION_CHATKIT_WORKFLOW
+            ? ($validated['chatkit_workflow_id'] ?? null)
+            : null;
+        $chatkitWorkflowVersion = $validated['integration'] === Agent::INTEGRATION_CHATKIT_WORKFLOW
+            ? ($validated['chatkit_workflow_version'] ?? '1')
+            : null;
 
         Agent::create([
             'name' => $validated['name'],
@@ -52,12 +69,14 @@ class AgentController extends Controller
             'api_key' => $validated['api_key'],
             'assistant_id' => $validated['assistant_id'],
             'model_type' => $validated['model_type'],
+            'integration' => $validated['integration'],
+            'chatkit_workflow_id' => $chatkitWorkflowId,
+            'chatkit_workflow_version' => $chatkitWorkflowVersion,
         ]);
 
         return redirect()->route('admin.agents.index')
             ->with('success', 'Agente criado com sucesso!');
     }
-
 
     public function edit(Agent $agent)
     {
@@ -73,7 +92,7 @@ class AgentController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'required|string',
-            'organization' => 'required|string',
+            'organization' => 'nullable|string',
             'project_id' => 'nullable|string',
             'system_prompt' => 'nullable|string',
             'price_formatted' => 'nullable|numeric|min:0', // Use o campo hidden formatado
@@ -83,7 +102,16 @@ class AgentController extends Controller
             'assistant_id' => 'nullable|string',
             'model_type' => 'required|string',
             'is_active' => 'nullable|boolean',
+            'integration' => ['required', 'string', Rule::in([Agent::INTEGRATION_OPENAI, Agent::INTEGRATION_CHATKIT_WORKFLOW])],
+            'chatkit_workflow_id' => 'nullable|string|max:255',
+            'chatkit_workflow_version' => 'nullable|string|max:32',
         ]);
+
+        if (($validated['integration'] ?? '') === Agent::INTEGRATION_CHATKIT_WORKFLOW) {
+            $request->validate([
+                'chatkit_workflow_id' => 'required|string|max:255',
+            ]);
+        }
 
         $data = [
             'name' => $validated['name'],
@@ -97,6 +125,9 @@ class AgentController extends Controller
             'assistant_id' => $validated['assistant_id'],
             'model_type' => $validated['model_type'],
             'is_active' => $request->input('is_active', 0),
+            'integration' => $validated['integration'],
+            'chatkit_workflow_id' => $validated['chatkit_workflow_id'] ?? null,
+            'chatkit_workflow_version' => $validated['chatkit_workflow_version'] ?? '1',
         ];
 
         if ($request->hasFile('image')) {
@@ -106,8 +137,15 @@ class AgentController extends Controller
             }
             $data['image_path'] = $request->file('image')->store('agents/images', 'public');
 
-            Log::info('Recebendo nova imagem do agente'. $data['image_path'] );
+            Log::info('Recebendo nova imagem do agente'.$data['image_path']);
 
+        }
+
+        if ($data['integration'] === Agent::INTEGRATION_OPENAI) {
+            $data['chatkit_workflow_id'] = null;
+            $data['chatkit_workflow_version'] = null;
+        } elseif ($data['integration'] === Agent::INTEGRATION_CHATKIT_WORKFLOW) {
+            $data['chatkit_workflow_version'] = trim((string) ($data['chatkit_workflow_version'] ?? '')) ?: '1';
         }
 
         $agent->update($data);
@@ -120,23 +158,23 @@ class AgentController extends Controller
     {
         $agent = Agent::findOrFail($id);
 
-         // Verifica se tem compras
+        // Verifica se tem compras
         if ($agent->purchases()->exists()) {
             return redirect()->route('admin.agents.index')
                 ->with('error', 'Este agente já foi utilizado e não pode ser excluído. Você pode apenas desativá-lo.');
         }
-        
+
         // Remover arquivos
         if ($agent->image_path) {
             Storage::disk('public')->delete($agent->image_path);
         }
 
         $agent->delete();
-        
+
         return redirect()->route('admin.agents.index')
             ->with('success', 'Agente removido com sucesso!');
     }
-        
+
     public function disable($id)
     {
         $agent = Agent::findOrFail($id);
@@ -144,5 +182,4 @@ class AgentController extends Controller
 
         return back()->with('success', 'Agente desativado.');
     }
-
 }

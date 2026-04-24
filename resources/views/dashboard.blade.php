@@ -10,7 +10,13 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
-                    <h2 class="text-2xl font-bold mb-6">Meus Assistentes de IA</h2>
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                        <h2 class="text-2xl font-bold">Assistentes de IA</h2>
+                        <div class="text-gray-800">
+                            Saldo: <strong class="text-green-700">{{ number_format($tokenBalance, 0, ',', '.') }}</strong> tokens
+                            <a href="{{ route('tokens.purchase') }}" class="ml-3 text-blue-600 hover:underline text-sm">Comprar tokens</a>
+                        </div>
+                    </div>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                         @foreach ($agents as $agent)

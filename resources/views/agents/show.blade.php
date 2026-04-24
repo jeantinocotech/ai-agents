@@ -42,33 +42,23 @@
                                 <p class="text-gray-700">{{ $agent->model_type }}</p>
                             </div>
                             
-                            <div class="mt-6">
+                            @auth
+                                <div class="mt-4 p-4 bg-gray-50 rounded-lg text-gray-800">
+                                    <p class="mb-2">Saldo de tokens: <strong>{{ number_format(auth()->user()->token_balance, 0, ',', '.') }}</strong></p>
+                                    <a href="{{ route('tokens.purchase') }}" class="text-blue-600 hover:underline text-sm">Comprar mais tokens</a>
+                                </div>
+                            @endauth
+
+                            <div class="mt-6 flex flex-wrap items-center gap-3">
                                 <a href="{{ route('agents.chat', $agent->id) }}" 
                                    class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg inline-block">
                                     Iniciar conversa
                                 </a>
+                                <a href="{{ route('agents.documents.index', $agent) }}"
+                                   class="text-sm text-gray-700 underline hover:text-gray-900">
+                                    Biblioteca de CVs e vagas
+                                </a>
                             </div>
-                            @if($purchase && !$purchase->paused)
-                                <form method="POST" action="{{ route('purchase.pause', $purchase->id) }}"
-                                    onsubmit="return confirm('Deseja realmente pausar sua assinatura deste agente?')">
-                                    @csrf
-                                    <button type="submit" class="mt-4 px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600">
-                                        ⏸️ Pausar Assinatura
-                                    </button>
-                                </form>
-                            @elseif($purchase && $purchase->paused)
-                                <div class="mt-4 text-yellow-700 font-medium">
-                                    ⏸️ Assinatura pausada em {{ $purchase->paused_at->format('d/m/Y') }}
-                                </div>
-                                <form method="POST" action="{{ route('purchase.resume', $purchase->id) }}" 
-                                    onsubmit="return confirm('Deseja retomar esta assinatura?')">
-                                    @csrf
-                                    <button type="submit" class="mt-2 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">
-                                        ▶️ Retomar Assinatura
-                                    </button>
-                                </form>
-                            @endif
-
 
                         </div>
                     </div>

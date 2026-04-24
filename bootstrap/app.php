@@ -13,7 +13,9 @@ return Application::configure(basePath: dirname(__DIR__))
 
     )
     ->withMiddleware(function (Middleware $middleware) {
-        
+        $middleware->alias([
+            'chatkit.integration' => \App\Http\Middleware\VerifyChatKitIntegrationSecret::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

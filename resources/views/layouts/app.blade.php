@@ -24,6 +24,12 @@
         <div class="min-h-screen bg-gray-100">
             @include('layouts.navigation')
 
+            @auth
+                @if (! empty($careerTrailContext))
+                    <x-career-trail-banner :context="$careerTrailContext" />
+                @endif
+            @endauth
+
             <!-- Page Heading -->
             @isset($header)
                 <header class="bg-white shadow">

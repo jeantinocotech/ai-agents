@@ -1,27 +1,31 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AgentController;
-use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\CartController;
-use App\Http\Controllers\AgentsPublicController;
-use App\Http\Controllers\Api\ChatController;
-use App\Http\Controllers\Api\ChatController as ApiChatController;
-use App\Http\Controllers\Admin\AgentController as AdminAgentController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\AgentController as AdminAgentController;
+use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Admin\TestimonialAdminController;
+use App\Http\Controllers\AgentController;
+use App\Http\Controllers\AgentDocumentsController;
+use App\Http\Controllers\AgentsPublicController;
 use App\Http\Controllers\AgentStepController;
-use App\Http\Middleware\AdminMiddleware;
+use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\CareerTrailController;
+use App\Http\Controllers\CareerTrailCvController;
+use App\Http\Controllers\CartController;
+use App\Http\Controllers\ChatKitSessionController;
 use App\Http\Controllers\CvAnalysisController;
-use App\Http\Controllers\WebCvAnalysisController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\PrivacyController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RatingController;
 use App\Http\Controllers\TestimonialController;
-use App\Http\Controllers\Admin\TestimonialAdminController;
-use App\Http\Controllers\PrivacyController;
+use App\Http\Controllers\TokenPackController;
+use App\Http\Controllers\WebCvAnalysisController;
+use App\Http\Middleware\AdminMiddleware;
+use Illuminate\Support\Facades\Route;
 
-
-//Testimonials
+// Testimonials
 Route::get('/depoimento', [TestimonialController::class, 'create'])->name('testimonials.create');
 Route::post('/depoimento', [TestimonialController::class, 'store'])->name('testimonials.store');
 Route::get('/meus-depoimentos', [TestimonialController::class, 'mine'])->name('testimonials.mine')->middleware('auth');
@@ -41,43 +45,85 @@ Route::get('/api/agents/{agent}/rating-stats', [RatingController::class, 'getAge
 Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    Route::get('/trilha', [CareerTrailController::class, 'index'])->name('career-trail.index');
+    Route::get('/trilha/cv', [CareerTrailCvController::class, 'show'])->name('career-trail.cv');
+    Route::post('/trilha/cv', [CareerTrailCvController::class, 'store'])->name('career-trail.cv.store');
+    Route::delete('/trilha/cv', [CareerTrailCvController::class, 'destroy'])->name('career-trail.cv.destroy');
+    Route::post('/trilha/cv/sync/{agent}', [CareerTrailCvController::class, 'syncToAgent'])->name('career-trail.cv.sync');
+    Route::post('/trilha/avancar', [CareerTrailController::class, 'advance'])->name('career-trail.advance');
+    Route::post('/trilha/voltar', [CareerTrailController::class, 'back'])->name('career-trail.back');
+
     Route::get('/agents/{agent}', [AgentController::class, 'show'])->name('agents.show');
     Route::get('/agents/{agent}/chat', [AgentController::class, 'chat'])->name('agents.chat');
+    Route::get('/agents/{agent}/documentos', [AgentDocumentsController::class, 'index'])
+        ->name('agents.documents.index');
+    Route::get('/agents/{agent}/documentos/{document}/conteudo', [AgentDocumentsController::class, 'content'])
+        ->name('agents.documents.content');
+    Route::get('/agents/{agent}/cv-perfil/{userCv}/conteudo', [AgentDocumentsController::class, 'profileCvContent'])
+        ->name('agents.documents.profile-cv-content');
+    Route::post('/agents/{agent}/documentos', [AgentDocumentsController::class, 'store'])
+        ->name('agents.documents.store');
+    Route::put('/agents/{agent}/documentos/{document}', [AgentDocumentsController::class, 'update'])
+        ->name('agents.documents.update');
+    Route::delete('/agents/{agent}/documentos/{document}', [AgentDocumentsController::class, 'destroy'])
+        ->name('agents.documents.destroy');
+    Route::post('/agents/{agent}/documentos/predefinidos', [AgentDocumentsController::class, 'updateDefaults'])
+        ->name('agents.documents.defaults');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-     // Formulário de avaliação
-     Route::get('/ratings/form/{chatSession}', [RatingController::class, 'showRatingForm'])
-     ->name('ratings.form');
- 
+    // Formulário de avaliação
+    Route::get('/ratings/form/{chatSession}', [RatingController::class, 'showRatingForm'])
+        ->name('ratings.form');
+
     // Salvar avaliação
     Route::post('/ratings', [RatingController::class, 'store'])
         ->name('ratings.store');
-    
+
     // Atualizar avaliação
     Route::put('/ratings/{rating}', [RatingController::class, 'update'])
         ->name('ratings.update');
-    
+
     // Remover avaliação
     Route::delete('/ratings/{rating}', [RatingController::class, 'destroy'])
         ->name('ratings.destroy');
-    
+
     // Minhas avaliações
     Route::get('/my-ratings', [RatingController::class, 'myRatings'])
         ->name('ratings.my-ratings');
-    
+
     // Solicitar avaliação após chat
     Route::get('/request-rating/{chatSession}', [RatingController::class, 'requestRating'])
         ->name('ratings.request');
-    
+
     // AJAX Routes
     Route::get('/ratings/quick-modal/{chatSession}', [RatingController::class, 'quickRatingModal'])
         ->name('ratings.quick-modal');
-    
+
     Route::post('/ratings/quick-store', [RatingController::class, 'quickStore'])
         ->name('ratings.quick-store');
+
+    Route::get('/tokens/comprar', [TokenPackController::class, 'show'])->name('tokens.purchase');
+    Route::post('/tokens/comprar/processar', [TokenPackController::class, 'process'])->name('tokens.purchase.process');
+    Route::post('/tokens/pagamento/status', [TokenPackController::class, 'checkPaymentStatus'])->name('tokens.payment.status');
+
+    Route::post('/chat/chatkit/session', [ChatKitSessionController::class, 'store'])
+        ->middleware('throttle:40,1')
+        ->name('chat.chatkit.session');
+
+    Route::post('/chat/chatkit/debit-consultation', [ChatKitSessionController::class, 'debitConsultation'])
+        ->middleware('throttle:30,1')
+        ->name('chat.chatkit.debit-consultation');
+
+    Route::post('/chat/send', [AgentController::class, 'sendChat'])->name('chat.send');
+    Route::post('/chat/sendfile', [AgentController::class, 'sendFile'])->name('chat.sendfile');
+    Route::post('/chat/saved-cv', [AgentController::class, 'storeSavedCv'])->name('chat.savedCv.store');
+    Route::delete('/chat/saved-cv', [AgentController::class, 'destroySavedCv'])->name('chat.savedCv.destroy');
+    Route::post('/chat/{agentId}/finalize', [AgentController::class, 'finalizeSession'])->name('chat.finalize');
+    Route::get('/agents/{agent}/current-step', [AgentController::class, 'getCurrentStep'])->name('agent.currentStep');
+    Route::get('/agents/{id}/instructions', [AgentController::class, 'getAgentInstructions'])->name('agent.AgentInstructions');
 
 });
 
@@ -93,26 +139,14 @@ Route::prefix('cart')->name('cart.')->group(function () {
     Route::get('/success', [CartController::class, 'checkoutSuccess'])->name('success');
 });
 
-
 // Checkout (requer login)
 Route::middleware(['auth'])->group(function () {
     Route::post('/cart/checkout/process', [CartController::class, 'processCheckout'])->name('cart.processCheckout');
     Route::post('/cart/check-payment-status', [CartController::class, 'checkPaymentStatus'])->name('cart.checkPaymentStatus');
-    //Pagamento Hotmart
 });
 
 Route::get('/agentes', [AgentsPublicController::class, 'index'])->name('agents.index');
 Route::post('/agentes/{id}/adicionar-carrinho', [AgentsPublicController::class, 'addToCart'])->name('agents.addToCart');
-
-
-// Rotas Chat
-Route::post('/chat/send', [AgentController::class, 'sendChat'])->name('chat.send');
-Route::post('/chat/sendfile', [AgentController::class, 'sendFile'])->name('chat.sendfile');
-//Route::get('/chat/{agent}/finalize', [AgentController::class, 'finalizeSession'])->name('chat.finalize');
-Route::post('/chat/{agentId}/finalize', [AgentController::class, 'finalizeSession'])->name('chat.finalize');
-Route::get('/agents/{agent}/current-step', [AgentController::class, 'getCurrentStep'])->name('agent.currentStep');
-Route::get('/agents/{id}/instructions', [AgentController::class, 'getAgentInstructions'])->name('agent.AgentInstructions');
-
 
 Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
 
@@ -135,52 +169,50 @@ Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admi
         Route::delete('/{step}', [AgentStepController::class, 'destroy'])->name('destroy');
     });
 
-  
     Route::get('admin/testimonials', [TestimonialAdminController::class, 'index'])->name('testimonials.index');
     Route::patch('testimonials/{testimonial}/approve', [TestimonialAdminController::class, 'approve'])->name('testimonials.approve');
     Route::patch('testimonials/{testimonial}/reject', [TestimonialAdminController::class, 'reject'])->name('testimonials.reject');
     Route::patch('testimonials/{testimonial}/feature', [TestimonialAdminController::class, 'feature'])->name('testimonials.feature');
 
-
+    Route::get('/settings/tokens', [SettingsController::class, 'editTokens'])->name('settings.tokens.edit');
+    Route::put('/settings/tokens', [SettingsController::class, 'updateTokens'])->name('settings.tokens.update');
 
 });
 
+// Anthropic API
+Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
+Route::post('/analyze-cv', [CvAnalysisController::class, 'analyze']);
+Route::post('/analyze-cv-files', [CvAnalysisController::class, 'analyzeFiles']);
+Route::get('/cv-analysis', [WebCvAnalysisController::class, 'showForm']);
+Route::post('/cv-analysis', [WebCvAnalysisController::class, 'processForm']);
 
-    // Anthropic API
-    Route::get('/chat', [ChatController::class, 'index'])->name('chat.index');
-    Route::post('/analyze-cv', [CvAnalysisController::class, 'analyze']);
-    Route::post('/analyze-cv-files', [CvAnalysisController::class, 'analyzeFiles']);
-    Route::get('/cv-analysis', [WebCvAnalysisController::class, 'showForm']);
-    Route::post('/cv-analysis', [WebCvAnalysisController::class, 'processForm']);
-
-    // Pausar compra
-    Route::middleware(['auth'])->group(function () {
-        Route::post('/purchase/pause/{purchase}', [PurchaseController::class, 'pause'])
+// Pausar compra
+Route::middleware(['auth'])->group(function () {
+    Route::post('/purchase/pause/{purchase}', [PurchaseController::class, 'pause'])
         ->middleware('auth')
         ->name('purchase.pause');
-        
-        Route::post('/purchase/resume/{purchase}', [PurchaseController::class, 'resume'])
+
+    Route::post('/purchase/resume/{purchase}', [PurchaseController::class, 'resume'])
         ->middleware('auth')
         ->name('purchase.resume');
-    });
+});
 
-    // Politica de privacidade
-    Route::view('/privacidade', 'privacidade')->name('privacidade');
-    Route::post('/aceite-privacidade', [PrivacyController::class, 'accept'])->name('privacy.accept');
-    Route::post('/privacy/sync', [PrivacyController::class, 'syncConsent'])
+// Politica de privacidade
+Route::view('/privacidade', 'privacidade')->name('privacidade');
+Route::post('/aceite-privacidade', [PrivacyController::class, 'accept'])->name('privacy.accept');
+Route::post('/privacy/sync', [PrivacyController::class, 'syncConsent'])
     ->name('privacy.sync')
     ->middleware('auth');
 
-    // Termos de uso
-    Route::get('/termos-uso', function () {
-        return view('termos-uso');
-    })->name('termos-uso');
+// Termos de uso
+Route::get('/termos-uso', function () {
+    return view('termos-uso');
+})->name('termos-uso');
 
-    Route::get('/clear-log', function () {
+Route::get('/clear-log', function () {
     file_put_contents(storage_path('logs/laravel.log'), '');
+
     return 'Log limpo com sucesso!';
-    });
+});
 
 require __DIR__.'/auth.php';
-
-

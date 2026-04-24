@@ -2,24 +2,23 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\Purchase;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
-use App\Models\User;
-
+use App\Models\Agent;
 
 class DashboardController extends Controller
 {
     public function index()
     {
         $user = auth()->user();
-        $agents = Purchase::where('user_id', $user->id)
-        ->where('active', true) 
-        ->with('agent')
-        ->get()
-        ->pluck('agent'); // Retorna só os agentes
+        $user->refresh();
 
-    return view('dashboard', ['agents' => $agents]);
+        $agents = Agent::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        return view('dashboard', [
+            'agents' => $agents,
+            'tokenBalance' => (int) $user->token_balance,
+        ]);
     }
 }
