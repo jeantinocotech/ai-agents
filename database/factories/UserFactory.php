@@ -29,6 +29,10 @@ class UserFactory extends Factory
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
+            'privacy_accepted_at' => now(),
+            'privacy_policy_accepted_version' => config('legal.privacy_policy_version'),
+            'terms_accepted_at' => now(),
+            'terms_accepted_version' => config('legal.terms_version'),
         ];
     }
 

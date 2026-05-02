@@ -29,29 +29,25 @@ class ProfileController extends Controller
     {
         $user = $request->user();
         $data = $request->validated();
+
         if (array_key_exists('linkedin_url', $data)) {
             $li = trim((string) $data['linkedin_url']);
             $data['linkedin_url'] = $li !== '' ? $li : null;
         }
 
-        // Adicione os campos extras
-        $extra = $request->only([
-            'phone', 'document', 'address', 'address_number', 'complement',
-            'province', 'postal_code', 'city', 'state',
-        ]);
-        $data = array_merge($data, $extra);
-
-        // Upload da imagem
         if ($request->hasFile('profile_photo')) {
-            // Remove a foto antiga, se quiser:
             if ($user->profile_photo) {
                 Storage::disk('public')->delete($user->profile_photo);
             }
-            // Salva nova foto
             $data['profile_photo'] = $request->file('profile_photo')->store('profile_photos', 'public');
+        } else {
+            unset($data['profile_photo']);
         }
 
-        $user->fill($data);
+        $user->fill(collect($data)->only([
+            'name', 'linkedin_url', 'email', 'phone', 'cpf',
+            'cep', 'address', 'number', 'city', 'state', 'profile_photo',
+        ])->all());
 
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;

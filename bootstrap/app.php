@@ -16,6 +16,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'chatkit.integration' => \App\Http\Middleware\VerifyChatKitIntegrationSecret::class,
         ]);
+
+        $middleware->appendToGroup('web', [
+            \App\Http\Middleware\EnsureAcceptedLegalDocuments::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

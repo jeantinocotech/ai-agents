@@ -76,11 +76,26 @@
             @endif
         </div>
 
+        <div>
+            <x-input-label for="phone" value="Telefone (WhatsApp / contacto)" />
+            <x-text-input id="phone" name="phone" type="text" class="mt-1 block w-full"
+                :value="old('phone', $user->phone)" autocomplete="tel" />
+            <x-input-error class="mt-2" :messages="$errors->get('phone')" />
+            <p class="mt-0.5 text-xs text-gray-500">Útil para facturação e pagamentos.</p>
+        </div>
+
+        <div>
+            <x-input-label for="cpf" value="CPF ou CNPJ" />
+            <x-text-input id="cpf" name="cpf" type="text" class="mt-1 block w-full"
+                :value="old('cpf', $user->cpf)" autocomplete="off" maxlength="22" placeholder="Somente números ou máscara" />
+            <x-input-error class="mt-2" :messages="$errors->get('cpf')" />
+        </div>
+
         <!-- CEP -->
         <div>
             <x-input-label for="cep" :value="__('CEP')" />
             <x-text-input id="cep" name="cep" type="text" class="mt-1 block w-full"
-                :value="old('cep', $user->cep)" autocomplete="cep" maxlength="9" />
+                :value="old('cep', $user->cep)" autocomplete="postal-code" maxlength="15" placeholder="00000-000" />
             <x-input-error class="mt-2" :messages="$errors->get('cep')" />
         </div>
 
@@ -152,28 +167,27 @@
     });
 
     document.addEventListener("DOMContentLoaded", function() {
-        const cepInput = document.getElementById('postal_code');
-        const addressInput = document.getElementById('address');
-        const provinceInput = document.getElementById('province');
-        const cityInput = document.getElementById('city');
-        const stateInput = document.getElementById('state');
+        var cepInput = document.getElementById('cep');
+        var addressInput = document.getElementById('address');
+        var cityInput = document.getElementById('city');
+        var stateInput = document.getElementById('state');
 
-        cepInput.addEventListener('blur', function() {
-            let cep = cepInput.value.replace(/\D/g, '');
-
-            if (cep.length === 8) {
-                fetch(`https://viacep.com.br/ws/${cep}/json/`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (!data.erro) {
-                            addressInput.value = data.logradouro || '';
-                            provinceInput.value = data.bairro || '';
-                            cityInput.value = data.localidade || '';
-                            stateInput.value = data.uf || '';
-                        }
-                    });
-            }
-        });
+        if (cepInput && addressInput && cityInput && stateInput) {
+            cepInput.addEventListener('blur', function() {
+                var cep = cepInput.value.replace(/\D/g, '');
+                if (cep.length === 8) {
+                    fetch('https://viacep.com.br/ws/' + cep + '/json/')
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            if (!data.erro) {
+                                addressInput.value = data.logradouro || '';
+                                cityInput.value = data.localidade || '';
+                                stateInput.value = data.uf || '';
+                            }
+                        });
+                }
+            });
+        }
     });
 
 </script>

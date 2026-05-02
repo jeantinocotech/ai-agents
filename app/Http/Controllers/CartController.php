@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Agent;
 use App\Models\Purchase;
 use App\Models\PurchaseEvent;
+use App\Rules\ValidBrazilTaxId;
 use App\Services\AsaasService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -98,6 +99,12 @@ class CartController extends Controller
             return redirect()->route('cart.checkout.guest');
         }
 
+        if (! Auth::user()->hasVerifiedEmail()) {
+            return redirect()
+                ->route('verification.notice')
+                ->with('warning', 'Confirme o seu e-mail para concluir a compra.');
+        }
+
         $cart = session()->get('cart', []);
 
         if (empty($cart)) {
@@ -143,16 +150,22 @@ class CartController extends Controller
             return response()->json(['error' => 'Usuário não autenticado'], 401);
         }
 
+        abort_unless(Auth::user()->hasVerifiedEmail(), 403, 'Confirme o seu e-mail.');
+
+        $request->merge([
+            'state' => strtoupper((string) $request->input('state')),
+        ]);
+
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email',
             'phone' => 'required|string|max:20',
-            'document' => 'required|string|max:14',
-            'cep' => 'nullable|string|max:9',      // Novo campo
-            'address' => 'nullable|string|max:255', // Novo campo
-            'number' => 'nullable|string|max:10',   // Novo campo
-            'city' => 'nullable|string|max:60',     // Novo campo
-            'state' => 'nullable|string|max:2',     // Novo campo
+            'document' => ['required', 'string', new ValidBrazilTaxId],
+            'cep' => ['required', 'string', 'regex:/^\d{5}-?\d{3}$/'],
+            'address' => 'required|string|max:255',
+            'number' => 'required|string|max:10',
+            'city' => 'required|string|max:60',
+            'state' => ['required', 'string', 'size:2', 'regex:/^[A-Za-z]{2}$/'],
             'payment_method' => 'required|in:credit_card,pix,boleto',
             'is_subscription' => 'sometimes|boolean',
             // Campos específicos do cartão de crédito

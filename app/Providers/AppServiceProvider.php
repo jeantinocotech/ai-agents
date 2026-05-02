@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,6 +21,19 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Password::defaults(function (): Password {
+            /** Suite Pest: senha curta. Em desenvolvimento local use senhas fortes ou `PASSWORD_RELAX_RULES=true` no .env. */
+            if (app()->environment('testing')) {
+                return Password::min(8);
+            }
+
+            if (filter_var(env('PASSWORD_RELAX_RULES', false), FILTER_VALIDATE_BOOL)) {
+                return Password::min(8);
+            }
+
+            return Password::min(12)->mixedCase()->numbers()->symbols();
+        });
+
         View::composer('layouts.app', CareerTrailBannerComposer::class);
 
         if (app()->environment('production')) {

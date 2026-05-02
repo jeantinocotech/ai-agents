@@ -40,21 +40,26 @@
                         </div>
                         
                         <div>
-                            <label for="document" class="block text-sm font-medium text-gray-700 mb-1">CPF</label>
-                            <input type="text" id="document" name="document" required
+                            <label for="checkout-document-tax-id" class="block text-sm font-medium text-gray-700 mb-1">CPF ou CNPJ</label>
+                            <input type="text" id="checkout-document-tax-id" name="document" autocomplete="off"
+                                   inputmode="numeric" maxlength="18" required
                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                   placeholder="000.000.000-00">
+                                   placeholder="CPF ou CNPJ"
+                                   aria-describedby="checkout-document-tax-id-hint">
+                            <p id="checkout-document-tax-id-hint" class="mt-1 text-sm text-red-600 hidden" role="status"></p>
                         </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label for="cep" class="block text-sm font-medium text-gray-700 mb-1">CEP</label>
-                            <input type="text" id="cep" name="cep"
+                            <input type="text" id="cep" name="cep" required inputmode="numeric" maxlength="9"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="00000-000"
+                                placeholder="00000-000" autocomplete="postal-code"
                                 value="{{ old('cep', $user->cep ?? '') }}"
+                                aria-describedby="cart-cep-feedback"
                             >
+                            <p id="cart-cep-feedback" class="mt-1 text-sm hidden" role="status"></p>
                         </div>
                         <div>
                             <label for="address" class="block text-sm font-medium text-gray-700 mb-1">Endereço</label>
@@ -287,7 +292,54 @@
             const pixCode = document.getElementById('pix-code');
             const copyPixCode = document.getElementById('copy-pix-code');
             const paymentStatus = document.getElementById('payment-status');
-            
+            const docInput = document.getElementById('checkout-document-tax-id');
+            const docHint = document.getElementById('checkout-document-tax-id-hint');
+
+            function setCheckoutDocTaxHint(text) {
+                if (!docHint) return;
+                if (text) {
+                    docHint.textContent = text;
+                    docHint.classList.remove('hidden');
+                } else {
+                    docHint.textContent = '';
+                    docHint.classList.add('hidden');
+                }
+            }
+
+            function validateCheckoutDocumentTaxId(opts) {
+                const show = opts && opts.showHint;
+                if (!docInput || typeof window.BrazilTaxId === 'undefined') {
+                    return true;
+                }
+                const result = window.BrazilTaxId.validateBrazilTaxIdField(docInput.value);
+                if (result.ok) {
+                    docInput.classList.remove('border-red-500');
+                    setCheckoutDocTaxHint('');
+                    return true;
+                }
+                docInput.classList.add('border-red-500');
+                if (show) {
+                    setCheckoutDocTaxHint(result.message);
+                }
+                return false;
+            }
+
+            if (docInput) {
+                docInput.addEventListener('blur', function () {
+                    if (!docInput.value.trim()) {
+                        setCheckoutDocTaxHint('');
+                        docInput.classList.remove('border-red-500');
+                        return;
+                    }
+                    validateCheckoutDocumentTaxId({ showHint: true });
+                });
+                docInput.addEventListener('input', function () {
+                    if (docHint && !docHint.classList.contains('hidden')) {
+                        validateCheckoutDocumentTaxId({ showHint: true });
+                    }
+                });
+            }
+
             // Variáveis para controle do polling
             let paymentId = null;
             let pollingInterval = null;
@@ -365,7 +417,17 @@
             // Manipular envio do formulário
             form.addEventListener('submit', function(e) {
                 e.preventDefault();
-                
+
+                if (!validateCheckoutDocumentTaxId({ showHint: true })) {
+                    alert((docHint && docHint.textContent) ? docHint.textContent : 'CPF ou CNPJ inválido.');
+                    docInput && docInput.focus();
+                    return;
+                }
+
+                if (!validateCartCepForCheckout()) {
+                    return;
+                }
+
                 // Desabilitar botão e mostrar spinner
                 submitButton.disabled = true;
                 buttonText.classList.add('hidden');
@@ -439,21 +501,69 @@
                     spinner.classList.add('hidden');
                 });
             });
-        });
 
-        document.getElementById('cep').addEventListener('blur', function () {
-        let cep = this.value.replace(/\D/g, '');
-        if (cep.length === 8) {
-            fetch('https://viacep.com.br/ws/' + cep + '/json/')
-            .then(response => response.json())
-            .then(data => {
-                if (!data.erro) {
-                    document.getElementById('address').value = data.logradouro;
-                    document.getElementById('city').value = data.localidade;
-                    document.getElementById('state').value = data.uf;
+            const cartCepInput = document.getElementById('cep');
+            const cartCepFeedback = document.getElementById('cart-cep-feedback');
+
+            function setCartCepFeedback(text, variant) {
+                if (!cartCepFeedback) return;
+                if (!text) {
+                    cartCepFeedback.textContent = '';
+                    cartCepFeedback.classList.add('hidden');
+                    cartCepFeedback.classList.remove('text-red-600', 'text-emerald-700', 'text-gray-600');
+                    return;
                 }
-            });
-        }
+                cartCepFeedback.textContent = text;
+                cartCepFeedback.classList.remove('hidden');
+                cartCepFeedback.classList.remove('text-red-600', 'text-emerald-700', 'text-gray-600');
+                if (variant === 'error') cartCepFeedback.classList.add('text-red-600');
+                else if (variant === 'ok') cartCepFeedback.classList.add('text-emerald-700');
+                else cartCepFeedback.classList.add('text-gray-600');
+            }
+
+            function validateCartCepForCheckout() {
+                if (!cartCepInput || typeof window.BrazilCep === 'undefined') return true;
+                cartCepInput.value = window.BrazilCep.formatCepMasked(cartCepInput.value);
+                const r = window.BrazilCep.validateBrazilCepField(cartCepInput.value);
+                if (!r.ok) {
+                    cartCepInput.classList.add('border-red-500');
+                    setCartCepFeedback(r.message, 'error');
+                    alert(r.message);
+                    cartCepInput.focus();
+                    return false;
+                }
+                cartCepInput.classList.remove('border-red-500');
+                return true;
+            }
+
+            if (cartCepInput && typeof window.BrazilCep !== 'undefined') {
+                cartCepInput.addEventListener('blur', async function () {
+                    cartCepInput.value = window.BrazilCep.formatCepMasked(cartCepInput.value);
+                    if (!cartCepInput.value.trim()) {
+                        setCartCepFeedback('', null);
+                        cartCepInput.classList.remove('border-red-500');
+                        return;
+                    }
+                    const r = window.BrazilCep.validateBrazilCepField(cartCepInput.value);
+                    if (!r.ok) {
+                        cartCepInput.classList.add('border-red-500');
+                        setCartCepFeedback(r.message, 'error');
+                        return;
+                    }
+                    cartCepInput.classList.remove('border-red-500');
+                    try {
+                        const data = await window.BrazilCep.fetchViaCep(r.digits);
+                        window.BrazilCep.applyViaCepToForm(data, {
+                            address: 'address',
+                            city: 'city',
+                            state: 'state',
+                        });
+                        setCartCepFeedback('Endereço preenchido automaticamente pelo CEP.', 'ok');
+                    } catch (e) {
+                        setCartCepFeedback(e.message || 'Erro ao buscar CEP.', 'error');
+                    }
+                });
+            }
         });
 
     </script>

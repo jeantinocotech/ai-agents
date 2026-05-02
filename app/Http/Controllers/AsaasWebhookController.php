@@ -5,13 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Agent;
 use App\Models\Purchase;
 use App\Models\PurchaseEvent;
-use App\Models\TokenPackOrder;
-use App\Models\TokenTransaction;
 use App\Models\User;
 use App\Services\AsaasService;
-use App\Services\TokenWalletService;
+use App\Services\TokenPackOrderCompletionService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class AsaasWebhookController extends Controller
@@ -25,31 +22,29 @@ class AsaasWebhookController extends Controller
 
     public function handle(Request $request)
     {
-
-        // Log the complete request for debugging
-        Log::info('Asaas Webhook received', [
-            'headers' => $request->headers->all(),
-            'body' => $request->all(),
-        ]);
-
-        // Validate the webhook signature if available
-        if (! $this->isValidWebhook($request)) {
-            Log::warning('Invalid webhook received', ['data' => $request->all()]);
-
-            return response()->json(['status' => 'invalid webhook'], 400);
-        }
-
-        // Extract event data
         $event = $request->input('event');
         $payment = $request->input('payment');
         $subscription = $request->input('subscription');
 
-        // Log the processed payload for debugging
-        Log::info('Asaas Webhook processed', [
-            'event' => $event,
-            'payment' => $payment,
-            'subscription' => $subscription,
-        ]);
+        Log::info('Asaas Webhook received', array_filter([
+            'event' => is_string($event) ? $event : null,
+            'payment_id' => is_array($payment) ? ($payment['id'] ?? null) : null,
+            'subscription_id' => is_array($subscription) ? ($subscription['id'] ?? null) : null,
+        ]));
+
+        if (! $this->isValidWebhook($request)) {
+            Log::warning('Asaas webhook rejected (token ou configuração inválidos)', [
+                'event' => $event,
+                'has_access_token_header' => $request->header('asaas-access-token') !== null,
+                'has_signature_header' => $request->header('asaas-signature') !== null,
+            ]);
+
+            return response()->json(['status' => 'invalid webhook'], 401);
+        }
+
+        if (config('asaas.log_webhook_debug') === true && ! app()->environment('production')) {
+            Log::debug('Asaas Webhook debug payload', ['body' => $request->all()]);
+        }
 
         // Process based on event type
         switch ($event) {
@@ -83,20 +78,49 @@ class AsaasWebhookController extends Controller
         }
     }
 
+    /**
+     * O Asaas documenta validação pelo header {@see https://docs.asaas.com/docs/receive-asaas-events-at-your-webhook-endpoint asaas-access-token}
+     * (mesmo valor do “authentication token” definido ao criar o webhook).
+     *
+     * Mantém-se opcionalmente o caminho legado {@see AsaasService::validateWebhookSignature} para {@code asaas-signature}.
+     */
     private function isValidWebhook(Request $request): bool
     {
-        // Check for webhook token if configured
+        $configured = (string) (config('asaas.webhook_token') ?? '');
+        $accessToken = (string) ($request->header('asaas-access-token') ?? '');
         $signature = $request->header('asaas-signature');
+        $payload = $request->getContent();
 
-        if ($signature && config('asaas.webhook_token')) {
-            return $this->asaasService->validateWebhookSignature(
-                $signature,
-                $request->getContent()
-            );
+        if (app()->environment('production')) {
+            if ($configured === '') {
+                Log::warning('Asaas webhook: ASAAS_WEBHOOK_TOKEN em falta em produção.');
+
+                return false;
+            }
+
+            if ($accessToken !== '' && hash_equals($configured, $accessToken)) {
+                return true;
+            }
+
+            if ($signature) {
+                return $this->asaasService->validateWebhookSignature($signature, $payload);
+            }
+
+            return false;
         }
 
-        // If no signature validation is configured, accept the webhook
-        // This is not recommended for production
+        if ($configured === '') {
+            return true;
+        }
+
+        if ($accessToken !== '' && hash_equals($configured, $accessToken)) {
+            return true;
+        }
+
+        if ($signature) {
+            return $this->asaasService->validateWebhookSignature($signature, $payload);
+        }
+
         return true;
     }
 
@@ -184,12 +208,15 @@ class AsaasWebhookController extends Controller
 
     private function handlePaymentConfirmed($paymentData)
     {
+        if (! is_array($paymentData)) {
+            $paymentData = [];
+        }
 
         Log::info('INICIO handlePaymentConfirmed', [
             'paymentData' => $paymentData,
         ]);
 
-        $tokenPackResponse = $this->tryCompleteTokenPackOrder($paymentData);
+        $tokenPackResponse = app(TokenPackOrderCompletionService::class)->tryCompleteFromAsaasPayment($paymentData);
         if ($tokenPackResponse !== null) {
             return $tokenPackResponse;
         }
@@ -521,77 +548,5 @@ class AsaasWebhookController extends Controller
         ]);
 
         return response()->json(['status' => 'subscription resumed']);
-    }
-
-    private function tryCompleteTokenPackOrder(array $paymentData): ?\Illuminate\Http\JsonResponse
-    {
-        $externalReference = $paymentData['externalReference'] ?? '';
-        $meta = json_decode($externalReference, true);
-        if (! is_array($meta) || ($meta['type'] ?? '') !== 'token_pack') {
-            return null;
-        }
-
-        $orderId = (int) ($meta['order_id'] ?? 0);
-        $userId = (int) ($meta['user_id'] ?? 0);
-        if ($orderId <= 0 || $userId <= 0) {
-            return null;
-        }
-
-        $order = TokenPackOrder::query()
-            ->where('id', $orderId)
-            ->where('user_id', $userId)
-            ->first();
-
-        if (! $order) {
-            Log::warning('Token pack order not found for webhook', compact('orderId', 'userId'));
-
-            return response()->json(['ok' => true]);
-        }
-
-        if ($order->status === TokenPackOrder::STATUS_COMPLETED) {
-            return response()->json(['status' => 'token pack already completed']);
-        }
-
-        $paymentId = $paymentData['id'] ?? null;
-        if ($paymentId && $order->asaas_payment_id && $order->asaas_payment_id !== $paymentId) {
-            Log::warning('Token pack payment id mismatch', [
-                'order_id' => $order->id,
-                'expected' => $order->asaas_payment_id,
-                'got' => $paymentId,
-            ]);
-
-            return response()->json(['ok' => true]);
-        }
-
-        DB::transaction(function () use ($order, $paymentId, $paymentData) {
-            $lockedOrder = TokenPackOrder::query()->whereKey($order->id)->lockForUpdate()->first();
-            if (! $lockedOrder || $lockedOrder->status !== TokenPackOrder::STATUS_PENDING) {
-                return;
-            }
-
-            $user = User::query()->whereKey($lockedOrder->user_id)->lockForUpdate()->first();
-            if (! $user) {
-                return;
-            }
-
-            app(TokenWalletService::class)->creditLockedUser(
-                $user,
-                (int) $lockedOrder->tokens_amount,
-                TokenTransaction::TYPE_PURCHASE,
-                ['asaas_payment' => $paymentData],
-                TokenPackOrder::class,
-                $lockedOrder->id
-            );
-
-            $lockedOrder->status = TokenPackOrder::STATUS_COMPLETED;
-            if ($paymentId) {
-                $lockedOrder->asaas_payment_id = $paymentId;
-            }
-            $lockedOrder->save();
-        });
-
-        Log::info('Token pack order credited via webhook', ['order_id' => $order->id]);
-
-        return response()->json(['status' => 'token pack credited']);
     }
 }

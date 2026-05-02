@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Setting;
 use App\Models\TokenPackOrder;
+use App\Rules\ValidBrazilTaxId;
 use App\Services\AsaasService;
+use App\Services\TokenPackOrderCompletionService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -19,9 +22,15 @@ class TokenPackController extends Controller
         private AsaasService $asaasService
     ) {}
 
-    public function show(): View
+    public function show(): View|RedirectResponse
     {
         $user = Auth::user();
+        if ($user !== null && ! $user->hasVerifiedEmail()) {
+            return redirect()
+                ->route('verification.notice')
+                ->with('warning', 'Confirme o seu e-mail antes de comprar tokens.');
+        }
+
         $tokensAmount = (int) Setting::get('token_pack_amount', 10000);
         $price = (float) Setting::get('token_pack_price', 49.90);
 
@@ -30,16 +39,22 @@ class TokenPackController extends Controller
 
     public function process(Request $request): JsonResponse
     {
+        abort_unless($request->user()?->hasVerifiedEmail(), 403, 'Confirme o seu e-mail.');
+
+        $request->merge([
+            'state' => strtoupper((string) $request->input('state')),
+        ]);
+
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email'],
             'phone' => ['required', 'string', 'max:20'],
-            'document' => ['required', 'string', 'max:18'],
-            'cep' => ['nullable', 'string', 'max:9'],
-            'address' => ['nullable', 'string', 'max:255'],
-            'number' => ['nullable', 'string', 'max:10'],
-            'city' => ['nullable', 'string', 'max:60'],
-            'state' => ['nullable', 'string', 'max:2'],
+            'document' => ['required', 'string', new ValidBrazilTaxId],
+            'cep' => ['required', 'string', 'regex:/^\d{5}-?\d{3}$/'],
+            'address' => ['required', 'string', 'max:255'],
+            'number' => ['required', 'string', 'max:10'],
+            'city' => ['required', 'string', 'max:60'],
+            'state' => ['required', 'string', 'size:2', 'regex:/^[A-Za-z]{2}$/'],
             'payment_method' => ['required', 'in:credit_card,pix,boleto'],
             'card_number' => ['required_if:payment_method,credit_card', 'nullable', 'string'],
             'card_expiry' => ['required_if:payment_method,credit_card', 'nullable', 'string'],
@@ -160,22 +175,44 @@ class TokenPackController extends Controller
                     ]);
                 }
 
+                $payUrl = $asaasResponse['invoiceUrl']
+                    ?? $asaasResponse['bankSlipUrl']
+                    ?? null;
+
+                $checkoutButtonLabel = match ($request->payment_method) {
+                    'boleto' => 'Abrir boleto / fatura no Asaas',
+                    'credit_card' => 'Concluir pagamento no Asaas',
+                    default => 'Abrir página de pagamento no Asaas',
+                };
+
                 return response()->json([
                     'success' => true,
-                    'invoice_url' => $asaasResponse['invoiceUrl'] ?? null,
+                    'invoice_url' => $payUrl,
                     'payment_id' => $asaasResponse['id'],
+                    'checkout_button_label' => $payUrl ? $checkoutButtonLabel : null,
+                    'checkout_hint' => $payUrl
+                        ? 'O Asaas abre em novo separador. Pode fechá-lo depois — esta página passa a verificar o pagamento automaticamente até creditar os tokens.'
+                        : null,
                 ]);
             });
         } catch (\Throwable $e) {
             Log::error('Token pack checkout failed', [
                 'message' => $e->getMessage(),
                 'user_id' => Auth::id(),
+                'exception_class' => $e::class,
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ]);
 
-            return response()->json([
+            $payload = [
                 'success' => false,
                 'error' => 'Não foi possível iniciar o pagamento. Tente novamente.',
-            ], 500);
+            ];
+            if (config('app.debug')) {
+                $payload['debug_detail'] = $e->getMessage();
+            }
+
+            return response()->json($payload, 500);
         }
     }
 
@@ -185,18 +222,50 @@ class TokenPackController extends Controller
             'payment_id' => ['required', 'string'],
         ]);
 
+        $user = Auth::user();
+        if ($user === null) {
+            return response()->json(['success' => false, 'is_paid' => false], 401);
+        }
+
         $payment = $this->asaasService->getPayment($request->payment_id);
         if (! $payment) {
             return response()->json(['success' => false, 'is_paid' => false]);
         }
 
+        $meta = json_decode((string) ($payment['externalReference'] ?? ''), true);
+        $ownsTokenPack = is_array($meta)
+            && ($meta['type'] ?? '') === 'token_pack'
+            && (int) ($meta['user_id'] ?? 0) === (int) $user->id;
+
         $status = $payment['status'] ?? '';
         $isPaid = in_array($status, ['RECEIVED', 'CONFIRMED'], true);
+
+        /** Mesma lógica do webhook — útil quando o webhook atrasa ou não chega ao servidor. */
+        if ($isPaid && $ownsTokenPack) {
+            app(TokenPackOrderCompletionService::class)->tryCompleteFromAsaasPayment($payment);
+        }
 
         return response()->json([
             'success' => true,
             'is_paid' => $isPaid,
         ]);
+    }
+
+    public function history(): View|RedirectResponse
+    {
+        $user = Auth::user();
+        if ($user !== null && ! $user->hasVerifiedEmail()) {
+            return redirect()
+                ->route('verification.notice')
+                ->with('warning', 'Confirme o seu e-mail para ver o histórico.');
+        }
+
+        $orders = TokenPackOrder::query()
+            ->where('user_id', Auth::id())
+            ->orderByDesc('id')
+            ->paginate(20);
+
+        return view('tokens.history', compact('orders'));
     }
 
     private function mapPaymentMethod(string $method): string

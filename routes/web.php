@@ -9,6 +9,7 @@ use App\Http\Controllers\AgentDocumentsController;
 use App\Http\Controllers\AgentsPublicController;
 use App\Http\Controllers\AgentStepController;
 use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Auth\TwoFactorSettingsController;
 use App\Http\Controllers\CareerTrailController;
 use App\Http\Controllers\CareerTrailCvController;
 use App\Http\Controllers\CartController;
@@ -18,8 +19,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\InterviewPreparationController;
 use App\Http\Controllers\InterviewProcessOutcomeController;
 use App\Http\Controllers\LandingController;
+use App\Http\Controllers\LegalConsentController;
 use App\Http\Controllers\MotivationLetterController;
-use App\Http\Controllers\PrivacyController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RatingController;
@@ -32,7 +33,7 @@ use Illuminate\Support\Facades\Route;
 // Testimonials
 Route::get('/depoimento', [TestimonialController::class, 'create'])->name('testimonials.create');
 Route::post('/depoimento', [TestimonialController::class, 'store'])->name('testimonials.store');
-Route::get('/meus-depoimentos', [TestimonialController::class, 'mine'])->name('testimonials.mine')->middleware('auth');
+Route::get('/meus-depoimentos', [TestimonialController::class, 'mine'])->name('testimonials.mine')->middleware(['auth', 'verified']);
 
 // Página inicial — foco na trilha de carreira (visitantes e utilizadores autenticados)
 Route::get('/', [LandingController::class, 'index'])->name('home');
@@ -45,8 +46,8 @@ Route::get('/agents/{agent}/ratings', [RatingController::class, 'agentRatings'])
 Route::get('/api/agents/{agent}/rating-stats', [RatingController::class, 'getAgentRatingStats'])
     ->name('api.agent.rating-stats');
 
-// Grupo de rotas protegidas por autenticação
-Route::middleware(['auth'])->group(function () {
+// Área da conta (e-mail obrigatoriamente verificado antes de usar a plataforma)
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/trilha', [CareerTrailController::class, 'index'])->name('career-trail.index');
@@ -116,6 +117,14 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
+    Route::get('/conta/consentimento', [LegalConsentController::class, 'show'])->name('legal.consent.show');
+    Route::post('/conta/consentimento', [LegalConsentController::class, 'store'])->name('legal.consent.store');
+
+    Route::get('/profile/two-factor/setup', [TwoFactorSettingsController::class, 'start'])->name('profile.two-factor.start');
+    Route::post('/profile/two-factor/confirm', [TwoFactorSettingsController::class, 'confirm'])->name('profile.two-factor.confirm');
+    Route::get('/profile/two-factor/recovery', [TwoFactorSettingsController::class, 'recoveryShow'])->name('profile.two-factor.recovery-show');
+    Route::delete('/profile/two-factor', [TwoFactorSettingsController::class, 'destroy'])->name('profile.two-factor.destroy');
+
     // Formulário de avaliação
     Route::get('/ratings/form/{chatSession}', [RatingController::class, 'showRatingForm'])
         ->name('ratings.form');
@@ -148,6 +157,7 @@ Route::middleware(['auth'])->group(function () {
         ->name('ratings.quick-store');
 
     Route::get('/tokens/comprar', [TokenPackController::class, 'show'])->name('tokens.purchase');
+    Route::get('/tokens/historico', [TokenPackController::class, 'history'])->name('tokens.history');
     Route::post('/tokens/comprar/processar', [TokenPackController::class, 'process'])->name('tokens.purchase.process');
     Route::post('/tokens/pagamento/status', [TokenPackController::class, 'checkPaymentStatus'])->name('tokens.payment.status');
 
@@ -181,8 +191,8 @@ Route::prefix('cart')->name('cart.')->group(function () {
     Route::get('/success', [CartController::class, 'checkoutSuccess'])->name('success');
 });
 
-// Checkout (requer login)
-Route::middleware(['auth'])->group(function () {
+// Finalizar compra no carrinho (sessão + e-mail verificado)
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/cart/checkout/process', [CartController::class, 'processCheckout'])->name('cart.processCheckout');
     Route::post('/cart/check-payment-status', [CartController::class, 'checkPaymentStatus'])->name('cart.checkPaymentStatus');
 });
@@ -190,7 +200,7 @@ Route::middleware(['auth'])->group(function () {
 Route::get('/agentes', [AgentsPublicController::class, 'index'])->name('agents.index');
 Route::post('/agentes/{id}/adicionar-carrinho', [AgentsPublicController::class, 'addToCart'])->name('agents.addToCart');
 
-Route::middleware(['auth', AdminMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'verified', AdminMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
 
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
 
@@ -229,32 +239,20 @@ Route::get('/cv-analysis', [WebCvAnalysisController::class, 'showForm']);
 Route::post('/cv-analysis', [WebCvAnalysisController::class, 'processForm']);
 
 // Pausar compra
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/purchase/pause/{purchase}', [PurchaseController::class, 'pause'])
-        ->middleware('auth')
         ->name('purchase.pause');
 
     Route::post('/purchase/resume/{purchase}', [PurchaseController::class, 'resume'])
-        ->middleware('auth')
         ->name('purchase.resume');
 });
 
 // Politica de privacidade
 Route::view('/privacidade', 'privacidade')->name('privacidade');
-Route::post('/aceite-privacidade', [PrivacyController::class, 'accept'])->name('privacy.accept');
-Route::post('/privacy/sync', [PrivacyController::class, 'syncConsent'])
-    ->name('privacy.sync')
-    ->middleware('auth');
 
 // Termos de uso
 Route::get('/termos-uso', function () {
     return view('termos-uso');
 })->name('termos-uso');
-
-Route::get('/clear-log', function () {
-    file_put_contents(storage_path('logs/laravel.log'), '');
-
-    return 'Log limpo com sucesso!';
-});
 
 require __DIR__.'/auth.php';

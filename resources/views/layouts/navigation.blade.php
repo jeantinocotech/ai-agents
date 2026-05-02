@@ -21,6 +21,9 @@
                     <x-nav-link :href="route('tokens.purchase')" :active="request()->routeIs('tokens.purchase')">
                         Comprar tokens
                     </x-nav-link>
+                    <x-nav-link :href="route('tokens.history')" :active="request()->routeIs('tokens.history')">
+                        Histórico tokens
+                    </x-nav-link>
                 @endauth
 
                 @auth
@@ -129,6 +132,9 @@
             @auth
                 <x-responsive-nav-link :href="route('tokens.purchase')" :active="request()->routeIs('tokens.purchase')">
                     Comprar tokens
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('tokens.history')" :active="request()->routeIs('tokens.history')">
+                    Histórico tokens
                 </x-responsive-nav-link>
             @endauth
             @auth

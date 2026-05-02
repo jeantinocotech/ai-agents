@@ -17,6 +17,9 @@ return [
     // Webhook token for validating incoming webhook requests
     'webhook_token' => env('ASAAS_WEBHOOK_TOKEN'),
 
+    // Somente desenvolvimento: regista payloads completos (PII — nunca activar em produção)
+    'log_webhook_debug' => env('ASAAS_LOG_WEBHOOK_DEBUG', false),
+
     // Whether to use the sandbox environment
     'sandbox' => env('ASAAS_SANDBOX', false),
 
@@ -27,16 +30,16 @@ return [
     ],
 
     // Webhook notification URL (where Asaas will send notifications)
-    'webhook_url' => env('APP_URL') . '/webhook/asaas',
+    'webhook_url' => env('APP_URL').'/webhook/asaas',
 
-      // Timeout configurations (in seconds)
-      'timeout' => [
+    // Timeout configurations (in seconds)
+    'timeout' => [
         'sandbox' => env('ASAAS_TIMEOUT_SANDBOX', 60),
         'production' => env('ASAAS_TIMEOUT_PRODUCTION', 30),
         'connect' => env('ASAAS_TIMEOUT_CONNECT', 10),
         'critical_operations' => env('ASAAS_TIMEOUT_CRITICAL', 90),
     ],
-    
+
     // Retry configurations
     'retry' => [
         'max_attempts' => env('ASAAS_RETRY_MAX_ATTEMPTS', 3),
