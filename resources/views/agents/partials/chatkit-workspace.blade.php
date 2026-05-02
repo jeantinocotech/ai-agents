@@ -36,7 +36,7 @@
                         <option value="{{ $jd['id'] }}" @selected((int) $ckDefJd === (int) $jd['id'])>{{ $jdOptLabel }}</option>
                     @endforeach
                 </select>
-                <a href="{{ route('agents.documents.index', $agent) }}"
+                <a href="{{ $documentsHubUrl ?? route('agents.documents.index', $agent) }}"
                    class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-center text-xs font-semibold text-slate-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50/60 hover:text-indigo-900 sm:max-w-[11rem] sm:self-auto">
                     <svg class="h-3.5 w-3.5 shrink-0 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />

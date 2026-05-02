@@ -83,9 +83,9 @@
                     </svg>
                 </div>
                 <h3 class="text-lg font-medium mb-2" style="color: #222;">Seu carrinho está vazio</h3>
-                <p class="mb-6" style="color: #666;">Adicione alguns agentes ao seu carrinho para continuar.</p>
-                <a href="{{ route('agents.index') }}" class="btn btn-primary">
-                    Ver Agentes
+                <p class="mb-6" style="color: #666;">Explore a trilha ou a página inicial para continuar.</p>
+                <a href="{{ route('home') }}" class="btn btn-primary">
+                    Página inicial
                 </a>
             </div>
         @endif

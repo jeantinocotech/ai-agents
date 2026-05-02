@@ -50,6 +50,6 @@ class RegisteredUserController extends Controller
 
         Auth::login($user->fresh());
 
-        return redirect()->intended(route('agents.index'));
+        return redirect()->intended(route('dashboard', absolute: false));
     }
 }

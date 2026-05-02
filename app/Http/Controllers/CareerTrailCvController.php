@@ -5,8 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Agent;
 use App\Models\AgentDocument;
 use App\Models\AgentDocumentDefault;
+use App\Models\CareerTrailStep;
+use App\Models\User;
 use App\Models\UserCv;
+use App\Services\CareerTrailAgentAccess;
 use App\Support\AgentDocumentLimits;
+use App\Support\CareerTrailStepCompletion;
 use App\Support\UserCvTextExtractor;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,27 +22,76 @@ class CareerTrailCvController extends Controller
     public function show(Request $request): View
     {
         $user = $request->user();
-        $defaultCv = UserCv::defaultForUserId((int) $user->id);
-        $agents = Agent::query()->orderBy('name')->get(['id', 'name']);
 
-        $cvAssistantChatUrl = null;
-        $assistantAgentId = config('career_trail.cv_chatkit_agent_id');
-        if ($assistantAgentId) {
-            $assistant = Agent::query()
-                ->whereKey((int) $assistantAgentId)
-                ->where('is_active', true)
+        $profileCvs = UserCv::query()
+            ->where('user_id', $user->id)
+            ->orderByDesc('is_default')
+            ->orderByDesc('updated_at')
+            ->get();
+
+        $defaultCv = UserCv::defaultForUserId((int) $user->id);
+
+        $editingCv = null;
+        $editId = $request->query('edit');
+        if ($editId !== null && $editId !== '') {
+            $candidate = UserCv::query()
+                ->where('user_id', $user->id)
+                ->whereKey((int) $editId)
                 ->first();
-            if ($assistant && $assistant->isChatKitWorkflow()) {
-                $cvAssistantChatUrl = route('agents.chat', $assistant).'?embedded=1&no_documents=1';
-            }
+            $editingCv = $candidate;
         }
 
+        $agents = Agent::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->filter(fn (Agent $agent) => CareerTrailAgentAccess::userCanAccessTrailAgent($user, $agent))
+            ->values();
+
+        $accessibleAgentIds = $agents->pluck('id')->all();
+
+        $agentLibraryCvs = collect();
+        if ($accessibleAgentIds !== []) {
+            $agentLibraryCvs = AgentDocument::query()
+                ->where('user_id', $user->id)
+                ->where('type', AgentDocument::TYPE_CV)
+                ->whereIn('agent_id', $accessibleAgentIds)
+                ->with(['agent:id,name'])
+                ->orderByDesc('updated_at')
+                ->get();
+        }
+
+        $cvAssistantChatUrl = CareerTrailStep::cvEmbeddedCreatorChatUrl();
+        $cvAssistantChatIframeUrl = $cvAssistantChatUrl !== null
+            ? CareerTrailStep::cvEmbeddedCreatorChatUrl(forIframe: true)
+            : null;
+
+        $cvTrailStep = CareerTrailStep::query()
+            ->where('slug', 'cv')
+            ->where('is_active', true)
+            ->first();
+
+        $cvStepReadiness = $cvTrailStep !== null
+            ? CareerTrailStepCompletion::readiness($user, $cvTrailStep)
+            : ['ready' => false, 'reason' => null, 'blocked_message' => null];
+
+        $cvStepChecklist = $cvTrailStep !== null
+            ? CareerTrailStepCompletion::checklist($user, $cvTrailStep)
+            : [];
+
         return view('career-trail.cv', [
+            'profileCvs' => $profileCvs,
             'defaultCv' => $defaultCv,
+            'editingCv' => $editingCv,
+            'agentLibraryCvs' => $agentLibraryCvs,
             'maxCvBodyChars' => AgentDocumentLimits::maxCharsForType(AgentDocument::TYPE_CV),
+            'minProfileCvChars' => max(1, (int) config('career_trail.min_profile_cv_chars', 40)),
             'agents' => $agents,
             'linkedinUrl' => $user->linkedin_url,
             'cvAssistantChatUrl' => $cvAssistantChatUrl,
+            'cvAssistantChatIframeUrl' => $cvAssistantChatIframeUrl,
+            'cvStepReadiness' => $cvStepReadiness,
+            'cvStepChecklist' => $cvStepChecklist,
         ]);
     }
 
@@ -52,6 +105,7 @@ class CareerTrailCvController extends Controller
             'body' => 'nullable|string',
             'cv_file' => 'nullable|file|mimes:txt,pdf,doc,docx|max:20480',
             'linkedin_url' => 'nullable|string|max:512',
+            'make_default' => 'sometimes|boolean',
         ]);
 
         $hasExisting = $validated['has_existing_cv'] === '1';
@@ -73,11 +127,13 @@ class CareerTrailCvController extends Controller
                     : 'Cole ou escreva o conteúdo do seu CV.', ]);
         }
 
-        if (! $hasExisting && mb_strlen($body) < 40) {
+        $minChars = max(1, (int) config('career_trail.min_profile_cv_chars', 40));
+
+        if (! $hasExisting && mb_strlen($body) < $minChars) {
             return redirect()
                 ->route('career-trail.cv')
                 ->withInput()
-                ->withErrors(['body' => 'Para começar sem ficheiro, escreva ou cole pelo menos um parágrafo (mínimo 40 caracteres).']);
+                ->withErrors(['body' => 'Para começar sem ficheiro, escreva ou cole pelo menos um parágrafo (mínimo '.$minChars.' caracteres).']);
         }
 
         try {
@@ -93,48 +149,232 @@ class CareerTrailCvController extends Controller
         $user->linkedin_url = $linkedin !== '' ? $linkedin : null;
         $user->save();
 
-        UserCv::query()->where('user_id', $user->id)->update(['is_default' => false]);
+        $existingCount = UserCv::query()->where('user_id', $user->id)->count();
+        $makeDefault = $existingCount === 0 ? true : $request->boolean('make_default');
 
-        UserCv::query()->create([
+        $new = UserCv::query()->create([
             'user_id' => $user->id,
             'title' => $validated['title'] ?? null,
             'body' => $body,
-            'is_default' => true,
+            'is_default' => false,
             'source' => $request->hasFile('cv_file') ? UserCv::SOURCE_UPLOAD : UserCv::SOURCE_MANUAL,
         ]);
 
-        return redirect()
-            ->route('career-trail.cv')
-            ->with('status', 'O seu CV de perfil foi guardado e definido como padrão.');
-    }
-
-    public function destroy(Request $request): RedirectResponse
-    {
-        $user = $request->user();
-        $cv = UserCv::defaultForUserId((int) $user->id);
-
-        if (! $cv) {
-            return redirect()
-                ->route('career-trail.cv')
-                ->with('error', 'Não tem um CV de perfil para remover.');
+        if ($makeDefault) {
+            $this->setUserCvAsOnlyDefault($user, $new);
         }
 
-        $cv->delete();
+        $msg = $makeDefault
+            ? 'Novo CV guardado e definido como predefinido na conta.'
+            : 'Novo CV guardado na conta.';
 
         return redirect()
             ->route('career-trail.cv')
-            ->with('status', 'O CV de perfil foi removido. Pode criar um novo quando quiser.');
+            ->with('status', $msg);
+    }
+
+    public function update(Request $request, UserCv $userCv): RedirectResponse
+    {
+        $user = $request->user();
+        $this->abortUnlessOwnCv($user, $userCv);
+
+        $validated = $request->validate([
+            'has_existing_cv' => 'required|in:0,1',
+            'title' => 'nullable|string|max:255',
+            'body' => 'nullable|string',
+            'cv_file' => 'nullable|file|mimes:txt,pdf,doc,docx|max:20480',
+            'linkedin_url' => 'nullable|string|max:512',
+            'make_default' => 'sometimes|boolean',
+        ]);
+
+        $hasExisting = $validated['has_existing_cv'] === '1';
+
+        $bodyFromFile = '';
+        if ($request->hasFile('cv_file')) {
+            $bodyFromFile = UserCvTextExtractor::extract($request->file('cv_file'));
+        }
+
+        $bodyFromInput = isset($validated['body']) ? trim((string) $validated['body']) : '';
+        $body = $bodyFromFile !== '' ? $bodyFromFile : $bodyFromInput;
+
+        if ($body === '' || str_starts_with($body, '[Erro ao ler') || str_starts_with($body, '[Formato não suportado')) {
+            return redirect()
+                ->route('career-trail.cv', ['edit' => $userCv->id])
+                ->withInput()
+                ->withErrors(['body' => $hasExisting
+                    ? 'Envie um ficheiro suportado (TXT, PDF, DOC/DOCX) ou cole o texto do CV.'
+                    : 'Cole ou escreva o conteúdo do seu CV.', ]);
+        }
+
+        $minChars = max(1, (int) config('career_trail.min_profile_cv_chars', 40));
+
+        if (! $hasExisting && mb_strlen($body) < $minChars) {
+            return redirect()
+                ->route('career-trail.cv', ['edit' => $userCv->id])
+                ->withInput()
+                ->withErrors(['body' => 'Para começar sem ficheiro, escreva ou cole pelo menos um parágrafo (mínimo '.$minChars.' caracteres).']);
+        }
+
+        try {
+            AgentDocumentLimits::assertBodyWithinLimit(AgentDocument::TYPE_CV, $body);
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('career-trail.cv', ['edit' => $userCv->id])
+                ->withInput()
+                ->withErrors($e->errors());
+        }
+
+        $linkedin = isset($validated['linkedin_url']) ? trim((string) $validated['linkedin_url']) : '';
+        $user->linkedin_url = $linkedin !== '' ? $linkedin : null;
+        $user->save();
+
+        $userCv->title = $validated['title'] ?? null;
+        $userCv->body = $body;
+        if ($request->hasFile('cv_file')) {
+            $userCv->source = UserCv::SOURCE_UPLOAD;
+        }
+        $userCv->save();
+
+        if ($request->boolean('make_default')) {
+            $this->setUserCvAsOnlyDefault($user, $userCv);
+        }
+
+        return redirect()
+            ->route('career-trail.cv')
+            ->with('status', 'CV atualizado.');
+    }
+
+    public function setDefault(Request $request, UserCv $userCv): RedirectResponse
+    {
+        $user = $request->user();
+        $this->abortUnlessOwnCv($user, $userCv);
+
+        $this->setUserCvAsOnlyDefault($user, $userCv);
+
+        return redirect()
+            ->route('career-trail.cv')
+            ->with('status', 'CV predefinido da conta atualizado.');
+    }
+
+    public function destroyProfileCv(Request $request, UserCv $userCv): RedirectResponse
+    {
+        $user = $request->user();
+        $this->abortUnlessOwnCv($user, $userCv);
+
+        $wasDefault = $userCv->is_default;
+        $userId = (int) $user->id;
+        $userCv->delete();
+
+        if ($wasDefault) {
+            $next = UserCv::query()
+                ->where('user_id', $userId)
+                ->orderByDesc('updated_at')
+                ->first();
+            if ($next !== null) {
+                UserCv::query()->where('user_id', $userId)->update(['is_default' => false]);
+                $next->forceFill(['is_default' => true])->save();
+            }
+        }
+
+        return redirect()
+            ->route('career-trail.cv')
+            ->with('status', 'CV removido da conta.');
+    }
+
+    public function importFromAgentDocument(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'agent_document_id' => 'required|integer|exists:agent_documents,id',
+            'make_default' => 'sometimes|boolean',
+        ]);
+
+        $doc = AgentDocument::query()->findOrFail((int) $validated['agent_document_id']);
+
+        abort_unless($doc->type === AgentDocument::TYPE_CV, 422);
+        abort_unless((int) $doc->user_id === (int) $user->id, 403);
+
+        $agent = Agent::query()->findOrFail((int) $doc->agent_id);
+        CareerTrailAgentAccess::abortUnlessCanAccess($user, $agent);
+
+        try {
+            AgentDocumentLimits::assertBodyWithinLimit(AgentDocument::TYPE_CV, (string) $doc->body);
+        } catch (ValidationException $e) {
+            return redirect()
+                ->route('career-trail.cv')
+                ->withErrors($e->errors());
+        }
+
+        $existingCount = UserCv::query()->where('user_id', $user->id)->count();
+        $makeDefault = $existingCount === 0 ? true : $request->boolean('make_default');
+
+        $new = UserCv::query()->create([
+            'user_id' => $user->id,
+            'title' => $doc->title ?: ('CV — '.$agent->name),
+            'body' => $doc->body,
+            'is_default' => false,
+            'source' => UserCv::SOURCE_AGENT_IMPORT,
+        ]);
+
+        if ($makeDefault) {
+            $this->setUserCvAsOnlyDefault($user, $new);
+        }
+
+        $msg = $makeDefault
+            ? 'CV da biblioteca do agente copiado para a sua conta e definido como predefinido.'
+            : 'CV da biblioteca do agente copiado para a sua conta.';
+
+        return redirect()
+            ->route('career-trail.cv')
+            ->with('status', $msg);
+    }
+
+    public function destroyAgentDocument(Request $request, Agent $agent, AgentDocument $document): RedirectResponse
+    {
+        $user = $request->user();
+        CareerTrailAgentAccess::abortUnlessCanAccess($user, $agent);
+
+        abort_unless(
+            (int) $document->user_id === (int) $user->id
+            && (int) $document->agent_id === (int) $agent->id,
+            403
+        );
+        abort_unless($document->type === AgentDocument::TYPE_CV, 422);
+
+        $defaults = AgentDocumentDefault::query()
+            ->where('user_id', $user->id)
+            ->where('agent_id', $agent->id)
+            ->first();
+
+        if ($defaults) {
+            if ((int) $defaults->default_cv_document_id === (int) $document->id) {
+                $defaults->default_cv_document_id = null;
+            }
+            if ((int) $defaults->default_jd_document_id === (int) $document->id) {
+                $defaults->default_jd_document_id = null;
+            }
+            $defaults->save();
+        }
+
+        $document->delete();
+
+        return redirect()
+            ->route('career-trail.cv')
+            ->with('status', 'CV removido da biblioteca deste agente.');
     }
 
     public function syncToAgent(Request $request, Agent $agent): RedirectResponse
     {
         $user = $request->user();
+        CareerTrailAgentAccess::abortUnlessCanAccess($user, $agent);
+
         $cv = UserCv::defaultForUserId((int) $user->id);
 
         if (! $cv) {
             return redirect()
                 ->route('career-trail.cv')
-                ->with('error', 'Guarde primeiro um CV de perfil.');
+                ->with('error', 'Guarde primeiro um CV de perfil predefinido.');
         }
 
         try {
@@ -163,6 +403,17 @@ class CareerTrailCvController extends Controller
 
         return redirect()
             ->route('agents.documents.index', $agent)
-            ->with('status', 'CV do perfil copiado para a biblioteca deste agente e definido como predefinido.');
+            ->with('status', 'CV predefinido copiado para a biblioteca deste agente e definido como predefinido.');
+    }
+
+    private function abortUnlessOwnCv(User $user, UserCv $userCv): void
+    {
+        abort_unless((int) $userCv->user_id === (int) $user->id, 403);
+    }
+
+    private function setUserCvAsOnlyDefault(User $user, UserCv $cv): void
+    {
+        UserCv::query()->where('user_id', $user->id)->update(['is_default' => false]);
+        $cv->forceFill(['is_default' => true])->save();
     }
 }

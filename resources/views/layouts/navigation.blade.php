@@ -1,4 +1,4 @@
-<nav x-data="{ open: false }" class="bg-black shadow-md">
+<nav x-data="{ open: false }" class="sticky top-0 z-50 bg-black shadow-md">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
             <!-- Logo -->
@@ -12,21 +12,19 @@
                 <x-nav-link :href="url('/')" :active="request()->is('/')">
                     Início
                 </x-nav-link>
-                <x-nav-link :href="url('/#agentes')" :active="request()->is('#agentes')">
-                    Agentes
-                </x-nav-link>
+                @guest
+                    <x-nav-link :href="url('/#trilha-teaser')" :active="false">
+                        A trilha
+                    </x-nav-link>
+                @endguest
                 @auth
                     <x-nav-link :href="route('tokens.purchase')" :active="request()->routeIs('tokens.purchase')">
                         Comprar tokens
                     </x-nav-link>
                 @endauth
 
-                <!-- Sempre mostra Dashboard para usuário logado -->
                 @auth
-                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                        Dashboard
-                    </x-nav-link>
-                    <x-nav-link :href="route('career-trail.index')" :active="request()->routeIs('career-trail.index') || request()->routeIs('career-trail.advance') || request()->routeIs('career-trail.back')">
+                    <x-nav-link :href="route('career-trail.index')" :active="request()->routeIs('dashboard') || request()->routeIs('career-trail.index') || request()->routeIs('career-trail.advance') || request()->routeIs('career-trail.back')">
                         Trilha
                     </x-nav-link>
                     <x-nav-link :href="route('career-trail.cv')" :active="request()->routeIs('career-trail.cv*')">
@@ -123,19 +121,18 @@
             <x-responsive-nav-link :href="url('/')" :active="request()->is('/')">
                 Início
             </x-responsive-nav-link>
-            <x-responsive-nav-link :href="url('/#agentes')" :active="request()->is('#agentes')">
-                Agentes
-            </x-responsive-nav-link>
+            @guest
+                <x-responsive-nav-link :href="url('/#trilha-teaser')" :active="false">
+                    A trilha
+                </x-responsive-nav-link>
+            @endguest
             @auth
                 <x-responsive-nav-link :href="route('tokens.purchase')" :active="request()->routeIs('tokens.purchase')">
                     Comprar tokens
                 </x-responsive-nav-link>
             @endauth
             @auth
-                <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                    Dashboard
-                </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('career-trail.index')" :active="request()->routeIs('career-trail.index') || request()->routeIs('career-trail.advance') || request()->routeIs('career-trail.back')">
+                <x-responsive-nav-link :href="route('career-trail.index')" :active="request()->routeIs('dashboard') || request()->routeIs('career-trail.index') || request()->routeIs('career-trail.advance') || request()->routeIs('career-trail.back')">
                     Trilha
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('career-trail.cv')" :active="request()->routeIs('career-trail.cv*')">

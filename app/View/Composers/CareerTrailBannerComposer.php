@@ -4,7 +4,6 @@ namespace App\View\Composers;
 
 use App\Models\CareerTrailStep;
 use App\Services\CareerTrailProgressService;
-use App\Support\CareerTrailStepCompletion;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
@@ -25,6 +24,7 @@ final class CareerTrailBannerComposer
         }
 
         $user = Auth::user();
+        $user->refresh();
         $bundle = CareerTrailProgressService::ensureProgress($user);
         if ($bundle === null) {
             $view->with('careerTrailContext', null);
@@ -36,29 +36,17 @@ final class CareerTrailBannerComposer
         $current = $bundle['current'];
         $steps = $bundle['steps'];
 
-        $readiness = CareerTrailStepCompletion::readiness($user, $current);
-        $nextStep = CareerTrailStep::query()
-            ->where('is_active', true)
-            ->where('sort_order', '>', $current->sort_order)
-            ->orderBy('sort_order')
-            ->first();
-
-        $suggestAdvance = $readiness['ready'] === true
-            && $readiness['reason'] !== null
-            && $nextStep !== null;
-
-        $gracaBody = trim((string) ($current->graca_guidance ?? ''));
-        if ($gracaBody === '') {
-            $gracaBody = trim((string) ($current->short_description ?? ''));
-        }
+        $progress = $bundle['progress'];
+        $maxReached = (int) ($progress->max_sort_order_reached ?? $current->sort_order);
 
         $view->with('careerTrailContext', [
+            'user' => $user,
             'steps' => $steps,
             'current' => $current,
-            'gracaBody' => $gracaBody,
-            'suggestAdvance' => $suggestAdvance,
-            'advanceReason' => $readiness['reason'],
-            'nextStepTitle' => $nextStep?->title,
+            'maxReached' => $maxReached,
+            'tokenBalance' => (int) $user->token_balance,
+            'atsStepAgent' => $steps->firstWhere('slug', 'ats')?->resolvedAgent(),
+            'cvCreatorChatUrl' => CareerTrailStep::cvEmbeddedCreatorChatUrl(),
         ]);
     }
 }

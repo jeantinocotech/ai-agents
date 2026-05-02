@@ -203,7 +203,7 @@
                     if (data.success && data.is_paid) {
                         clearInterval(pollingInterval);
                         document.getElementById('payment-status').textContent = 'Pagamento confirmado! Redirecionando...';
-                        setTimeout(() => { window.location.href = '{{ route('dashboard') }}'; }, 2000);
+                        setTimeout(() => { window.location.href = '{{ route('career-trail.index') }}'; }, 2000);
                     }
                 }).catch(() => {});
             }
@@ -237,7 +237,7 @@
                         } else if (data.invoice_url) {
                             window.location.href = data.invoice_url;
                         } else {
-                            window.location.href = '{{ route('dashboard') }}';
+                            window.location.href = '{{ route('career-trail.index') }}';
                         }
                     } else {
                         alert(data.error || 'Erro ao processar.');

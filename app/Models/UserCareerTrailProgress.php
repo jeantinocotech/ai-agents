@@ -13,12 +13,14 @@ class UserCareerTrailProgress extends Model
         'user_id',
         'current_step_id',
         'started_at',
+        'max_sort_order_reached',
     ];
 
     protected function casts(): array
     {
         return [
             'started_at' => 'datetime',
+            'max_sort_order_reached' => 'integer',
         ];
     }
 

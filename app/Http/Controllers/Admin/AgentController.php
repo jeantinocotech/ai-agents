@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Agent;
+use App\Models\CareerTrailStep;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -20,7 +21,13 @@ class AgentController extends Controller
 
     public function create()
     {
-        return view('admin.agents.create');
+        $trailSteps = CareerTrailStep::query()
+            ->where('is_active', true)
+            ->where('slug', '!=', 'cv')
+            ->orderBy('sort_order')
+            ->get(['id', 'slug', 'title', 'sort_order']);
+
+        return view('admin.agents.create', compact('trailSteps'));
     }
 
     public function store(Request $request)
@@ -40,6 +47,11 @@ class AgentController extends Controller
             'integration' => ['required', 'string', Rule::in([Agent::INTEGRATION_OPENAI, Agent::INTEGRATION_CHATKIT_WORKFLOW])],
             'chatkit_workflow_id' => 'nullable|string|max:255',
             'chatkit_workflow_version' => 'nullable|string|max:32',
+            'career_trail_step_slug' => [
+                'nullable',
+                'string',
+                Rule::exists('career_trail_steps', 'slug')->where(fn ($q) => $q->where('is_active', true)),
+            ],
         ]);
 
         if (($validated['integration'] ?? '') === Agent::INTEGRATION_CHATKIT_WORKFLOW) {
@@ -57,7 +69,7 @@ class AgentController extends Controller
             ? ($validated['chatkit_workflow_version'] ?? '1')
             : null;
 
-        Agent::create([
+        $agent = Agent::create([
             'name' => $validated['name'],
             'description' => $validated['description'],
             'youtube_video_id' => $validated['youtube_video_id'],
@@ -74,6 +86,8 @@ class AgentController extends Controller
             'chatkit_workflow_version' => $chatkitWorkflowVersion,
         ]);
 
+        $this->syncCareerTrailStepBinding($agent, $validated['career_trail_step_slug'] ?? null);
+
         return redirect()->route('admin.agents.index')
             ->with('success', 'Agente criado com sucesso!');
     }
@@ -82,7 +96,18 @@ class AgentController extends Controller
     {
         $steps = $agent->steps()->orderBy('step_order')->get();
 
-        return view('admin.agents.edit', compact('agent', 'steps'));
+        $trailSteps = CareerTrailStep::query()
+            ->where('is_active', true)
+            ->where('slug', '!=', 'cv')
+            ->orderBy('sort_order')
+            ->get(['id', 'slug', 'title', 'sort_order']);
+
+        $boundTrailStepSlug = CareerTrailStep::query()
+            ->where('is_active', true)
+            ->where('agent_id', $agent->id)
+            ->value('slug');
+
+        return view('admin.agents.edit', compact('agent', 'steps', 'trailSteps', 'boundTrailStepSlug'));
     }
 
     public function update(Request $request, $id)
@@ -105,6 +130,11 @@ class AgentController extends Controller
             'integration' => ['required', 'string', Rule::in([Agent::INTEGRATION_OPENAI, Agent::INTEGRATION_CHATKIT_WORKFLOW])],
             'chatkit_workflow_id' => 'nullable|string|max:255',
             'chatkit_workflow_version' => 'nullable|string|max:32',
+            'career_trail_step_slug' => [
+                'nullable',
+                'string',
+                Rule::exists('career_trail_steps', 'slug')->where(fn ($q) => $q->where('is_active', true)),
+            ],
         ]);
 
         if (($validated['integration'] ?? '') === Agent::INTEGRATION_CHATKIT_WORKFLOW) {
@@ -150,6 +180,8 @@ class AgentController extends Controller
 
         $agent->update($data);
 
+        $this->syncCareerTrailStepBinding($agent, $validated['career_trail_step_slug'] ?? null);
+
         return redirect()->route('admin.agents.index')
             ->with('success', 'Agente atualizado com sucesso!');
     }
@@ -181,5 +213,32 @@ class AgentController extends Controller
         $agent->update(['is_active' => false]);
 
         return back()->with('success', 'Agente desativado.');
+    }
+
+    private function syncCareerTrailStepBinding(Agent $agent, ?string $slug): void
+    {
+        // Um agente pode estar associado no máximo a um passo.
+        CareerTrailStep::query()
+            ->where('agent_id', $agent->id)
+            ->update(['agent_id' => null]);
+
+        if ($slug === null || trim($slug) === '') {
+            return;
+        }
+
+        $step = CareerTrailStep::query()
+            ->where('is_active', true)
+            ->where('slug', $slug)
+            ->first();
+
+        if (! $step) {
+            return;
+        }
+
+        // Um passo deve ter no máximo um agente (última escolha vence).
+        CareerTrailStep::query()
+            ->where('is_active', true)
+            ->where('slug', $slug)
+            ->update(['agent_id' => $agent->id]);
     }
 }

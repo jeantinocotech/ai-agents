@@ -15,6 +15,10 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\ChatKitSessionController;
 use App\Http\Controllers\CvAnalysisController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\InterviewPreparationController;
+use App\Http\Controllers\InterviewProcessOutcomeController;
+use App\Http\Controllers\LandingController;
+use App\Http\Controllers\MotivationLetterController;
 use App\Http\Controllers\PrivacyController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\PurchaseController;
@@ -30,8 +34,8 @@ Route::get('/depoimento', [TestimonialController::class, 'create'])->name('testi
 Route::post('/depoimento', [TestimonialController::class, 'store'])->name('testimonials.store');
 Route::get('/meus-depoimentos', [TestimonialController::class, 'mine'])->name('testimonials.mine')->middleware('auth');
 
-// Página inicial - listagem pública de agentes
-Route::get('/', [AgentController::class, 'index'])->name('home');
+// Página inicial — foco na trilha de carreira (visitantes e utilizadores autenticados)
+Route::get('/', [LandingController::class, 'index'])->name('home');
 
 // Rotas públicas de visualização
 Route::get('/agents/{agent}/ratings', [RatingController::class, 'agentRatings'])
@@ -47,8 +51,13 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('/trilha', [CareerTrailController::class, 'index'])->name('career-trail.index');
     Route::get('/trilha/cv', [CareerTrailCvController::class, 'show'])->name('career-trail.cv');
+    Route::get('/trilha/ats', [CareerTrailController::class, 'ats'])->name('career-trail.ats');
     Route::post('/trilha/cv', [CareerTrailCvController::class, 'store'])->name('career-trail.cv.store');
-    Route::delete('/trilha/cv', [CareerTrailCvController::class, 'destroy'])->name('career-trail.cv.destroy');
+    Route::post('/trilha/cv/importar-agente', [CareerTrailCvController::class, 'importFromAgentDocument'])->name('career-trail.cv.import-agent');
+    Route::delete('/trilha/cv/biblioteca-agente/{agent}/{document}', [CareerTrailCvController::class, 'destroyAgentDocument'])->name('career-trail.cv.agent-document.destroy');
+    Route::patch('/trilha/cv/{userCv}', [CareerTrailCvController::class, 'update'])->name('career-trail.cv.update');
+    Route::post('/trilha/cv/{userCv}/padrao', [CareerTrailCvController::class, 'setDefault'])->name('career-trail.cv.default');
+    Route::delete('/trilha/cv/{userCv}', [CareerTrailCvController::class, 'destroyProfileCv'])->name('career-trail.cv.destroy');
     Route::post('/trilha/cv/sync/{agent}', [CareerTrailCvController::class, 'syncToAgent'])->name('career-trail.cv.sync');
     Route::post('/trilha/avancar', [CareerTrailController::class, 'advance'])->name('career-trail.advance');
     Route::post('/trilha/voltar', [CareerTrailController::class, 'back'])->name('career-trail.back');
@@ -69,6 +78,39 @@ Route::middleware(['auth'])->group(function () {
         ->name('agents.documents.destroy');
     Route::post('/agents/{agent}/documentos/predefinidos', [AgentDocumentsController::class, 'updateDefaults'])
         ->name('agents.documents.defaults');
+
+    Route::get('/agents/{agent}/cartas-motivacao', [MotivationLetterController::class, 'index'])
+        ->name('agents.motivation-letters.index');
+    Route::get('/agents/{agent}/cartas-motivacao/nova', [MotivationLetterController::class, 'create'])
+        ->name('agents.motivation-letters.create');
+    Route::post('/agents/{agent}/cartas-motivacao', [MotivationLetterController::class, 'store'])
+        ->name('agents.motivation-letters.store');
+    Route::get('/agents/{agent}/cartas-motivacao/{motivationLetter}/editar', [MotivationLetterController::class, 'edit'])
+        ->name('agents.motivation-letters.edit');
+    Route::put('/agents/{agent}/cartas-motivacao/{motivationLetter}', [MotivationLetterController::class, 'update'])
+        ->name('agents.motivation-letters.update');
+    Route::delete('/agents/{agent}/cartas-motivacao/{motivationLetter}', [MotivationLetterController::class, 'destroy'])
+        ->name('agents.motivation-letters.destroy');
+
+    Route::get('/agents/{agent}/entrevistas', [InterviewPreparationController::class, 'index'])
+        ->name('agents.interview-preparations.index');
+    Route::get('/agents/{agent}/entrevistas/nova', [InterviewPreparationController::class, 'create'])
+        ->name('agents.interview-preparations.create');
+    Route::post('/agents/{agent}/entrevistas', [InterviewPreparationController::class, 'store'])
+        ->name('agents.interview-preparations.store');
+    Route::get('/agents/{agent}/entrevistas/{interviewPreparation}/editar', [InterviewPreparationController::class, 'edit'])
+        ->name('agents.interview-preparations.edit');
+    Route::put('/agents/{agent}/entrevistas/{interviewPreparation}', [InterviewPreparationController::class, 'update'])
+        ->name('agents.interview-preparations.update');
+    Route::delete('/agents/{agent}/entrevistas/{interviewPreparation}', [InterviewPreparationController::class, 'destroy'])
+        ->name('agents.interview-preparations.destroy');
+    Route::patch('/agents/{agent}/entrevistas/processo-jd/{jdDocument}', [InterviewProcessOutcomeController::class, 'update'])
+        ->name('agents.interview-process.update');
+
+    Route::post('/agents/{agent}/cvs', [AgentDocumentsController::class, 'storeProfileCv'])
+        ->name('agents.profile-cvs.store');
+    Route::patch('/agents/{agent}/cvs/{userCv}', [AgentDocumentsController::class, 'updateProfileCv'])
+        ->name('agents.profile-cvs.update');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

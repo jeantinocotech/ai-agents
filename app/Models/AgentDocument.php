@@ -20,25 +20,53 @@ class AgentDocument extends Model
         'title',
         'body',
         'paired_cv_document_id',
+        'user_cv_id',
     ];
 
     protected static function booted(): void
     {
         static::saving(function (AgentDocument $doc) {
+            // Simplificação: CVs vivem em user_cvs; agent_documents guarda JDs e referência opcional (user_cv_id).
+            // Mantemos paired_cv_document_id apenas por compatibilidade retroativa.
             if ($doc->type === self::TYPE_CV) {
                 $doc->paired_cv_document_id = null;
+                $doc->user_cv_id = null;
             }
-            if ($doc->type === self::TYPE_JD && $doc->paired_cv_document_id !== null) {
-                $pair = self::query()->whereKey($doc->paired_cv_document_id)->first();
-                if (
-                    ! $pair
-                    || $pair->type !== self::TYPE_CV
-                    || (int) $pair->user_id !== (int) $doc->user_id
-                    || (int) $pair->agent_id !== (int) $doc->agent_id
-                ) {
-                    throw ValidationException::withMessages([
-                        'paired_cv_document_id' => 'O CV associado é inválido.',
-                    ]);
+
+            if ($doc->type === self::TYPE_JD) {
+                // Fluxo ChatKit/API: JD chega com paired_cv_document_id (CV em agent_documents). A trilha e a UI ATS
+                // usam user_cv_id — copiamos o CV de perfil predefinido quando há par válido sem user_cv_id.
+                if ($doc->user_cv_id === null && $doc->paired_cv_document_id !== null) {
+                    $pairedId = (int) $doc->paired_cv_document_id;
+                    if ($pairedId > 0) {
+                        $pairedCv = self::query()
+                            ->whereKey($pairedId)
+                            ->where('user_id', $doc->user_id)
+                            ->where('agent_id', $doc->agent_id)
+                            ->where('type', self::TYPE_CV)
+                            ->first();
+
+                        if ($pairedCv !== null) {
+                            $defaultProfileCv = UserCv::defaultForUserId((int) $doc->user_id);
+                            if ($defaultProfileCv !== null) {
+                                $doc->user_cv_id = $defaultProfileCv->id;
+                            }
+                        }
+                    }
+                }
+
+                $doc->paired_cv_document_id = null;
+
+                if ($doc->user_cv_id !== null) {
+                    $ok = UserCv::query()
+                        ->whereKey($doc->user_cv_id)
+                        ->where('user_id', $doc->user_id)
+                        ->exists();
+                    if (! $ok) {
+                        throw ValidationException::withMessages([
+                            'user_cv_id' => 'O CV associado é inválido.',
+                        ]);
+                    }
                 }
             }
         });
@@ -62,5 +90,10 @@ class AgentDocument extends Model
     public function jdsUsingThisCv(): HasMany
     {
         return $this->hasMany(self::class, 'paired_cv_document_id');
+    }
+
+    public function userCv(): BelongsTo
+    {
+        return $this->belongsTo(UserCv::class, 'user_cv_id');
     }
 }

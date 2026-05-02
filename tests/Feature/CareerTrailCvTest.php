@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Agent;
+use App\Models\AgentDocument;
 use App\Models\User;
 use App\Models\UserCv;
 
@@ -22,12 +23,12 @@ test('guest cannot access career trail cv page', function () {
 });
 
 test('guest cannot destroy profile cv', function () {
-    $this->delete(route('career-trail.cv.destroy'))->assertRedirect(route('login'));
+    $this->delete(route('career-trail.cv.destroy', ['userCv' => 1]))->assertRedirect(route('login'));
 });
 
-test('user can destroy default profile cv', function () {
+test('user can destroy a profile cv', function () {
     $user = User::factory()->create();
-    UserCv::query()->create([
+    $cv = UserCv::query()->create([
         'user_id' => $user->id,
         'title' => 'Para apagar',
         'body' => str_repeat('b', 50),
@@ -36,7 +37,7 @@ test('user can destroy default profile cv', function () {
     ]);
 
     $this->actingAs($user)
-        ->delete(route('career-trail.cv.destroy'))
+        ->delete(route('career-trail.cv.destroy', $cv))
         ->assertRedirect(route('career-trail.cv'))
         ->assertSessionHas('status');
 
@@ -44,13 +45,12 @@ test('user can destroy default profile cv', function () {
     expect(UserCv::query()->where('user_id', $user->id)->count())->toBe(0);
 });
 
-test('destroy without profile cv shows error', function () {
+test('destroy unknown profile cv returns not found', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->delete(route('career-trail.cv.destroy'))
-        ->assertRedirect(route('career-trail.cv'))
-        ->assertSessionHas('error');
+        ->delete(route('career-trail.cv.destroy', ['userCv' => 999999]))
+        ->assertNotFound();
 });
 
 test('user can save profile cv from text', function () {
@@ -72,6 +72,90 @@ test('user can save profile cv from text', function () {
 
     $user->refresh();
     expect($user->linkedin_url)->toBe('https://www.linkedin.com/in/example');
+});
+
+test('second profile cv stays non default unless requested', function () {
+    $user = User::factory()->create();
+    $first = UserCv::query()->create([
+        'user_id' => $user->id,
+        'title' => 'A',
+        'body' => str_repeat('x', 50),
+        'is_default' => true,
+        'source' => UserCv::SOURCE_MANUAL,
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('career-trail.cv.store'), [
+            'has_existing_cv' => '0',
+            'title' => 'B',
+            'body' => str_repeat('y', 50),
+        ])
+        ->assertRedirect(route('career-trail.cv'));
+
+    $first->refresh();
+    expect($first->is_default)->toBeTrue();
+    expect(UserCv::query()->where('user_id', $user->id)->count())->toBe(2);
+    expect(UserCv::query()->where('user_id', $user->id)->where('is_default', true)->count())->toBe(1);
+});
+
+test('deleting default cv promotes another', function () {
+    $user = User::factory()->create();
+    $a = UserCv::query()->create([
+        'user_id' => $user->id,
+        'title' => 'Old default',
+        'body' => str_repeat('a', 50),
+        'is_default' => true,
+        'source' => UserCv::SOURCE_MANUAL,
+    ]);
+    $b = UserCv::query()->create([
+        'user_id' => $user->id,
+        'title' => 'Second',
+        'body' => str_repeat('b', 50),
+        'is_default' => false,
+        'source' => UserCv::SOURCE_MANUAL,
+    ]);
+    $b->touch();
+
+    $this->actingAs($user)
+        ->delete(route('career-trail.cv.destroy', $a))
+        ->assertRedirect(route('career-trail.cv'));
+
+    $b->refresh();
+    expect($b->is_default)->toBeTrue();
+    expect(UserCv::defaultForUserId((int) $user->id)?->id)->toBe($b->id);
+});
+
+test('user can import cv from agent library to profile', function () {
+    $user = User::factory()->create();
+    $agent = Agent::query()->create([
+        'name' => 'ATS library',
+        'price' => 0,
+        'model_type' => 'gpt-4o-mini',
+        'integration' => Agent::INTEGRATION_CHATKIT_WORKFLOW,
+        'chatkit_workflow_id' => 'wf_ats',
+        'chatkit_workflow_version' => '1',
+        'is_active' => true,
+    ]);
+
+    $doc = AgentDocument::query()->create([
+        'user_id' => $user->id,
+        'agent_id' => $agent->id,
+        'type' => AgentDocument::TYPE_CV,
+        'title' => 'CV ATS',
+        'body' => str_repeat('z', 60),
+        'paired_cv_document_id' => null,
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('career-trail.cv.import-agent'), [
+            'agent_document_id' => $doc->id,
+        ])
+        ->assertRedirect(route('career-trail.cv'));
+
+    $profile = UserCv::defaultForUserId((int) $user->id);
+    expect($profile)->not->toBeNull();
+    expect($profile->body)->toBe(str_repeat('z', 60));
+    expect($profile->source)->toBe(UserCv::SOURCE_AGENT_IMPORT);
 });
 
 test('profile cv content endpoint returns json for owner', function () {
@@ -126,7 +210,7 @@ test('career trail cv page still shows assistant when user already has default c
         ->get(route('career-trail.cv'))
         ->assertOk()
         ->assertSee('btn-open-cv-assistant', false)
-        ->assertSee('Criador de CV', false);
+        ->assertSee('Abrir assistente de CV', false);
 });
 
 test('career trail cv page does not expose assistant when configured agent is inactive', function () {
@@ -161,6 +245,23 @@ test('embedded career cv assistant hides document library when no_documents is s
         ->assertViewHas('chatkitSimpleChat', true)
         ->assertDontSee('Documentos para o assistente', false)
         ->assertSee('Converse diretamente com o assistente', false);
+});
+
+test('career cv assistant full page uses app chat layout like ats including trail chrome', function () {
+    $user = User::factory()->create();
+    $agent = makeCareerTrailChatKitAgent();
+    config(['career_trail.cv_chatkit_agent_id' => $agent->id]);
+
+    $this->actingAs($user)
+        ->get(route('agents.chat', $agent).'?no_documents=1')
+        ->assertOk()
+        ->assertViewIs('agents.chat')
+        ->assertViewHas('chatkitSimpleChat', true)
+        ->assertSee('Comprar tokens', false)
+        ->assertSee('Voltar à trilha', false)
+        ->assertSee('Nesta visita', false)
+        ->assertSee('Converse diretamente com o assistente', false)
+        ->assertDontSee('Documentos para o assistente', false);
 });
 
 test('embedded no_documents is ignored for agents that are not the career cv assistant', function () {

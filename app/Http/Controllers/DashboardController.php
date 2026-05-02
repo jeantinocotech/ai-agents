@@ -2,23 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Agent;
+use Illuminate\Http\RedirectResponse;
 
 class DashboardController extends Controller
 {
-    public function index()
+    /**
+     * Sem CV de perfil guardado, o ponto de entrada é a página inicial (orientação da Graça).
+     * Com pelo menos um CV, segue-se directamente para a trilha.
+     */
+    public function index(): RedirectResponse
     {
         $user = auth()->user();
-        $user->refresh();
+        if ($user !== null && ! $user->userCvs()->exists()) {
+            return redirect()->route('home');
+        }
 
-        $agents = Agent::query()
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
-
-        return view('dashboard', [
-            'agents' => $agents,
-            'tokenBalance' => (int) $user->token_balance,
-        ]);
+        return redirect()->route('career-trail.index');
     }
 }

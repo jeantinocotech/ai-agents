@@ -6,6 +6,7 @@ use App\Models\Agent;
 use App\Models\AgentDocument;
 use App\Models\AgentDocumentDefault;
 use App\Models\UserCv;
+use App\Services\CareerTrailAgentAccess;
 use App\Support\AgentDocumentLimits;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -17,10 +18,11 @@ class AgentDocumentsController extends Controller
     public function index(Request $request, Agent $agent): View
     {
         $user = $request->user();
-        $cvs = AgentDocument::query()
+        CareerTrailAgentAccess::abortUnlessCanAccess($user, $agent);
+
+        $profileCvs = UserCv::query()
             ->where('user_id', $user->id)
-            ->where('agent_id', $agent->id)
-            ->where('type', AgentDocument::TYPE_CV)
+            ->orderByDesc('is_default')
             ->orderByDesc('updated_at')
             ->get();
 
@@ -28,19 +30,19 @@ class AgentDocumentsController extends Controller
             ->where('user_id', $user->id)
             ->where('agent_id', $agent->id)
             ->where('type', AgentDocument::TYPE_JD)
-            ->with('pairedCv')
+            ->with('userCv')
             ->orderByDesc('updated_at')
             ->get();
 
         $defaults = AgentDocumentDefault::query()
             ->where('user_id', $user->id)
             ->where('agent_id', $agent->id)
-            ->with(['defaultCvDocument', 'defaultJdDocument'])
+            ->with(['defaultJdDocument'])
             ->first();
 
         return view('agents.documents.index', [
             'agent' => $agent,
-            'cvs' => $cvs,
+            'profileCvs' => $profileCvs,
             'jds' => $jds,
             'defaults' => $defaults,
             'maxCvBodyChars' => AgentDocumentLimits::maxCharsForType(AgentDocument::TYPE_CV),
@@ -50,6 +52,8 @@ class AgentDocumentsController extends Controller
 
     public function content(Request $request, Agent $agent, AgentDocument $document): JsonResponse
     {
+        CareerTrailAgentAccess::abortUnlessCanAccess($request->user(), $agent);
+
         $this->authorizeOwnedDocument($document, $request->user(), $agent);
 
         return response()->json([
@@ -67,6 +71,8 @@ class AgentDocumentsController extends Controller
      */
     public function profileCvContent(Request $request, Agent $agent, UserCv $userCv): JsonResponse
     {
+        CareerTrailAgentAccess::abortUnlessCanAccess($request->user(), $agent);
+
         abort_unless((int) $userCv->user_id === (int) $request->user()->id, 403);
 
         return response()->json([
@@ -79,13 +85,74 @@ class AgentDocumentsController extends Controller
         ]);
     }
 
-    public function store(Request $request, Agent $agent): RedirectResponse
+    public function storeProfileCv(Request $request, Agent $agent): RedirectResponse
     {
+        CareerTrailAgentAccess::abortUnlessCanAccess($request->user(), $agent);
+
         $validated = $request->validate([
-            'type' => 'required|string|in:cv,jd',
             'title' => 'nullable|string|max:255',
             'body' => 'required|string',
-            'paired_cv_document_id' => 'nullable|integer|exists:agent_documents,id',
+            'make_default' => 'sometimes|boolean',
+        ]);
+
+        $user = $request->user();
+
+        AgentDocumentLimits::assertBodyWithinLimit(AgentDocument::TYPE_CV, $validated['body']);
+
+        $cv = UserCv::query()->create([
+            'user_id' => $user->id,
+            'title' => $validated['title'] ?? null,
+            'body' => $validated['body'],
+            'is_default' => false,
+            'source' => UserCv::SOURCE_MANUAL,
+        ]);
+
+        if ($request->boolean('make_default') || UserCv::query()->where('user_id', $user->id)->count() === 1) {
+            UserCv::query()->where('user_id', $user->id)->update(['is_default' => false]);
+            $cv->forceFill(['is_default' => true])->save();
+        }
+
+        return redirect()
+            ->route('agents.documents.index', $agent)
+            ->with('status', 'CV guardado no perfil.');
+    }
+
+    public function updateProfileCv(Request $request, Agent $agent, UserCv $userCv): RedirectResponse
+    {
+        CareerTrailAgentAccess::abortUnlessCanAccess($request->user(), $agent);
+        abort_unless((int) $userCv->user_id === (int) $request->user()->id, 403);
+
+        $validated = $request->validate([
+            'title' => 'nullable|string|max:255',
+            'body' => 'required|string',
+            'make_default' => 'sometimes|boolean',
+        ]);
+
+        AgentDocumentLimits::assertBodyWithinLimit(AgentDocument::TYPE_CV, $validated['body']);
+
+        $userCv->title = $validated['title'] ?? null;
+        $userCv->body = $validated['body'];
+        $userCv->save();
+
+        if ($request->boolean('make_default')) {
+            UserCv::query()->where('user_id', $request->user()->id)->update(['is_default' => false]);
+            $userCv->forceFill(['is_default' => true])->save();
+        }
+
+        return redirect()
+            ->route('agents.documents.index', $agent)
+            ->with('status', 'CV do perfil atualizado.');
+    }
+
+    public function store(Request $request, Agent $agent): RedirectResponse
+    {
+        CareerTrailAgentAccess::abortUnlessCanAccess($request->user(), $agent);
+
+        $validated = $request->validate([
+            'type' => 'required|string|in:jd',
+            'title' => 'nullable|string|max:255',
+            'body' => 'required|string',
+            'user_cv_id' => 'nullable|integer|exists:user_cvs,id',
             'set_as_default' => 'sometimes|boolean',
         ]);
 
@@ -93,11 +160,9 @@ class AgentDocumentsController extends Controller
 
         $user = $request->user();
 
-        if ($validated['type'] === AgentDocument::TYPE_JD) {
-            $pairedId = $validated['paired_cv_document_id'] ?? null;
-            if ($pairedId !== null) {
-                $this->assertCvOwnedByUserAgent((int) $pairedId, $user->id, $agent->id);
-            }
+        $userCvId = $validated['user_cv_id'] ?? null;
+        if ($userCvId !== null) {
+            abort_unless(UserCv::query()->whereKey($userCvId)->where('user_id', $user->id)->exists(), 422);
         }
 
         $doc = AgentDocument::query()->create([
@@ -106,19 +171,15 @@ class AgentDocumentsController extends Controller
             'type' => $validated['type'],
             'title' => $validated['title'] ?? null,
             'body' => $validated['body'],
-            'paired_cv_document_id' => $validated['type'] === AgentDocument::TYPE_JD
-                ? ($validated['paired_cv_document_id'] ?? null)
-                : null,
+            'paired_cv_document_id' => null,
+            'user_cv_id' => $validated['type'] === AgentDocument::TYPE_JD ? $userCvId : null,
         ]);
 
-        if ($validated['type'] === AgentDocument::TYPE_CV && $request->boolean('set_as_default')) {
-            $this->setDefaultCv($user->id, $agent->id, $doc->id);
-        }
         if ($validated['type'] === AgentDocument::TYPE_JD && $request->boolean('set_as_default')) {
             $this->setDefaultJd($user->id, $agent->id, $doc->id);
         }
 
-        $label = $validated['type'] === AgentDocument::TYPE_CV ? 'CV' : 'Vaga (JD)';
+        $label = 'Vaga (JD)';
 
         return redirect()
             ->route('agents.documents.index', $agent)
@@ -127,12 +188,14 @@ class AgentDocumentsController extends Controller
 
     public function update(Request $request, Agent $agent, AgentDocument $document): RedirectResponse
     {
+        CareerTrailAgentAccess::abortUnlessCanAccess($request->user(), $agent);
+
         $this->authorizeOwnedDocument($document, $request->user(), $agent);
 
         $validated = $request->validate([
             'title' => 'nullable|string|max:255',
             'body' => 'required|string',
-            'paired_cv_document_id' => 'nullable|integer|exists:agent_documents,id',
+            'user_cv_id' => 'nullable|integer|exists:user_cvs,id',
             'set_as_default' => 'sometimes|boolean',
         ]);
 
@@ -141,25 +204,23 @@ class AgentDocumentsController extends Controller
         $user = $request->user();
 
         if ($document->type === AgentDocument::TYPE_JD) {
-            $pairedId = $validated['paired_cv_document_id'] ?? null;
-            if ($pairedId !== null) {
-                $this->assertCvOwnedByUserAgent((int) $pairedId, $user->id, $agent->id);
+            $userCvId = $validated['user_cv_id'] ?? null;
+            if ($userCvId !== null) {
+                abort_unless(UserCv::query()->whereKey($userCvId)->where('user_id', $user->id)->exists(), 422);
             }
-            $document->paired_cv_document_id = $pairedId;
+            $document->paired_cv_document_id = null;
+            $document->user_cv_id = $userCvId;
         }
 
         $document->title = $validated['title'] ?? null;
         $document->body = $validated['body'];
         $document->save();
 
-        if ($document->type === AgentDocument::TYPE_CV && $request->boolean('set_as_default')) {
-            $this->setDefaultCv($user->id, $agent->id, $document->id);
-        }
         if ($document->type === AgentDocument::TYPE_JD && $request->boolean('set_as_default')) {
             $this->setDefaultJd($user->id, $agent->id, $document->id);
         }
 
-        $label = $document->type === AgentDocument::TYPE_CV ? 'CV' : 'Vaga';
+        $label = 'Vaga';
 
         return redirect()
             ->route('agents.documents.index', $agent)
@@ -168,6 +229,8 @@ class AgentDocumentsController extends Controller
 
     public function destroy(Request $request, Agent $agent, AgentDocument $document): RedirectResponse
     {
+        CareerTrailAgentAccess::abortUnlessCanAccess($request->user(), $agent);
+
         $this->authorizeOwnedDocument($document, $request->user(), $agent);
 
         $defaults = AgentDocumentDefault::query()
@@ -194,28 +257,36 @@ class AgentDocumentsController extends Controller
 
     public function updateDefaults(Request $request, Agent $agent): RedirectResponse|JsonResponse
     {
+        CareerTrailAgentAccess::abortUnlessCanAccess($request->user(), $agent);
+
+        if ($request->has('default_cv_document_id') && ! $request->has('default_jd_document_id')) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'CV de perfil não usa predefinições desta biblioteca.',
+                ]);
+            }
+
+            return redirect()->back();
+        }
+
         $validated = $request->validate([
-            'default_cv_document_id' => 'sometimes|nullable|integer|exists:agent_documents,id',
             'default_jd_document_id' => 'sometimes|nullable|integer|exists:agent_documents,id',
         ]);
 
-        if (! array_key_exists('default_cv_document_id', $validated) && ! array_key_exists('default_jd_document_id', $validated)) {
+        if (! array_key_exists('default_jd_document_id', $validated)) {
             if ($request->expectsJson()) {
                 return response()->json([
-                    'message' => 'Marque guardar como predefinido para o CV e/ou para a vaga, ou altere as opções antes de gravar.',
+                    'message' => 'Indique a vaga (JD) predefinida (ou desactive «Guardar seleção» no CV).',
                 ], 422);
             }
 
             return redirect()
                 ->route('agents.documents.index', $agent)
-                ->withErrors(['defaults' => 'Indique o que deseja gravar (CV e/ou vaga como predefinido).']);
+                ->withErrors(['defaults' => 'Indique a vaga (JD) que deseja gravar como predefinida.']);
         }
 
         $user = $request->user();
-
-        if (array_key_exists('default_cv_document_id', $validated) && $validated['default_cv_document_id'] !== null) {
-            $this->assertCvOwnedByUserAgent((int) $validated['default_cv_document_id'], $user->id, $agent->id);
-        }
 
         if (array_key_exists('default_jd_document_id', $validated) && $validated['default_jd_document_id'] !== null) {
             $this->assertJdOwnedByUserAgent((int) $validated['default_jd_document_id'], $user->id, $agent->id);
@@ -229,9 +300,6 @@ class AgentDocumentsController extends Controller
             []
         );
 
-        if (array_key_exists('default_cv_document_id', $validated)) {
-            $defaults->default_cv_document_id = $validated['default_cv_document_id'];
-        }
         if (array_key_exists('default_jd_document_id', $validated)) {
             $defaults->default_jd_document_id = $validated['default_jd_document_id'];
         }
@@ -243,7 +311,6 @@ class AgentDocumentsController extends Controller
                 'success' => true,
                 'message' => 'Predefinições gravadas.',
                 'defaults' => [
-                    'cv_document_id' => $defaults->default_cv_document_id,
                     'jd_document_id' => $defaults->default_jd_document_id,
                 ],
             ]);
@@ -263,17 +330,6 @@ class AgentDocumentsController extends Controller
         );
     }
 
-    private function assertCvOwnedByUserAgent(int $cvId, int $userId, int $agentId): void
-    {
-        $exists = AgentDocument::query()
-            ->whereKey($cvId)
-            ->where('user_id', $userId)
-            ->where('agent_id', $agentId)
-            ->where('type', AgentDocument::TYPE_CV)
-            ->exists();
-        abort_unless($exists, 422);
-    }
-
     private function assertJdOwnedByUserAgent(int $jdId, int $userId, int $agentId): void
     {
         $exists = AgentDocument::query()
@@ -283,16 +339,6 @@ class AgentDocumentsController extends Controller
             ->where('type', AgentDocument::TYPE_JD)
             ->exists();
         abort_unless($exists, 422);
-    }
-
-    private function setDefaultCv(int $userId, int $agentId, int $cvId): void
-    {
-        $defaults = AgentDocumentDefault::query()->firstOrCreate(
-            ['user_id' => $userId, 'agent_id' => $agentId],
-            []
-        );
-        $defaults->default_cv_document_id = $cvId;
-        $defaults->save();
     }
 
     private function setDefaultJd(int $userId, int $agentId, int $jdId): void

@@ -3,40 +3,30 @@
 namespace App\Http\Controllers;
 
 use App\Models\Agent;
-use App\Models\Testimonial;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
 
 class AgentsPublicController extends Controller
 {
-    public function index()
+    /**
+     * URL legada `/agentes`: utilizadores autenticados vão para a trilha;
+     * visitantes são enviados para a página inicial (teaser da trilha).
+     */
+    public function index(): RedirectResponse
     {
+        if (auth()->check()) {
+            return redirect()->route('career-trail.index');
+        }
 
-        Log::info('AgentsPublicController@index called');
-
-        $user = auth()->user();
-        $user?->refresh();
-
-        $testimonials = Testimonial::where('is_approved', true)
-            ->where('is_featured', true)
-            ->inRandomOrder()
-            ->limit(3)
-            ->get();
-
-        $agents = Agent::withAvg('ratings', 'rating')
-            ->where('is_active', true)
-            ->get();
-
-        return view('agents.index', compact('agents', 'testimonials', 'user'));
-
+        return redirect()->route('home')->withFragment('trilha-teaser');
     }
 
-    public function addToCart(Request $request, $id)
+    public function addToCart(Request $request, $id): RedirectResponse
     {
         Agent::findOrFail($id);
 
         return redirect()
-            ->route(auth()->check() ? 'tokens.purchase' : 'login')
-            ->with('info', 'Use tokens para conversar com os agentes. Compre um pacote ou faça login.');
+            ->route(auth()->check() ? 'career-trail.index' : 'login')
+            ->with('info', 'Siga a trilha para usar os assistentes com o seu saldo de tokens. Compre tokens ou faça login.');
     }
 }

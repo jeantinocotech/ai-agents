@@ -44,7 +44,7 @@ function initChatKitSimpleConversationBilling(chatKitEl) {
     }
 
     function pillBalance() {
-        var bal = document.getElementById('token-balance-value');
+        var bal = document.querySelector('[data-live-token-balance]') || document.getElementById('token-balance-value');
         if (!bal || !bal.textContent) {
             return 0;
         }
@@ -67,11 +67,8 @@ function initChatKitSimpleConversationBilling(chatKitEl) {
     }
 
     function updatePill(data) {
-        if (data && typeof data.token_balance === 'number') {
-            var el = document.getElementById('token-balance-value');
-            if (el) {
-                el.textContent = data.token_balance.toLocaleString('pt-BR');
-            }
+        if (data && typeof data.token_balance === 'number' && typeof window.setDisplayedUserTokenBalance === 'function') {
+            window.setDisplayedUserTokenBalance(data.token_balance);
         }
     }
 
@@ -218,11 +215,8 @@ function bootOpenAiChatKit() {
                     }
                     throw new Error(msg);
                 }
-                if (typeof data.token_balance === 'number') {
-                    var bal = document.getElementById('token-balance-value');
-                    if (bal) {
-                        bal.textContent = data.token_balance.toLocaleString('pt-BR');
-                    }
+                if (typeof data.token_balance === 'number' && typeof window.setDisplayedUserTokenBalance === 'function') {
+                    window.setDisplayedUserTokenBalance(data.token_balance);
                 }
                 return data.client_secret;
             },
@@ -248,6 +242,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
     var csrf = document.querySelector('meta[name="csrf-token"]');
     var csrfToken = csrf ? csrf.getAttribute('content') : '';
     var agentId = {{ (int) $agent->id }};
+    var jdContentAgentId = {{ (int) ($jdContentAgentId ?? $agent->id) }};
     var limits = { cv: {{ (int) $ckMaxCv }}, jd: {{ (int) $ckMaxJd }} };
     var chatkitConsultationCost = {{ (int) ($ckConsultTokens ?? 0) }};
     var chatkitDebitUrl = @json(route('chat.chatkit.debit-consultation'));
@@ -269,7 +264,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
     }
 
     function parseTokenBalanceFromPill() {
-        var bal = document.getElementById('token-balance-value');
+        var bal = document.querySelector('[data-live-token-balance]') || document.getElementById('token-balance-value');
         if (!bal || !bal.textContent) {
             return 0;
         }
@@ -279,11 +274,8 @@ function initChatKitLibrarySendButtons(chatKitEl) {
     }
 
     function updateTokenPillFromJson(data) {
-        if (data && typeof data.token_balance === 'number') {
-            var el = document.getElementById('token-balance-value');
-            if (el) {
-                el.textContent = data.token_balance.toLocaleString('pt-BR');
-            }
+        if (data && typeof data.token_balance === 'number' && typeof window.setDisplayedUserTokenBalance === 'function') {
+            window.setDisplayedUserTokenBalance(data.token_balance);
         }
     }
 
@@ -309,7 +301,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
         if (/^p\d+$/.test(s)) {
             return '/agents/' + agentId + '/cv-perfil/' + s.slice(1) + '/conteudo';
         }
-        return '/agents/' + agentId + '/documentos/' + documentId + '/conteudo';
+        return '/agents/' + jdContentAgentId + '/documentos/' + documentId + '/conteudo';
     }
 
     function setStatus(msg) {
@@ -523,7 +515,8 @@ function initChatKitLibrarySendButtons(chatKitEl) {
     if (!statusEl) {
         return;
     }
-    var defaultsUrl = @json(route('agents.documents.defaults', $agent));
+    var cvDefaultsUrl = @json(route('agents.documents.defaults', $agent));
+    var jdDefaultsUrl = @json($jdDefaultsUrl ?? route('agents.documents.defaults', $agent));
     var csrf = document.querySelector('meta[name="csrf-token"]');
     var csrfToken = csrf ? csrf.getAttribute('content') : '';
     var cvEl = document.getElementById('chatkit-default-cv');
@@ -533,9 +526,9 @@ function initChatKitLibrarySendButtons(chatKitEl) {
     var debounceCv = null;
     var debounceJd = null;
 
-    function postDefaults(body) {
+    function postDefaults(body, saveUrl) {
         statusEl.textContent = 'A guardar…';
-        return fetch(defaultsUrl, {
+        return fetch(saveUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -579,10 +572,9 @@ function initChatKitLibrarySendButtons(chatKitEl) {
         if (!cvChkSave || !cvEl) {
             return;
         }
-        var id = cvEl.value === '' ? null : parseInt(cvEl.value, 10);
         postDefaults({
-            default_cv_document_id: cvChkSave.checked ? id : null,
-        });
+            default_cv_document_id: cvChkSave.checked ? true : null,
+        }, cvDefaultsUrl);
     }
 
     function persistJdDefault() {
@@ -592,7 +584,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
         var id = jdEl.value === '' ? null : parseInt(jdEl.value, 10);
         postDefaults({
             default_jd_document_id: jdChkSave.checked ? id : null,
-        });
+        }, jdDefaultsUrl);
     }
 
     if (cvChkSave) {

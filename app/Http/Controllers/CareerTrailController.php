@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CareerTrailStep;
 use App\Models\UserCareerTrailProgress;
 use App\Services\CareerTrailProgressService;
+use App\Support\CareerTrailStepCompletion;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -17,10 +18,41 @@ class CareerTrailController extends Controller
         $bundle = CareerTrailProgressService::ensureProgress($user);
         abort_if($bundle === null, 503, 'Trilha não configurada. Execute o seeder CareerTrailStepsSeeder.');
 
+        $user->refresh();
+
+        $currentStep = $bundle['current'];
+
         return view('career-trail.index', [
             'steps' => $bundle['steps'],
             'progress' => $bundle['progress'],
-            'currentStep' => $bundle['current'],
+            'currentStep' => $currentStep,
+            'currentStepReadiness' => CareerTrailStepCompletion::readiness($user, $currentStep),
+            'currentStepChecklist' => CareerTrailStepCompletion::checklist($user, $currentStep),
+            'atsStepAgent' => $bundle['steps']->firstWhere('slug', 'ats')?->resolvedAgent(),
+            'coverLetterStepAgent' => $bundle['steps']->firstWhere('slug', 'cover-letter')?->resolvedAgent(),
+            'interviewStepAgent' => $bundle['steps']->firstWhere('slug', 'interviews')?->resolvedAgent(),
+            'cvCreatorChatUrl' => CareerTrailStep::cvEmbeddedCreatorChatUrl(),
+        ]);
+    }
+
+    public function ats(Request $request): View
+    {
+        $user = $request->user();
+        $bundle = CareerTrailProgressService::ensureProgress($user);
+        abort_if($bundle === null, 503, 'Trilha não configurada. Execute o seeder CareerTrailStepsSeeder.');
+
+        $atsStep = $bundle['steps']->firstWhere('slug', 'ats');
+        abort_if(! $atsStep, 404);
+
+        $agent = $atsStep->resolvedAgent();
+        $agentActive = $agent !== null && $agent->is_active;
+
+        return view('career-trail.ats', [
+            'atsStep' => $atsStep,
+            'atsAgent' => $agent,
+            'atsAgentActive' => $agentActive,
+            'readiness' => CareerTrailStepCompletion::readiness($user, $atsStep),
+            'checklist' => CareerTrailStepCompletion::checklist($user, $atsStep),
         ]);
     }
 
@@ -48,7 +80,48 @@ class CareerTrailController extends Controller
                 ->with('info', 'Já está na última etapa da trilha.');
         }
 
+        $gate = CareerTrailStepCompletion::readiness($user, $current);
+        if (! $gate['ready']) {
+            return redirect()->route('career-trail.index')
+                ->with('error', $gate['blocked_message'] ?? 'Complete os requisitos desta etapa antes de avançar.');
+        }
+
+        if ($current->slug === 'ats') {
+            $landingStep = CareerTrailStep::landingStepAfterCompletedAts();
+            if (! $landingStep) {
+                return redirect()->route('career-trail.index')
+                    ->with('error', 'Configuração da trilha incompleta.');
+            }
+
+            $motivationStep = CareerTrailStep::query()
+                ->where('is_active', true)
+                ->where('slug', 'cover-letter')
+                ->first();
+            $interviewStep = CareerTrailStep::query()
+                ->where('is_active', true)
+                ->where('slug', 'interviews')
+                ->first();
+
+            $newMax = (int) ($progress->max_sort_order_reached ?? 0);
+            foreach ([$motivationStep, $interviewStep] as $stepUnlock) {
+                if ($stepUnlock !== null) {
+                    $newMax = max($newMax, (int) $stepUnlock->sort_order);
+                }
+            }
+
+            $progress->current_step_id = $landingStep->id;
+            $progress->max_sort_order_reached = $newMax;
+            $progress->save();
+
+            return redirect()->route('career-trail.index')
+                ->with('status', 'Motivação (opcional) e Entrevista estão desbloqueadas. Etapa sugerida: '.$landingStep->title.'.');
+        }
+
         $progress->current_step_id = $next->id;
+        $progress->max_sort_order_reached = max(
+            (int) ($progress->max_sort_order_reached ?? 0),
+            (int) $next->sort_order
+        );
         $progress->save();
 
         return redirect()->route('career-trail.index')

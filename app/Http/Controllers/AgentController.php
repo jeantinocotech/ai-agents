@@ -10,8 +10,8 @@ use App\Models\AgentStep;
 use App\Models\ChatMessage;
 use App\Models\ChatSession;
 use App\Models\Setting;
-use App\Models\Testimonial;
 use App\Services\ApiUsageBillingService;
+use App\Services\CareerTrailAgentAccess;
 use App\Services\ChatKitDocumentLibraryService;
 use App\Services\TokenWalletService;
 use App\Support\AgentDocumentLimits;
@@ -33,70 +33,21 @@ class AgentController extends Controller
         private ApiUsageBillingService $apiUsageBilling
     ) {}
 
-    public function index()
-    {
-        Log::info('Acessando index do agente');
-
-        $user = auth()->user();
-        $user?->refresh();
-
-        $testimonials = Testimonial::where('is_approved', true)
-            ->where('is_featured', true)
-            ->inRandomOrder()
-            ->limit(3)
-            ->get();
-
-        $agents = Agent::withAvg('ratings', 'rating')
-            ->where('is_active', true)
-            ->get();
-
-        return view('agents.index', compact('agents', 'testimonials', 'user'));
-    }
-
     public function show($id)
     {
+        Agent::findOrFail($id);
 
-        Log::info('Acessando agent.show ', ['agent_id' => $id]);
-
-        $agent = Agent::findOrFail($id);
-        $user = auth()->user();
-
-        $user?->refresh();
-
-        // Buscar avaliações
-        $ratings = AgentRating::where('agent_id', $id)
-            ->with('user')
-            ->orderBy('created_at', 'desc')
-            ->paginate(5);
-
-        // Estatísticas das avaliações
-        $totalRatings = AgentRating::where('agent_id', $id)->count();
-        $averageRating = AgentRating::where('agent_id', $id)->avg('rating') ?? 0;
-
-        // Distribuição de avaliações
-        $ratingDistribution = [
-            5 => AgentRating::where('agent_id', $id)->where('rating', 5)->count(),
-            4 => AgentRating::where('agent_id', $id)->where('rating', 4)->count(),
-            3 => AgentRating::where('agent_id', $id)->where('rating', 3)->count(),
-            2 => AgentRating::where('agent_id', $id)->where('rating', 2)->count(),
-            1 => AgentRating::where('agent_id', $id)->where('rating', 1)->count(),
-        ];
-
-        return view('agents.show', compact(
-            'agent',
-            'ratings',
-            'totalRatings',
-            'averageRating',
-            'ratingDistribution',
-            'user'
-        ));
-
+        return redirect()
+            ->route('career-trail.index')
+            ->with('info', 'Os assistentes são utilizados a partir da trilha, em cada etapa.');
     }
 
     public function chat(Request $request, $id)
     {
 
         $agent = Agent::with('steps')->findOrFail($id);
+        CareerTrailAgentAccess::abortUnlessCanAccess(auth()->user(), $agent);
+
         $steps = $agent->steps()->orderBy('step_order')->get();
 
         $session = ChatSession::where('user_id', auth()->id())
@@ -148,6 +99,26 @@ class AgentController extends Controller
             ? null
             : ChatKitDocumentLibraryService::forUserAndAgent((int) auth()->id(), $agent);
 
+        $documentsHubUrl = route('agents.documents.index', $agent);
+        $jdContentAgentId = (int) $agent->id;
+        $jdDefaultsUrl = route('agents.documents.defaults', $agent);
+        $motivationLettersIndexUrl = null;
+        $interviewPreparationsIndexUrl = null;
+        if ($documentLibrary !== null) {
+            $jdContentAgentId = (int) ($documentLibrary['jd_content_agent_id'] ?? $agent->id);
+            $hubAgent = Agent::query()->find((int) ($documentLibrary['documents_hub_agent_id'] ?? $agent->id)) ?? $agent;
+            $documentsHubUrl = route('agents.documents.index', $hubAgent);
+            $jdDefAgent = Agent::query()->find((int) ($documentLibrary['jd_defaults_agent_id'] ?? $agent->id)) ?? $agent;
+            $jdDefaultsUrl = route('agents.documents.defaults', $jdDefAgent);
+            $bound = CareerTrailAgentAccess::trailStepBoundToAgent($agent);
+            if ($bound !== null && $bound->slug === 'cover-letter') {
+                $motivationLettersIndexUrl = route('agents.motivation-letters.index', $agent);
+            }
+            if ($bound !== null && $bound->slug === 'interviews') {
+                $interviewPreparationsIndexUrl = route('agents.interview-preparations.index', $agent);
+            }
+        }
+
         $chatkitConsultationTokens = 0;
         if ($agent->isChatKitWorkflow()) {
             $chatkitConsultationTokens = max(0, (int) Setting::get('chatkit_tokens_per_session', '50'));
@@ -161,7 +132,12 @@ class AgentController extends Controller
                 'tokenBalance',
                 'documentLibrary',
                 'chatkitConsultationTokens',
-                'chatkitSimpleChat'
+                'chatkitSimpleChat',
+                'documentsHubUrl',
+                'jdContentAgentId',
+                'jdDefaultsUrl',
+                'motivationLettersIndexUrl',
+                'interviewPreparationsIndexUrl'
             ));
         }
 
@@ -172,13 +148,20 @@ class AgentController extends Controller
             'tokenBalance',
             'documentLibrary',
             'chatkitConsultationTokens',
-            'chatkitSimpleChat'
+            'chatkitSimpleChat',
+            'documentsHubUrl',
+            'jdContentAgentId',
+            'jdDefaultsUrl',
+            'motivationLettersIndexUrl',
+            'interviewPreparationsIndexUrl'
         ));
     }
 
     public function finalizeSession($agentId)
     {
         $agent = Agent::with('steps')->findOrFail($agentId);
+        CareerTrailAgentAccess::abortUnlessCanAccess(auth()->user(), $agent);
+
         $steps = $agent->steps()->orderBy('step_order')->get();
 
         Log::info('Finalizando a sessão do agente', ['agent' => $agent, 'steps' => $steps]);
@@ -207,6 +190,7 @@ class AgentController extends Controller
         ]);
 
         $agent = Agent::with('steps')->findOrFail($agentId);
+        CareerTrailAgentAccess::abortUnlessCanAccess(auth()->user(), $agent);
 
         if ($agent->isChatKitWorkflow()) {
             return response()->json([
@@ -238,6 +222,7 @@ class AgentController extends Controller
         }
 
         $agent = Agent::with('steps')->findOrFail($agentId);
+        CareerTrailAgentAccess::abortUnlessCanAccess($user, $agent);
 
         Log::info('GetCurrentStep', ['agent_id' => $agentId, 'user_id' => $user->id]);
 
@@ -486,6 +471,10 @@ class AgentController extends Controller
 
             $agent = Agent::findOrFail($request->agent_id);
 
+            if ($denied = CareerTrailAgentAccess::denyJsonUnlessCanAccess($user, $agent)) {
+                return $denied;
+            }
+
             if ($agent->isChatKitWorkflow()) {
                 return response()->json([
                     'message' => 'Este agente usa ChatKit. Utilize o widget de chat na página.',
@@ -715,6 +704,10 @@ class AgentController extends Controller
 
             $agent = Agent::findOrFail($request->agent_id);
 
+            if ($denied = CareerTrailAgentAccess::denyJsonUnlessCanAccess($user, $agent)) {
+                return $denied;
+            }
+
             if ($agent->isChatKitWorkflow()) {
                 return response()->json([
                     'message' => 'Este agente usa ChatKit. Envie ficheiros pelo widget de chat.',
@@ -905,6 +898,11 @@ class AgentController extends Controller
             return response()->json(['message' => 'Não autenticado.'], 401);
         }
 
+        $agentForTrail = Agent::query()->findOrFail($validated['agent_id']);
+        if ($denied = CareerTrailAgentAccess::denyJsonUnlessCanAccess($user, $agentForTrail)) {
+            return $denied;
+        }
+
         if ($this->findCvJdStepPair((int) $validated['agent_id']) === null) {
             return response()->json(['message' => 'Este agente não suporta guardar CV (passos CV+JD).'], 422);
         }
@@ -962,6 +960,11 @@ class AgentController extends Controller
         $user = $request->user();
         if (! $user) {
             return response()->json(['message' => 'Não autenticado.'], 401);
+        }
+
+        $agentForTrail = Agent::query()->findOrFail($validated['agent_id']);
+        if ($denied = CareerTrailAgentAccess::denyJsonUnlessCanAccess($user, $agentForTrail)) {
+            return $denied;
         }
 
         AgentDocument::query()

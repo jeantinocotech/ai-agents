@@ -51,6 +51,20 @@
                             <p class="text-sm text-gray-500 mt-1">ChatKit usa o widget oficial e a sessão criada na API OpenAI; o prompt do workflow fica no Builder.</p>
                         </div>
 
+                        <div class="mb-4">
+                            <label for="career_trail_step_slug" class="block text-gray-700 text-sm font-bold mb-2">Passo da trilha (opcional)</label>
+                            <select name="career_trail_step_slug" id="career_trail_step_slug"
+                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                                <option value="">— nenhum —</option>
+                                @foreach (($trailSteps ?? []) as $step)
+                                    <option value="{{ $step->slug }}" @selected(old('career_trail_step_slug') === $step->slug)>
+                                        Passo {{ $step->sort_order }} — {{ $step->title }} ({{ $step->slug }})
+                                    </option>
+                                @endforeach
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">Ao associar, este agente passa a desbloquear/ser usado nessa etapa da trilha (ex.: ATS). O passo 1 (CV) é configurado separadamente.</p>
+                        </div>
+
                         <div id="chatkit-fields" class="mb-4 hidden space-y-4 rounded border border-amber-200 bg-amber-50/50 p-4">
                             <div>
                                 <label for="chatkit_workflow_id" class="block text-gray-700 text-sm font-bold mb-2">Workflow ID</label>

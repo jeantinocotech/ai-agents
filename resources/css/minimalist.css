@@ -143,22 +143,30 @@
   }
   
   /* ---- FORMULÁRIOS ---- */
-  input, select, textarea, button {
+  /* Fundo claro por omissão: as páginas Tailwind usam text-slate-900; o tema escuro antigo
+     (fundo #181D20 no focus) fazia o texto escuro desaparecer sobre o campo. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+  select,
+  textarea {
     font-family: inherit;
     font-size: 1rem;
     border-radius: 12px;
-    border: 1px solid var(--mb-mid);
-    background: var(--mb-dark);
-    color: var(--mb-white);
+    border: 1px solid #d1d5db;
+    background: #ffffff;
+    color: #181D20;
     padding: 12px 16px;
     margin-bottom: 14px;
     outline: none;
     box-shadow: 0 1px 4px rgba(44,83,100,.08);
-    transition: border-color 0.16s, background .2s;
+    transition: border-color 0.16s, background .2s, box-shadow 0.16s;
   }
-  input:focus, select:focus, textarea:focus {
-    border-color: var(--mb-light);
-    background: var(--mb-mid);
+  input:not([type="checkbox"]):not([type="radio"]):focus,
+  select:focus,
+  textarea:focus {
+    border-color: #6366f1;
+    background: #ffffff;
+    color: #181D20;
+    box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.25);
   }
   button {
     background: var(--mb-mid);

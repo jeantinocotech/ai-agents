@@ -11,6 +11,9 @@ class UserCv extends Model
 
     public const SOURCE_UPLOAD = 'upload';
 
+    /** CV criado na conta a partir de uma cópia da biblioteca de um agente (ex.: ATS). */
+    public const SOURCE_AGENT_IMPORT = 'agent_import';
+
     protected $fillable = [
         'user_id',
         'title',

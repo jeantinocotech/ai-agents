@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Agent;
 use App\Models\Setting;
+use App\Services\CareerTrailAgentAccess;
 use App\Services\TokenWalletService;
 use App\Support\ChatKitUserRef;
 use Illuminate\Http\JsonResponse;
@@ -39,6 +40,10 @@ class ChatKitSessionController extends Controller
         }
 
         $agent = Agent::query()->findOrFail($validated['agent_id']);
+
+        if ($denied = CareerTrailAgentAccess::denyJsonUnlessCanAccess($user, $agent)) {
+            return $denied;
+        }
 
         if (! $agent->isChatKitWorkflow()) {
             return response()->json(['message' => 'Este agente não está configurado para ChatKit.'], 422);
@@ -135,6 +140,10 @@ class ChatKitSessionController extends Controller
         $user->refresh();
 
         $agent = Agent::query()->findOrFail($validated['agent_id']);
+
+        if ($denied = CareerTrailAgentAccess::denyJsonUnlessCanAccess($user, $agent)) {
+            return $denied;
+        }
 
         if (! $agent->isChatKitWorkflow()) {
             return response()->json(['message' => 'Este agente não está configurado para ChatKit.'], 422);

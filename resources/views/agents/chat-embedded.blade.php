@@ -8,13 +8,15 @@
             <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-600">
                 <span class="font-semibold text-slate-800">{{ $agent->name }}</span>
                 <span class="hidden text-slate-300 sm:inline" aria-hidden="true">|</span>
-                <span>Saldo <strong id="token-balance-value" class="tabular-nums text-slate-900">{{ number_format($tokenBalance ?? 0, 0, ',', '.') }}</strong></span>
+                <span>Saldo <strong id="token-balance-value" data-live-token-balance class="tabular-nums text-slate-900">{{ number_format($tokenBalance ?? 0, 0, ',', '.') }}</strong></span>
                 <span class="hidden text-slate-300 sm:inline" aria-hidden="true">|</span>
                 <span>Nesta visita <strong id="chatkit-session-tokens-used" class="tabular-nums text-amber-700">0</strong></span>
             </div>
         </div>
 
         @php
+            $motivationLettersIndexUrl = $motivationLettersIndexUrl ?? null;
+            $interviewPreparationsIndexUrl = $interviewPreparationsIndexUrl ?? null;
             $chatkitSimpleChat = $chatkitSimpleChat ?? false;
             $ckLib = $documentLibrary ?? ['cvs' => [], 'jds' => [], 'defaults' => ['cv_document_id' => null, 'jd_document_id' => null]];
             $ckDefCv = $ckLib['defaults']['cv_document_id'] ?? null;

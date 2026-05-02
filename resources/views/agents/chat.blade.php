@@ -3,11 +3,28 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
+                    @if (session('status'))
+                        <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900" role="status">
+                            {{ session('status') }}
+                        </div>
+                    @endif
                     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
                         <div class="flex min-w-0 flex-wrap items-center gap-3">
-                            <a href="{{ route('agents.show', $agent->id) }}" class="shrink-0 text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline">
-                                &larr; Voltar
+                            <a href="{{ route('career-trail.index') }}" class="shrink-0 text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline">
+                                &larr; Voltar à trilha
                             </a>
+                            @if (! empty($motivationLettersIndexUrl))
+                                <span class="text-slate-300" aria-hidden="true">·</span>
+                                <a href="{{ $motivationLettersIndexUrl }}" class="text-sm font-medium text-violet-700 hover:text-violet-900 hover:underline">
+                                    Cartas guardadas (biblioteca)
+                                </a>
+                            @endif
+                            @if (! empty($interviewPreparationsIndexUrl))
+                                <span class="text-slate-300" aria-hidden="true">·</span>
+                                <a href="{{ $interviewPreparationsIndexUrl }}" class="text-sm font-medium text-violet-700 hover:text-violet-900 hover:underline">
+                                    Entrevistas registadas (dados)
+                                </a>
+                            @endif
                             <h2 class="text-2xl font-bold tracking-tight text-slate-900">Chat com {{ $agent->name }}</h2>
                         </div>
                         <div class="flex flex-wrap items-center gap-2 sm:justify-end">
@@ -15,7 +32,7 @@
                                 <div id="token-balance-pill" class="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl border border-slate-200/90 bg-white px-4 py-2.5 text-sm shadow-sm ring-1 ring-slate-100">
                                     <div class="flex items-baseline gap-1.5">
                                         <span class="text-xs font-medium uppercase tracking-wide text-slate-500">Saldo</span>
-                                        <strong id="token-balance-value" class="text-base font-semibold tabular-nums text-slate-900">{{ number_format($tokenBalance ?? 0, 0, ',', '.') }}</strong>
+                                        <strong id="token-balance-value" data-live-token-balance class="text-base font-semibold tabular-nums text-slate-900">{{ number_format($tokenBalance ?? 0, 0, ',', '.') }}</strong>
                                     </div>
                                     <span class="hidden h-4 w-px bg-slate-200 sm:block" aria-hidden="true"></span>
                                     <div class="flex items-baseline gap-1.5">
@@ -26,7 +43,7 @@
                             @else
                                 <span id="token-balance-pill" class="inline-flex items-center gap-2 rounded-2xl border border-slate-200/90 bg-slate-50 px-4 py-2 text-sm shadow-sm">
                                     <span class="text-xs font-medium uppercase tracking-wide text-slate-500">Saldo</span>
-                                    <strong id="token-balance-value" class="font-semibold tabular-nums text-slate-900">{{ number_format($tokenBalance ?? 0, 0, ',', '.') }}</strong>
+                                    <strong id="token-balance-value" data-live-token-balance class="font-semibold tabular-nums text-slate-900">{{ number_format($tokenBalance ?? 0, 0, ',', '.') }}</strong>
                                 </span>
                             @endif
                             <a href="{{ route('tokens.purchase') }}"
@@ -48,7 +65,11 @@
                         $ckMaxJd = (int) ($ckLib['max_jd_body_chars'] ?? config('agent_documents.max_jd_body_chars', 60000));
                         $ckConsultTokens = (int) ($chatkitConsultationTokens ?? 0);
                     @endphp
-                    @include('agents.partials.chatkit-workspace')
+                    @if ($chatkitSimpleChat ?? false)
+                        @include('agents.partials.chatkit-workspace-simple')
+                    @else
+                        @include('agents.partials.chatkit-workspace')
+                    @endif
                     @else
                     <div id="cv-reuse-banner" class="hidden mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950"></div>
                     <!-- Interface de chat -->
@@ -624,9 +645,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('Session ID atualizado:', chatSessionId);
             }
 
-            if (typeof data.token_balance === 'number') {
-                const el = document.getElementById('token-balance-value');
-                if (el) el.textContent = data.token_balance.toLocaleString('pt-BR');
+            if (typeof data.token_balance === 'number' && typeof window.setDisplayedUserTokenBalance === 'function') {
+                window.setDisplayedUserTokenBalance(data.token_balance);
             }
 
             // Limpa o campo de mensagem
