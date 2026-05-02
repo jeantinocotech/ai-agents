@@ -18,13 +18,14 @@ test('email can be verified', function () {
 
     Event::fake();
 
-    $verificationUrl = URL::temporarySignedRoute(
+    $signedPath = URL::temporarySignedRoute(
         'verification.verify',
         now()->addMinutes(60),
-        ['id' => $user->id, 'hash' => sha1($user->email)]
+        ['id' => $user->id, 'hash' => sha1($user->email)],
+        absolute: false,
     );
 
-    $response = $this->actingAs($user)->get($verificationUrl);
+    $response = $this->actingAs($user)->get(URL::to($signedPath));
 
     Event::assertDispatched(Verified::class);
     expect($user->fresh()->hasVerifiedEmail())->toBeTrue();
@@ -34,13 +35,14 @@ test('email can be verified', function () {
 test('email is not verified with invalid hash', function () {
     $user = User::factory()->unverified()->create();
 
-    $verificationUrl = URL::temporarySignedRoute(
+    $signedPath = URL::temporarySignedRoute(
         'verification.verify',
         now()->addMinutes(60),
-        ['id' => $user->id, 'hash' => sha1('wrong-email')]
+        ['id' => $user->id, 'hash' => sha1('wrong-email')],
+        absolute: false,
     );
 
-    $this->actingAs($user)->get($verificationUrl);
+    $this->actingAs($user)->get(URL::to($signedPath));
 
     expect($user->fresh()->hasVerifiedEmail())->toBeFalse();
 });

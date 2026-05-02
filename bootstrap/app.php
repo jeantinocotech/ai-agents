@@ -13,6 +13,15 @@ return Application::configure(basePath: dirname(__DIR__))
 
     )
     ->withMiddleware(function (Middleware $middleware) {
+        $trustedProxies = env('TRUSTED_PROXIES');
+        if ($trustedProxies !== null && $trustedProxies !== '' && $trustedProxies !== 'false') {
+            $middleware->trustProxies(
+                at: $trustedProxies === '*'
+                    ? '*'
+                    : array_values(array_filter(array_map('trim', explode(',', $trustedProxies))))
+            );
+        }
+
         $middleware->alias([
             'chatkit.integration' => \App\Http\Middleware\VerifyChatKitIntegrationSecret::class,
         ]);

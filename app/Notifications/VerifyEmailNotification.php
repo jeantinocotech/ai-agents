@@ -8,6 +8,7 @@ use Illuminate\Notifications\Notification;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 
 class VerifyEmailNotification extends Notification
 {
@@ -29,14 +30,21 @@ class VerifyEmailNotification extends Notification
     {
         $minutes = (int) Config::get('auth.verification.expire', 60);
 
-        $verificationUrl = URL::temporarySignedRoute(
+        // Hash sem host — validação com middleware `signed:relative`; evita 403 atrás de
+        // proxy (Coolify / Traefik) quando X-Forwarded-* não coincide com APP_URL gerado à partida.
+        $signedPath = URL::temporarySignedRoute(
             'verification.verify',
             Carbon::now()->addMinutes($minutes),
             [
                 'id' => $notifiable->getKey(),
                 'hash' => sha1($notifiable->getEmailForVerification()),
-            ]
+            ],
+            absolute: false
         );
+
+        $verificationUrl = Str::startsWith($signedPath, ['http://', 'https://'])
+            ? $signedPath
+            : URL::to($signedPath);
 
         return (new MailMessage)
             ->subject('Confirme o seu endereço de e-mail')

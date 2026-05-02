@@ -26,7 +26,7 @@ Route::middleware(EnsurePendingTwoFactorChallenge::class)->group(function () {
 
 /** Confirmação por URL assinada — não exige sessão (utilizadores recém-registados). */
 Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
-    ->middleware(['signed', 'throttle:6,1'])
+    ->middleware(['signed:relative', 'throttle:6,1'])
     ->name('verification.verify');
 
 Route::get('confirmar-email/codigo', [VerifyEmailCodeController::class, 'create'])
