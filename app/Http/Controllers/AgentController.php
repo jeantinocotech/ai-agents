@@ -7,6 +7,7 @@ use App\Models\AgentDocument;
 use App\Models\AgentDocumentDefault;
 use App\Models\AgentRating;
 use App\Models\AgentStep;
+use App\Models\CareerTrailStep;
 use App\Models\ChatMessage;
 use App\Models\ChatSession;
 use App\Models\Setting;
@@ -88,9 +89,11 @@ class AgentController extends Controller
 
         Log::info('Preparando nova sessão de chat', ['agent_id' => $id]);
 
-        $careerCvAgentId = config('career_trail.cv_chatkit_agent_id');
-        $isCareerCvAssistantAgent = $careerCvAgentId !== null
-            && (int) $careerCvAgentId === (int) $agent->id;
+        $isCareerCvAssistantAgent = CareerTrailStep::query()
+            ->where('is_active', true)
+            ->where('slug', 'cv')
+            ->where('agent_id', $agent->id)
+            ->exists();
         $chatkitSimpleChat = $request->boolean('no_documents')
             && $isCareerCvAssistantAgent
             && $agent->isChatKitWorkflow();

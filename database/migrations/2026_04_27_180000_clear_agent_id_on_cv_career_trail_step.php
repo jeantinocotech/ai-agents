@@ -6,8 +6,8 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration
 {
     /**
-     * O passo «cv» deve usar CAREER_TRAIL_CV_CHATKIT_AGENT_ID; valores antigos em agent_id
-     * podiam apontar por engano para o assistente ATS (CV+JD).
+     * Limpou-se agent_id do passo «cv» porque associações antigas podiam apontar por engano
+     * para o assistente ATS (CV+JD). O assistente correcto é ligado ao passo na administração de agentes.
      */
     public function up(): void
     {

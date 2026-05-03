@@ -36,6 +36,13 @@ final class CareerTrailAgentAccess
             return false;
         }
 
+        $firstSortOrder = CareerTrailStep::query()
+            ->where('is_active', true)
+            ->min('sort_order');
+        if ($firstSortOrder !== null && (int) $step->sort_order === (int) $firstSortOrder) {
+            return true;
+        }
+
         $progress = UserCareerTrailProgress::query()->where('user_id', $user->id)->first();
         if (! $progress) {
             return false;

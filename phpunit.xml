@@ -29,5 +29,11 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
+        <!-- Neutralizar fallback .env CAREER_TRAIL_*_AGENT_ID (evitar colidir com IDs 1,2,... dos Agent::create nos testes). -->
+        <env name="CAREER_TRAIL_ATS_AGENT_ID" value=""/>
+        <env name="CAREER_TRAIL_COVER_LETTER_AGENT_ID" value=""/>
+        <env name="CAREER_TRAIL_INTERVIEWS_AGENT_ID" value=""/>
+        <env name="CAREER_TRAIL_OFFER_AGENT_ID" value=""/>
+        <env name="CAREER_TRAIL_FIRST_100_DAYS_AGENT_ID" value=""/>
     </php>
 </phpunit>

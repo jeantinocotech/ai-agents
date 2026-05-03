@@ -37,26 +37,10 @@ class CareerTrailStep extends Model
     }
 
     /**
-     * Agente Laravel associado à etapa.
-     *
-     * Passo «cv» (1): usa sempre o assistente ChatKit de criação de CV (env CAREER_TRAIL_CV_CHATKIT_AGENT_ID),
-     * distinto do assistente ATS (CV+JD no passo seguinte). A coluna agent_id neste passo não deve sobrepor o env.
+     * Agente Laravel associado à etapa (coluna `agent_id` em `career_trail_steps`), com fallback por .env por slug.
      */
     public function resolvedAgent(): ?Agent
     {
-        if ($this->slug === 'cv') {
-            $cvId = config('career_trail.cv_chatkit_agent_id');
-            if ($cvId) {
-                return Agent::query()->find((int) $cvId);
-            }
-
-            if ($this->agent_id) {
-                return $this->agent ?? Agent::query()->find($this->agent_id);
-            }
-
-            return null;
-        }
-
         if ($this->agent_id) {
             return $this->agent ?? Agent::query()->find($this->agent_id);
         }
@@ -102,23 +86,20 @@ class CareerTrailStep extends Model
     }
 
     /**
-     * URL do ChatKit do CV Creator (CAREER_TRAIL_CV_CHATKIT_AGENT_ID).
+     * URL do assistente ChatKit do passo «cv» (agente ligado em `career_trail_steps.agent_id` na administração).
      * Por defeito só envia `no_documents=1`: usa o mesmo layout de aplicação que o chat ATS (trilha, saldo, tokens).
      * Com `$forIframe` true acrescenta `embedded=1` para usar em iframes (ex.: modal em `/trilha/cv`).
      */
     public static function cvEmbeddedCreatorChatUrl(bool $forIframe = false): ?string
     {
-        $assistantAgentId = config('career_trail.cv_chatkit_agent_id');
-        if (! $assistantAgentId) {
-            return null;
-        }
-
-        $assistant = Agent::query()
-            ->whereKey((int) $assistantAgentId)
+        $step = static::query()
             ->where('is_active', true)
+            ->where('slug', 'cv')
             ->first();
 
-        if (! $assistant || ! $assistant->isChatKitWorkflow()) {
+        $assistant = $step?->resolvedAgent();
+
+        if (! $assistant || ! $assistant->is_active || ! $assistant->isChatKitWorkflow()) {
             return null;
         }
 

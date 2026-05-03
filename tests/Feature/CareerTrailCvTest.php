@@ -2,8 +2,19 @@
 
 use App\Models\Agent;
 use App\Models\AgentDocument;
+use App\Models\CareerTrailStep;
 use App\Models\User;
 use App\Models\UserCv;
+use Database\Seeders\CareerTrailStepsSeeder;
+
+beforeEach(function () {
+    $this->seed(CareerTrailStepsSeeder::class);
+});
+
+function bindCareerCvStepAgent(int $agentId): void
+{
+    CareerTrailStep::query()->where('slug', 'cv')->update(['agent_id' => $agentId]);
+}
 
 function makeCareerTrailChatKitAgent(array $overrides = []): Agent
 {
@@ -183,7 +194,7 @@ test('profile cv content endpoint returns json for owner', function () {
 test('career trail cv page shows embedded assistant when user has no cv and agent is configured', function () {
     $user = User::factory()->create();
     $agent = makeCareerTrailChatKitAgent();
-    config(['career_trail.cv_chatkit_agent_id' => $agent->id]);
+    bindCareerCvStepAgent((int) $agent->id);
 
     $response = $this->actingAs($user)->get(route('career-trail.cv'));
 
@@ -197,7 +208,7 @@ test('career trail cv page shows embedded assistant when user has no cv and agen
 test('career trail cv page still shows assistant when user already has default cv', function () {
     $user = User::factory()->create();
     $agent = makeCareerTrailChatKitAgent();
-    config(['career_trail.cv_chatkit_agent_id' => $agent->id]);
+    bindCareerCvStepAgent((int) $agent->id);
     UserCv::query()->create([
         'user_id' => $user->id,
         'title' => 'Existente',
@@ -216,7 +227,7 @@ test('career trail cv page still shows assistant when user already has default c
 test('career trail cv page does not expose assistant when configured agent is inactive', function () {
     $user = User::factory()->create();
     $agent = makeCareerTrailChatKitAgent(['is_active' => false]);
-    config(['career_trail.cv_chatkit_agent_id' => $agent->id]);
+    bindCareerCvStepAgent((int) $agent->id);
 
     $this->actingAs($user)
         ->get(route('career-trail.cv'))
@@ -237,7 +248,7 @@ test('agents chat embedded view is used for chatkit agent with embedded query', 
 test('embedded career cv assistant hides document library when no_documents is set', function () {
     $user = User::factory()->create();
     $agent = makeCareerTrailChatKitAgent();
-    config(['career_trail.cv_chatkit_agent_id' => $agent->id]);
+    bindCareerCvStepAgent((int) $agent->id);
 
     $this->actingAs($user)
         ->get(route('agents.chat', $agent).'?embedded=1&no_documents=1')
@@ -250,7 +261,7 @@ test('embedded career cv assistant hides document library when no_documents is s
 test('career cv assistant full page uses app chat layout like ats including trail chrome', function () {
     $user = User::factory()->create();
     $agent = makeCareerTrailChatKitAgent();
-    config(['career_trail.cv_chatkit_agent_id' => $agent->id]);
+    bindCareerCvStepAgent((int) $agent->id);
 
     $this->actingAs($user)
         ->get(route('agents.chat', $agent).'?no_documents=1')
@@ -268,7 +279,7 @@ test('embedded no_documents is ignored for agents that are not the career cv ass
     $user = User::factory()->create();
     $careerAgent = makeCareerTrailChatKitAgent(['name' => 'Career']);
     $otherAgent = makeCareerTrailChatKitAgent(['name' => 'Outro']);
-    config(['career_trail.cv_chatkit_agent_id' => $careerAgent->id]);
+    bindCareerCvStepAgent((int) $careerAgent->id);
 
     $this->actingAs($user)
         ->get(route('agents.chat', $otherAgent).'?embedded=1&no_documents=1')

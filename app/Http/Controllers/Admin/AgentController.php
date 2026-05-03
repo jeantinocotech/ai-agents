@@ -23,7 +23,6 @@ class AgentController extends Controller
     {
         $trailSteps = CareerTrailStep::query()
             ->where('is_active', true)
-            ->where('slug', '!=', 'cv')
             ->orderBy('sort_order')
             ->get(['id', 'slug', 'title', 'sort_order']);
 
@@ -98,7 +97,6 @@ class AgentController extends Controller
 
         $trailSteps = CareerTrailStep::query()
             ->where('is_active', true)
-            ->where('slug', '!=', 'cv')
             ->orderBy('sort_order')
             ->get(['id', 'slug', 'title', 'sort_order']);
 

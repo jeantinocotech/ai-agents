@@ -267,8 +267,7 @@
                         </div>
                     @else
                         <div class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
-                            Para o chat assistente nesta página, defina <code class="rounded bg-white px-1 py-0.5 font-mono text-[11px]">CAREER_TRAIL_CV_CHATKIT_AGENT_ID</code>
-                            com o ID de um agente ChatKit ativo.
+                            Associe na administração um agente ChatKit activo ao passo <strong>Criar um CV</strong> da trilha (campo «Passo da trilha» ao criar ou editar o agente).
                         </div>
                     @endif
 

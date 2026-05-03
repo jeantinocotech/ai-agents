@@ -40,7 +40,7 @@
 
                 <!-- Administração (apenas para admin) -->
                 @auth
-                    @if(Auth::user()->is_admin)
+                    @if(Auth::user()->isAdmin())
                         <x-dropdown align="left" width="48">
                             <x-slot name="trigger">
                                 <button class="inline-flex items-center px-1 py-2 border-b-2 border-transparent text-sm font-medium leading-5 text-yellow-400 hover:text-white hover:border-yellow-300 focus:outline-none transition">
@@ -144,7 +144,7 @@
                 <x-responsive-nav-link :href="route('career-trail.cv')" :active="request()->routeIs('career-trail.cv*')">
                     Meu CV
                 </x-responsive-nav-link>
-                @if(Auth::user()->is_admin)
+                @if(Auth::user()->isAdmin())
                     <x-responsive-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')">
                         📊 Administração
                     </x-responsive-nav-link>

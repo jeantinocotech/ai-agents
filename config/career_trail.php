@@ -10,14 +10,6 @@ return [
     'mentor_avatar' => env('CAREER_TRAIL_MENTOR_AVATAR', 'img/graca-avatar.png'),
 
     /*
-    | ID do agente Laravel (tabela agents) com integração ChatKit dedicado à trilha
-    | para criar CV em chat (sem biblioteca CV/JD na UI). Use um workflow ChatKit
-    | distinto do agente de análise ATS se quiser fluxo e prompts diferentes.
-    | .env: CAREER_TRAIL_CV_CHATKIT_AGENT_ID=1
-    */
-    'cv_chatkit_agent_id' => env('CAREER_TRAIL_CV_CHATKIT_AGENT_ID'),
-
-    /*
     | Tamanho mínimo do texto do CV de perfil (Meu CV) para considerar o passo 1 concluído.
     */
     'min_profile_cv_chars' => (int) env('CAREER_TRAIL_MIN_PROFILE_CV_CHARS', 40),
