@@ -14,6 +14,14 @@ use Smalot\PdfParser\Parser as PdfParser;
 
 final class UserCvTextExtractor
 {
+    /**
+     * Ficheiros .docx são ZIP (OOXML); o PhpWord usa ZipArchive.
+     */
+    public static function phpZipAvailableForDocx(): bool
+    {
+        return extension_loaded('zip') && class_exists(\ZipArchive::class);
+    }
+
     public static function extract(UploadedFile $file): string
     {
         $extension = strtolower($file->getClientOriginalExtension());
@@ -32,6 +40,12 @@ final class UserCvTextExtractor
             }
 
             if (in_array($extension, ['docx', 'doc'], true)) {
+                if ($extension === 'docx' && ! self::phpZipAvailableForDocx()) {
+                    Log::warning('UserCvTextExtractor: DOCX requires PHP zip extension (e.g. php-zip package on the server).');
+
+                    return '';
+                }
+
                 $reader = $extension === 'doc' ? 'MsDoc' : 'Word2007';
                 $phpWord = WordLoader::load($path, $reader);
                 $extracted = self::plainTextFromPhpWord($phpWord);

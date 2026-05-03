@@ -110,20 +110,26 @@ class CareerTrailCvController extends Controller
 
         $hasExisting = $validated['has_existing_cv'] === '1';
 
+        $bodyFromInput = isset($validated['body']) ? trim((string) $validated['body']) : '';
+
         $bodyFromFile = '';
         if ($request->hasFile('cv_file')) {
             $bodyFromFile = UserCvTextExtractor::extract($request->file('cv_file'));
         }
 
-        $bodyFromInput = isset($validated['body']) ? trim((string) $validated['body']) : '';
         $body = $bodyFromFile !== '' ? $bodyFromFile : $bodyFromInput;
 
         if ($request->hasFile('cv_file') && $bodyFromFile === '' && $bodyFromInput === '') {
+            $ext = strtolower((string) $request->file('cv_file')->getClientOriginalExtension());
+            $cvFileMsg = ($ext === 'docx' && ! UserCvTextExtractor::phpZipAvailableForDocx())
+                ? 'Ficheiros DOCX exigem a extensão PHP «zip» no servidor (pacote php-zip ou equivalente). Peça ao administrador para a instalar ou activar. Até lá, use PDF, TXT ou cole o texto do CV.'
+                : 'Não foi possível extrair texto deste ficheiro (Word/PDF). Experimente PDF ou TXT, ou cole o conteúdo na caixa de texto.';
+
             return redirect()
                 ->route('career-trail.cv')
                 ->withInput()
                 ->withErrors([
-                    'cv_file' => 'Não foi possível extrair texto deste ficheiro (Word/PDF). Experimente PDF ou TXT, ou cole o conteúdo na caixa de texto.',
+                    'cv_file' => $cvFileMsg,
                     'body' => 'Se o Word tiver só tabelas ou caixas de texto complexas, cole aqui o texto ou exporte para PDF.',
                 ]);
         }
@@ -167,7 +173,7 @@ class CareerTrailCvController extends Controller
             'title' => $validated['title'] ?? null,
             'body' => $body,
             'is_default' => false,
-            'source' => $request->hasFile('cv_file') ? UserCv::SOURCE_UPLOAD : UserCv::SOURCE_MANUAL,
+            'source' => ($request->hasFile('cv_file') && $bodyFromFile !== '') ? UserCv::SOURCE_UPLOAD : UserCv::SOURCE_MANUAL,
         ]);
 
         if ($makeDefault) {
@@ -199,20 +205,26 @@ class CareerTrailCvController extends Controller
 
         $hasExisting = $validated['has_existing_cv'] === '1';
 
+        $bodyFromInput = isset($validated['body']) ? trim((string) $validated['body']) : '';
+
         $bodyFromFile = '';
         if ($request->hasFile('cv_file')) {
             $bodyFromFile = UserCvTextExtractor::extract($request->file('cv_file'));
         }
 
-        $bodyFromInput = isset($validated['body']) ? trim((string) $validated['body']) : '';
         $body = $bodyFromFile !== '' ? $bodyFromFile : $bodyFromInput;
 
         if ($request->hasFile('cv_file') && $bodyFromFile === '' && $bodyFromInput === '') {
+            $ext = strtolower((string) $request->file('cv_file')->getClientOriginalExtension());
+            $cvFileMsg = ($ext === 'docx' && ! UserCvTextExtractor::phpZipAvailableForDocx())
+                ? 'Ficheiros DOCX exigem a extensão PHP «zip» no servidor (pacote php-zip ou equivalente). Peça ao administrador para a instalar ou activar. Até lá, use PDF, TXT ou cole o texto do CV.'
+                : 'Não foi possível extrair texto deste ficheiro (Word/PDF). Experimente PDF ou TXT, ou cole o conteúdo na caixa de texto.';
+
             return redirect()
                 ->route('career-trail.cv', ['edit' => $userCv->id])
                 ->withInput()
                 ->withErrors([
-                    'cv_file' => 'Não foi possível extrair texto deste ficheiro (Word/PDF). Experimente PDF ou TXT, ou cole o conteúdo na caixa de texto.',
+                    'cv_file' => $cvFileMsg,
                     'body' => 'Se o Word tiver só tabelas ou caixas de texto complexas, cole aqui o texto ou exporte para PDF.',
                 ]);
         }
@@ -250,7 +262,7 @@ class CareerTrailCvController extends Controller
 
         $userCv->title = $validated['title'] ?? null;
         $userCv->body = $body;
-        if ($request->hasFile('cv_file')) {
+        if ($request->hasFile('cv_file') && $bodyFromFile !== '') {
             $userCv->source = UserCv::SOURCE_UPLOAD;
         }
         $userCv->save();
