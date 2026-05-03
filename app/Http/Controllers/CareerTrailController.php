@@ -53,7 +53,12 @@ class CareerTrailController extends Controller
 
         $agent = $atsStep->resolvedAgent();
         $agentActive = $agent !== null && $agent->is_active;
-        $atsAllowsCheck = $agentActive && CareerTrailStepCompletion::hasAtsCvJdPair($user, $agent);
+        $atsChatBackendReady = $agent !== null && (
+            ($agent->isChatKitWorkflow() && trim((string) ($agent->chatkit_workflow_id ?? '')) !== '')
+            || (! $agent->isChatKitWorkflow() && $agent->steps()->exists())
+        );
+        $atsCvJdPairOk = $agentActive && $agent !== null && CareerTrailStepCompletion::hasAtsCvJdPair($user, $agent);
+        $atsAllowsCheck = $agentActive && $agent !== null && $atsChatBackendReady && $atsCvJdPairOk;
 
         $libraryPayload = [];
         if ($agentActive && $agent) {
@@ -66,6 +71,7 @@ class CareerTrailController extends Controller
             'atsAgent' => $agent,
             'atsAgentActive' => $agentActive,
             'atsAllowsCheck' => $atsAllowsCheck,
+            'atsBackendMisconfigured' => $agentActive && $agent !== null && $atsCvJdPairOk && ! $atsChatBackendReady,
             'readiness' => CareerTrailStepCompletion::readiness($user, $atsStep),
             'checklist' => CareerTrailStepCompletion::checklist($user, $atsStep),
             'libraryPayload' => $libraryPayload,

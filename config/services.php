@@ -46,6 +46,11 @@ return [
     'chatkit' => [
         'beta_header' => env('CHATKIT_OPENAI_BETA', 'chatkit_beta=v1'),
         'integration_api_secret' => env('CHATKIT_INTEGRATION_API_SECRET'),
+        /*
+         * Timeout (s) ao criar sessão em POST https://api.openai.com/v1/chatkit/sessions
+         * (servidores atrás de rede lenta/firewall beneficiam de valor mais alto).
+         */
+        'http_timeout' => (int) env('CHATKIT_HTTP_TIMEOUT', 60),
     ],
 
 ];

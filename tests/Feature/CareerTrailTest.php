@@ -149,11 +149,14 @@ test('cannot advance from ats step without paired cv and jd in ats library', fun
         ->assertSessionHas('error');
 });
 
-test('agent linked to a future trail step is blocked until advance unlocks it', function () {
+test('user on ats step can open chat when ats agent is chatkit with workflow id', function () {
     $agent = Agent::query()->create([
         'name' => 'Agente ATS teste',
         'price' => 0,
         'model_type' => 'gpt-4o-mini',
+        'integration' => Agent::INTEGRATION_CHATKIT_WORKFLOW,
+        'chatkit_workflow_id' => 'wf_trail_future_unlock',
+        'chatkit_workflow_version' => '1',
         'is_active' => true,
     ]);
 
@@ -174,6 +177,76 @@ test('agent linked to a future trail step is blocked until advance unlocks it', 
     $this->actingAs($user)
         ->get(route('agents.chat', $agent))
         ->assertOk();
+});
+
+test('ats chat redirects to ats hub when agent is openai without steps', function () {
+    $agent = Agent::query()->create([
+        'name' => 'ATS openai sem passos',
+        'price' => 0,
+        'model_type' => 'gpt-4o-mini',
+        'is_active' => true,
+    ]);
+    CareerTrailStep::query()->where('slug', 'ats')->update(['agent_id' => $agent->id]);
+
+    $user = User::factory()->create();
+    $cv = UserCv::query()->create([
+        'user_id' => $user->id,
+        'title' => 'CV perfil',
+        'body' => str_repeat('a', 400),
+        'is_default' => true,
+        'source' => UserCv::SOURCE_MANUAL,
+    ]);
+
+    $this->actingAs($user)->get(route('career-trail.index'));
+
+    AgentDocument::query()->create([
+        'user_id' => $user->id,
+        'agent_id' => $agent->id,
+        'type' => AgentDocument::TYPE_JD,
+        'title' => 'Vaga Y',
+        'body' => str_repeat('b', 200),
+        'user_cv_id' => $cv->id,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('agents.chat', $agent))
+        ->assertRedirect(route('career-trail.ats'))
+        ->assertSessionHas('error');
+});
+
+test('ats hub shows misconfiguration alert when jd cv pair exists but agent has no usable chat flow', function () {
+    $agent = Agent::query()->create([
+        'name' => 'ATS sem backend',
+        'price' => 0,
+        'model_type' => 'gpt-4o-mini',
+        'is_active' => true,
+    ]);
+    CareerTrailStep::query()->where('slug', 'ats')->update(['agent_id' => $agent->id]);
+
+    $user = User::factory()->create();
+    $cv = UserCv::query()->create([
+        'user_id' => $user->id,
+        'title' => 'CV perfil',
+        'body' => str_repeat('c', 400),
+        'is_default' => true,
+        'source' => UserCv::SOURCE_MANUAL,
+    ]);
+
+    $this->actingAs($user)->get(route('career-trail.index'));
+
+    AgentDocument::query()->create([
+        'user_id' => $user->id,
+        'agent_id' => $agent->id,
+        'type' => AgentDocument::TYPE_JD,
+        'title' => 'Vaga Z',
+        'body' => str_repeat('d', 200),
+        'user_cv_id' => $cv->id,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('career-trail.ats'))
+        ->assertOk()
+        ->assertSee('ATS check indisponível', false);
 });
 
 test('jd created via chat pairing paired_cv_document_id gets user_cv_id and unlocks ats continuation', function () {

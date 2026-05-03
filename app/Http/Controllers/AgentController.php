@@ -51,6 +51,20 @@ class AgentController extends Controller
 
         $steps = $agent->steps()->orderBy('step_order')->get();
 
+        $boundTrailStep = CareerTrailAgentAccess::trailStepBoundToAgent($agent);
+        if (
+            $boundTrailStep !== null
+            && $boundTrailStep->slug === 'ats'
+            && ! $this->atsAgentHasUsableChatFlow($agent, $steps)
+        ) {
+            return redirect()
+                ->route('career-trail.ats')
+                ->with(
+                    'error',
+                    'O ATS check precisa do assistente em ChatKit workflow (com ID do workflow) ou, em modo OpenAI, de passos CV/JD na administração. Peça para corrigir a configuração do agente da etapa ATS.'
+                );
+        }
+
         $session = ChatSession::where('user_id', auth()->id())
             ->where('agent_id', $agent->id)
             ->orderBy('created_at', 'desc') // Ordena pela data de criação (mais recente primeiro)
@@ -74,7 +88,12 @@ class AgentController extends Controller
                 ->exists();
         }
 
-        Log::info('Acessando chat do agente', ['agent' => $agent, 'steps' => $steps]);
+        Log::info('Acessando chat do agente', [
+            'agent_id' => $agent->id,
+            'integration' => $agent->integration,
+            'chatkit_workflow_id_set' => $agent->chatkit_workflow_id !== null && trim((string) $agent->chatkit_workflow_id) !== '',
+            'steps_count' => $steps->count(),
+        ]);
 
         auth()->user()->refresh();
         $tokenBalance = auth()->user()->token_balance;
@@ -1369,5 +1388,14 @@ class AgentController extends Controller
         }
 
         return null;
+    }
+
+    private function atsAgentHasUsableChatFlow(Agent $agent, \Illuminate\Support\Collection $steps): bool
+    {
+        if ($agent->isChatKitWorkflow()) {
+            return trim((string) ($agent->chatkit_workflow_id ?? '')) !== '';
+        }
+
+        return $steps->isNotEmpty();
     }
 }

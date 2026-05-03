@@ -49,6 +49,16 @@
                                     </a>
                                 </div>
                             @endif
+
+                            @if ($atsBackendMisconfigured ?? false)
+                                <div class="mt-4 rounded-xl border border-amber-200/90 bg-amber-50/90 px-4 py-3 text-sm text-amber-950 shadow-sm ring-1 ring-inset ring-amber-100/80" role="alert">
+                                    <p class="font-semibold text-amber-950">ATS check indisponível</p>
+                                    <p class="mt-1 text-sm leading-relaxed text-amber-950/95">
+                                        O agente da etapa ATS está em modo OpenAI sem passos, ou ChatKit sem ID de workflow.
+                                        Configure na administração: integração ChatKit workflow (e ID), ou passe o assistente ao modo OpenAI com passos CV/JD.
+                                    </p>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>

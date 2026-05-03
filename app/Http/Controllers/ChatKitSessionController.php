@@ -73,8 +73,11 @@ class ChatKitSessionController extends Controller
             $headers['OpenAI-Project'] = trim((string) $agent->project_id);
         }
 
+        $timeoutSeconds = max(15, min(180, (int) config('services.chatkit.http_timeout', 60)));
+
         try {
             $response = Http::withHeaders($headers)
+                ->timeout($timeoutSeconds)
                 ->withToken($apiKey)
                 ->acceptJson()
                 ->post('https://api.openai.com/v1/chatkit/sessions', [
@@ -82,7 +85,11 @@ class ChatKitSessionController extends Controller
                     'user' => ChatKitUserRef::build($user->id, $agent->id),
                 ]);
         } catch (\Throwable $e) {
-            Log::error('ChatKit session request failed', ['error' => $e->getMessage()]);
+            Log::error('ChatKit session request failed', [
+                'error' => $e->getMessage(),
+                'agent_id' => $agent->id,
+                'timeout_seconds' => $timeoutSeconds,
+            ]);
 
             return response()->json(['message' => 'Erro ao contactar a API OpenAI.'], 502);
         }
@@ -91,6 +98,12 @@ class ChatKitSessionController extends Controller
             $json = $response->json();
             Log::warning('ChatKit session OpenAI error', [
                 'status' => $response->status(),
+                'agent_id' => $agent->id,
+                'openai_beta' => $headers['OpenAI-Beta'] ?? '',
+                'openai_project_sent' => ! empty($agent->project_id),
+                'workflow_id_prefix' => is_string($agent->chatkit_workflow_id ?? null)
+                    ? mb_substr((string) $agent->chatkit_workflow_id, 0, 12)
+                    : '',
                 'body' => $json ?? $response->body(),
             ]);
 
@@ -111,6 +124,13 @@ class ChatKitSessionController extends Controller
 
             return response()->json(['message' => 'Resposta inválida da OpenAI (sem client_secret).'], 502);
         }
+
+        Log::info('ChatKit session created', [
+            'agent_id' => $agent->id,
+            'workflow_id_suffix' => is_string($agent->chatkit_workflow_id ?? null)
+                ? mb_substr((string) $agent->chatkit_workflow_id, -8)
+                : '',
+        ]);
 
         $user->refresh();
 
