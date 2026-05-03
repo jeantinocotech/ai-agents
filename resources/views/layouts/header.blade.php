@@ -3,7 +3,7 @@
     <div class="max-w-7xl mx-auto px-4 flex justify-between items-center h-16">
         <div class="flex items-center space-x-3">
             <span class="inline-block align-middle">
-            <img src="{{ asset('img/gratoai_black.png') }}" alt="GratoAI" class="mx-auto h-16 w-auto">
+            <img src="{{ asset(config('branding.logo_main')) }}" alt="{{ config('app.name', 'GratoAI') }}" class="mx-auto h-16 w-auto">
             </span>
             <span class="font-bold text-xl text-white">Grato AI (Versão Beta)</span>
         </div>

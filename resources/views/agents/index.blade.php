@@ -183,7 +183,7 @@
             <!-- Logo e descrição -->
             <div>
                 <div class="flex items-center mb-2">
-                <img src="{{ asset('img/gratoai_black.png') }}" alt="GratoAI" class="h-10 w-auto mr-2">
+                <img src="{{ asset(config('branding.logo_main')) }}" alt="{{ config('app.name', 'GratoAI') }}" class="h-10 w-auto mr-2">
                 <span class="text-xl font-bold text-white">GratoAI</span>
                 </div>
                 <p class="text-gray-400 mt-2">IA para apoiar, facilitar e transformar sua rotina. A gratidão da tecnologia ao seu lado.</p>

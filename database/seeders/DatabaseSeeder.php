@@ -31,6 +31,7 @@ class DatabaseSeeder extends Seeder
             TokenSettingsSeeder::class,
             CareerTrailStepsSeeder::class,
             CareerTrailGracaMessagesSeeder::class,
+            CareerTrailMapHeaderFallbackSeeder::class,
             AgentSeeder::class,
             AdminUserSeeder::class,
         ]);

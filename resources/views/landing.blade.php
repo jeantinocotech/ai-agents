@@ -182,7 +182,7 @@
             <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
                 <div>
                     <div class="flex items-center mb-2">
-                        <img src="{{ asset('img/gratoai_black.png') }}" alt="GratoAI" class="h-10 w-auto mr-2 invert">
+                        <img src="{{ asset(config('branding.logo_main')) }}" alt="{{ config('app.name', 'GratoAI') }}" class="h-10 w-auto mr-2 invert">
                         <span class="text-xl font-bold text-white">GratoAI</span>
                     </div>
                     <p class="text-gray-400 mt-2 text-sm">Trilha de carreira com IA e a orientação da Sra. Graça — em cada etapa, o passo certo.</p>
