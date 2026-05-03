@@ -347,7 +347,8 @@
                             <label for="cv_file" class="block text-sm font-medium text-slate-700">Ficheiro (opcional)</label>
                             <input type="file" name="cv_file" id="cv_file" accept=".txt,.pdf,.doc,.docx"
                                    class="mt-1 block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100">
-                            <p class="mt-1 text-xs text-slate-500">Se enviar ficheiro, o texto extraído substitui o da caixa abaixo ao guardar.</p>
+                            <p class="mt-1 text-xs text-slate-500">Se enviar ficheiro, o texto extraído substitui o da caixa abaixo ao guardar (máx. 20&nbsp;MB).</p>
+                            <x-input-error class="mt-2" :messages="$errors->get('cv_file')" />
                         </div>
 
                         <div>

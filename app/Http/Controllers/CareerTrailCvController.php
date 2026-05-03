@@ -118,6 +118,16 @@ class CareerTrailCvController extends Controller
         $bodyFromInput = isset($validated['body']) ? trim((string) $validated['body']) : '';
         $body = $bodyFromFile !== '' ? $bodyFromFile : $bodyFromInput;
 
+        if ($request->hasFile('cv_file') && $bodyFromFile === '' && $bodyFromInput === '') {
+            return redirect()
+                ->route('career-trail.cv')
+                ->withInput()
+                ->withErrors([
+                    'cv_file' => 'Não foi possível extrair texto deste ficheiro (Word/PDF). Experimente PDF ou TXT, ou cole o conteúdo na caixa de texto.',
+                    'body' => 'Se o Word tiver só tabelas ou caixas de texto complexas, cole aqui o texto ou exporte para PDF.',
+                ]);
+        }
+
         if ($body === '' || str_starts_with($body, '[Erro ao ler') || str_starts_with($body, '[Formato não suportado')) {
             return redirect()
                 ->route('career-trail.cv')
@@ -196,6 +206,16 @@ class CareerTrailCvController extends Controller
 
         $bodyFromInput = isset($validated['body']) ? trim((string) $validated['body']) : '';
         $body = $bodyFromFile !== '' ? $bodyFromFile : $bodyFromInput;
+
+        if ($request->hasFile('cv_file') && $bodyFromFile === '' && $bodyFromInput === '') {
+            return redirect()
+                ->route('career-trail.cv', ['edit' => $userCv->id])
+                ->withInput()
+                ->withErrors([
+                    'cv_file' => 'Não foi possível extrair texto deste ficheiro (Word/PDF). Experimente PDF ou TXT, ou cole o conteúdo na caixa de texto.',
+                    'body' => 'Se o Word tiver só tabelas ou caixas de texto complexas, cole aqui o texto ou exporte para PDF.',
+                ]);
+        }
 
         if ($body === '' || str_starts_with($body, '[Erro ao ler') || str_starts_with($body, '[Formato não suportado')) {
             return redirect()
