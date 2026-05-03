@@ -1,12 +1,12 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        <h2 class="text-xl font-semibold leading-tight text-gray-800">
             Passo 2 — ATS (filtro e alinhamento com a vaga)
         </h2>
     </x-slot>
 
     <div class="py-10">
-        <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
+        <div class="mx-auto max-w-5xl sm:px-6 lg:px-8">
             <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
                 <a href="{{ route('career-trail.index') }}" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline">
                     &larr; Voltar à trilha
@@ -38,13 +38,17 @@
                                 :placement="\App\Support\CareerTrailGracaSlots::TRAIL_STEP_HEADER"
                                 :step="$atsStep"
                                 paragraph-class="mt-2 text-sm leading-relaxed text-slate-600"
-                                :fallback="'Alinhe o seu CV à vaga: palavras-chave e clareza. Guarde a JD na biblioteca e use o ATS check para pedir sugestões concretas.'"
+                                :fallback="'Associe um CV do perfil a cada vaga (JD) abaixo. Quando houver pelo menos um par completo, poderá abrir o ATS check para alinhar o texto à vaga.'"
                             />
-                            <p class="mt-3 text-sm leading-relaxed text-slate-600">
-                                Comece pela <strong class="text-slate-900">biblioteca (CV e JD)</strong>, depois o <strong class="text-slate-900">ATS check</strong>.
-                                Pode registar várias vagas — para avançar na trilha basta <strong class="text-slate-900">uma</strong> com par completo.
-                                Para rever o texto do CV de perfil, há <strong class="text-slate-900">«Meu CV»</strong> na barra da trilha.
-                            </p>
+
+                            @if ($atsAgentActive && $atsAgent && $atsAllowsCheck)
+                                <div class="mt-4 flex flex-wrap items-center gap-3">
+                                    <a href="{{ route('agents.chat', $atsAgent) }}"
+                                       class="inline-flex items-center rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50">
+                                        ATS check
+                                    </a>
+                                </div>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -73,26 +77,12 @@
                         </div>
                     @endif
 
-                    @if ($atsAgentActive && $atsAgent)
-                        <div class="flex flex-wrap gap-3">
-                            <a href="{{ route('agents.documents.index', $atsAgent) }}"
-                               class="inline-flex items-center rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700">
-                                Abrir biblioteca ATS (CV e JD)
-                            </a>
-                            <a href="{{ route('agents.chat', $atsAgent) }}"
-                               class="inline-flex items-center rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50">
-                                ATS check
-                            </a>
-                        </div>
-                    @else
+                    @if (! $atsAgentActive || ! $atsAgent)
                         <div class="rounded-xl border border-slate-200 bg-slate-50/90 px-4 py-4 text-sm text-slate-700">
                             <p class="font-semibold text-slate-900">Assistente ATS ainda não está configurado</p>
                             <p class="mt-1 text-sm text-slate-700">
-                                Para aceder à biblioteca ATS e ao ATS check, o administrador precisa de associar um agente à etapa ATS
+                                Para guardar vagas e usar o ATS check, o administrador precisa de associar um agente à etapa ATS
                                 (ou definir <code class="rounded bg-white px-1 py-0.5 font-mono text-[11px]">CAREER_TRAIL_ATS_AGENT_ID</code>).
-                            </p>
-                            <p class="mt-3 text-sm text-slate-600">
-                                Use a <strong class="text-slate-800">barra da trilha</strong> no topo para <strong class="text-slate-900">«Meu CV»</strong> e outros atalhos.
                             </p>
                             <div class="mt-4 flex flex-wrap gap-3">
                                 <a href="{{ route('career-trail.index') }}"
@@ -104,7 +94,26 @@
                     @endif
                 </div>
             </div>
+
+            @if ($atsAgentActive && $atsAgent && ! empty($libraryPayload))
+                <div id="ats-biblioteca" class="scroll-mt-28 overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm ring-1 ring-slate-100">
+                    <div class="border-b border-slate-100 bg-slate-50/90 px-6 py-4 sm:px-8">
+                        <h2 class="text-lg font-semibold text-slate-900">Biblioteca ATS — CV do perfil e vagas (JD)</h2>
+                        <p class="mt-1 text-sm text-slate-600">
+                            Crie ou edite vagas e escolha o CV de perfil para cada uma. Depois de gravar, o botão <strong class="text-slate-800">ATS check</strong> abre o assistente com um par válido.
+                        </p>
+                    </div>
+                    @include('agents.documents.partials.library-forms', array_merge(
+                        [
+                            'agent' => $atsAgent,
+                            'trailReturnCareerTrailAts' => true,
+                            'suppressSessionFlash' => true,
+                            'omitHeading' => true,
+                        ],
+                        $libraryPayload
+                    ))
+                </div>
+            @endif
         </div>
     </div>
 </x-app-layout>
-

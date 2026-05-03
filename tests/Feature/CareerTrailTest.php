@@ -67,7 +67,7 @@ test('career trail banner is shown when steps exist', function () {
         ->get(route('career-trail.cv'))
         ->assertOk()
         ->assertSee('Passos da trilha', false)
-        ->assertSee('CV completo', false);
+        ->assertSee('CV Formulário', false);
 
     expect(UserCareerTrailProgress::query()->where('user_id', $user->id)->exists())->toBeTrue();
 });
@@ -390,4 +390,72 @@ test('banner badge motivation is false until a letter is saved', function () {
     ]);
 
     expect(CareerTrailStepCompletion::bannerShowsCompletedBadge($user, $motivationStep, $current))->toBeTrue();
+});
+
+test('career trail ats page includes library forms when agent is active', function () {
+    $agent = Agent::query()->create([
+        'name' => 'ATS hub',
+        'price' => 0,
+        'model_type' => 'gpt-4o-mini',
+        'is_active' => true,
+    ]);
+    CareerTrailStep::query()->where('slug', 'ats')->update(['agent_id' => $agent->id]);
+
+    $user = User::factory()->create();
+    UserCv::query()->create([
+        'user_id' => $user->id,
+        'title' => 'CV',
+        'body' => str_repeat('p', 400),
+        'is_default' => true,
+        'source' => UserCv::SOURCE_MANUAL,
+    ]);
+
+    $this->actingAs($user)->get(route('career-trail.index'));
+
+    $this->actingAs($user)
+        ->get(route('career-trail.ats'))
+        ->assertOk()
+        ->assertSee('Biblioteca ATS — CV do perfil')
+        ->assertSee('Nova vaga (JD)', false);
+});
+
+test('career trail ats shows ats check link only when jd has profile cv linked', function () {
+    $agent = Agent::query()->create([
+        'name' => 'ATS gate',
+        'price' => 0,
+        'model_type' => 'gpt-4o-mini',
+        'integration' => Agent::INTEGRATION_CHATKIT_WORKFLOW,
+        'chatkit_workflow_id' => 'wf_ats_hub',
+        'chatkit_workflow_version' => '1',
+        'is_active' => true,
+    ]);
+    CareerTrailStep::query()->where('slug', 'ats')->update(['agent_id' => $agent->id]);
+
+    $user = User::factory()->create();
+    $cv = UserCv::query()->create([
+        'user_id' => $user->id,
+        'title' => 'CV perfil',
+        'body' => str_repeat('q', 400),
+        'is_default' => true,
+        'source' => UserCv::SOURCE_MANUAL,
+    ]);
+
+    $this->actingAs($user)->get(route('career-trail.index'));
+
+    $noPair = $this->actingAs($user)->get(route('career-trail.ats'));
+    $noPair->assertOk();
+    $noPair->assertDontSee('/agents/'.$agent->id.'/chat', false);
+
+    AgentDocument::query()->create([
+        'user_id' => $user->id,
+        'agent_id' => $agent->id,
+        'type' => AgentDocument::TYPE_JD,
+        'title' => 'Vaga X',
+        'body' => str_repeat('r', 200),
+        'user_cv_id' => $cv->id,
+    ]);
+
+    $withPair = $this->actingAs($user)->get(route('career-trail.ats'));
+    $withPair->assertOk();
+    $withPair->assertSee('/agents/'.$agent->id.'/chat', false);
 });

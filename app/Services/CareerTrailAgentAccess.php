@@ -53,6 +53,19 @@ final class CareerTrailAgentAccess
         return $step->sort_order <= $max;
     }
 
+    /**
+     * URL da página da trilha ATS quando este agente é o da etapa ATS; caso contrário biblioteca ChatKit por agente.
+     */
+    public static function documentsHubUrl(Agent $hubAgent): string
+    {
+        $step = self::trailStepBoundToAgent($hubAgent);
+        if ($step !== null && $step->slug === 'ats') {
+            return route('career-trail.ats');
+        }
+
+        return route('agents.documents.index', $hubAgent);
+    }
+
     public static function abortUnlessCanAccess(User $user, Agent $agent): void
     {
         if (! self::userCanAccessTrailAgent($user, $agent)) {

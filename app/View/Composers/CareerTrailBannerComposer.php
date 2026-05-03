@@ -4,6 +4,7 @@ namespace App\View\Composers;
 
 use App\Models\CareerTrailStep;
 use App\Services\CareerTrailProgressService;
+use App\Support\CareerTrailStepCompletion;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
@@ -39,13 +40,19 @@ final class CareerTrailBannerComposer
         $progress = $bundle['progress'];
         $maxReached = (int) ($progress->max_sort_order_reached ?? $current->sort_order);
 
+        $atsTrailAgentForBanner = $steps->firstWhere('slug', 'ats')?->resolvedAgent();
+        $atsAllowsCheck = $atsTrailAgentForBanner !== null
+            && $atsTrailAgentForBanner->is_active
+            && CareerTrailStepCompletion::hasAtsCvJdPair($user, $atsTrailAgentForBanner);
+
         $view->with('careerTrailContext', [
             'user' => $user,
             'steps' => $steps,
             'current' => $current,
             'maxReached' => $maxReached,
             'tokenBalance' => (int) $user->token_balance,
-            'atsStepAgent' => $steps->firstWhere('slug', 'ats')?->resolvedAgent(),
+            'atsStepAgent' => $atsTrailAgentForBanner,
+            'atsAllowsCheck' => $atsAllowsCheck,
             'cvCreatorChatUrl' => CareerTrailStep::cvEmbeddedCreatorChatUrl(),
         ]);
     }

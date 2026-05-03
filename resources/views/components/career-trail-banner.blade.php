@@ -12,6 +12,7 @@
     $cvCreatorChatUrl = $context['cvCreatorChatUrl'] ?? null;
     /** @var \App\Models\Agent|null $atsBannerAgent */
     $atsBannerAgent = $context['atsStepAgent'] ?? null;
+    $atsAllowsCheckBanner = (bool) ($context['atsAllowsCheck'] ?? false);
 @endphp
 
 <div class="sticky top-16 z-40 border-b border-violet-200/80 bg-gradient-to-r from-violet-50/95 via-white/95 to-indigo-50/95 shadow-sm backdrop-blur-sm">
@@ -66,13 +67,13 @@
                                 <div class="flex flex-col gap-1 sm:flex-row sm:flex-wrap">
                                     <a href="{{ route('career-trail.cv') }}"
                                        class="inline-flex flex-1 items-center justify-center rounded-md bg-emerald-600 px-2 py-1 text-center text-[10px] font-semibold leading-tight text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 sm:flex-initial">
-                                        CV completo
+                                        CV Formulário
                                     </a>
                                     @if ($cvCreatorChatUrl)
                                         <a href="{{ $cvCreatorChatUrl }}"
                                            title="CV Creator"
                                            class="inline-flex flex-1 items-center justify-center rounded-md border border-emerald-700 bg-white px-2 py-1 text-center text-[10px] font-semibold leading-tight text-emerald-950 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 sm:flex-initial">
-                                            Creator
+                                            CV Assistente
                                         </a>
                                     @endif
                                 </div>
@@ -116,16 +117,18 @@
                             @endif
                             @if ($atsLibsOk)
                                 <div class="flex flex-col gap-1 sm:flex-row sm:flex-wrap">
-                                    <a href="{{ route('agents.documents.index', $atsA) }}"
-                                       title="Biblioteca ATS"
+                                    <a href="{{ route('career-trail.ats') }}"
+                                       title="CV, vagas e ATS na trilha"
                                        class="inline-flex flex-1 items-center justify-center rounded-md bg-emerald-600 px-2 py-1 text-center text-[10px] font-semibold leading-tight text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 sm:flex-initial">
-                                        CV e JD
+                                        Biblioteca ATS
                                     </a>
-                                    <a href="{{ route('agents.chat', $atsA) }}"
-                                       title="ATS check"
-                                       class="inline-flex flex-1 items-center justify-center rounded-md border border-emerald-700 bg-white px-2 py-1 text-center text-[10px] font-semibold leading-tight text-emerald-950 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 sm:flex-initial">
-                                        ATS check
-                                    </a>
+                                    @if ($atsAllowsCheckBanner)
+                                        <a href="{{ route('agents.chat', $atsA) }}"
+                                           title="ATS check"
+                                           class="inline-flex flex-1 items-center justify-center rounded-md border border-emerald-700 bg-white px-2 py-1 text-center text-[10px] font-semibold leading-tight text-emerald-950 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 sm:flex-initial">
+                                            ATS check
+                                        </a>
+                                    @endif
                                 </div>
                             @elseif ($isUnlocked && (! $atsA || ! $atsA->is_active))
                                 <p class="text-[9px] leading-snug text-amber-800/90">Assistente ATS em configuração.</p>

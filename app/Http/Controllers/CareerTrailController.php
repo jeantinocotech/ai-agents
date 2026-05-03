@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\CareerTrailStep;
 use App\Models\UserCareerTrailProgress;
+use App\Services\CareerTrailAgentAccess;
 use App\Services\CareerTrailProgressService;
+use App\Support\AgentsDocumentLibraryViewData;
 use App\Support\CareerTrailStepCompletion;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,6 +23,10 @@ class CareerTrailController extends Controller
         $user->refresh();
 
         $currentStep = $bundle['current'];
+        $atsTrailAgent = $bundle['steps']->firstWhere('slug', 'ats')?->resolvedAgent();
+        $atsAllowsCheck = $atsTrailAgent !== null
+            && $atsTrailAgent->is_active
+            && CareerTrailStepCompletion::hasAtsCvJdPair($user, $atsTrailAgent);
 
         return view('career-trail.index', [
             'steps' => $bundle['steps'],
@@ -28,7 +34,8 @@ class CareerTrailController extends Controller
             'currentStep' => $currentStep,
             'currentStepReadiness' => CareerTrailStepCompletion::readiness($user, $currentStep),
             'currentStepChecklist' => CareerTrailStepCompletion::checklist($user, $currentStep),
-            'atsStepAgent' => $bundle['steps']->firstWhere('slug', 'ats')?->resolvedAgent(),
+            'atsStepAgent' => $atsTrailAgent,
+            'atsAllowsCheck' => $atsAllowsCheck,
             'coverLetterStepAgent' => $bundle['steps']->firstWhere('slug', 'cover-letter')?->resolvedAgent(),
             'interviewStepAgent' => $bundle['steps']->firstWhere('slug', 'interviews')?->resolvedAgent(),
             'cvCreatorChatUrl' => CareerTrailStep::cvEmbeddedCreatorChatUrl(),
@@ -46,13 +53,22 @@ class CareerTrailController extends Controller
 
         $agent = $atsStep->resolvedAgent();
         $agentActive = $agent !== null && $agent->is_active;
+        $atsAllowsCheck = $agentActive && CareerTrailStepCompletion::hasAtsCvJdPair($user, $agent);
+
+        $libraryPayload = [];
+        if ($agentActive && $agent) {
+            CareerTrailAgentAccess::abortUnlessCanAccess($user, $agent);
+            $libraryPayload = AgentsDocumentLibraryViewData::payload($user, $agent);
+        }
 
         return view('career-trail.ats', [
             'atsStep' => $atsStep,
             'atsAgent' => $agent,
             'atsAgentActive' => $agentActive,
+            'atsAllowsCheck' => $atsAllowsCheck,
             'readiness' => CareerTrailStepCompletion::readiness($user, $atsStep),
             'checklist' => CareerTrailStepCompletion::checklist($user, $atsStep),
+            'libraryPayload' => $libraryPayload,
         ]);
     }
 

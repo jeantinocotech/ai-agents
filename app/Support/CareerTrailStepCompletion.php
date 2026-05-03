@@ -160,6 +160,18 @@ final class CareerTrailStepCompletion
     }
 
     /**
+     * Pelo menos uma JD na biblioteca do agente ATS com CV associado (perfil ou par clássico).
+     */
+    public static function hasAtsCvJdPair(User $user, ?Agent $agent): bool
+    {
+        if ($agent === null) {
+            return false;
+        }
+
+        return self::hasPairedCvJdApplication($user, $agent);
+    }
+
+    /**
      * True quando existe pelo menos uma JD ligada ao CV de perfil (user_cv_id) ou ao CV clássico na biblioteca
      * do mesmo agente (paired_cv_document_id), para registos ainda não regravados.
      */

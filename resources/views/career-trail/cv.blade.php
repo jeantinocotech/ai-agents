@@ -246,7 +246,7 @@
                                             </p>
                                         </div>
                                         <div class="flex flex-wrap gap-2 shrink-0">
-                                            <a href="{{ route('agents.documents.index', $doc->agent_id) }}"
+                                            <a href="{{ $doc->agent ? \App\Services\CareerTrailAgentAccess::documentsHubUrl($doc->agent) : route('agents.documents.index', $doc->agent_id) }}"
                                                class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50">
                                                 Abrir biblioteca
                                             </a>

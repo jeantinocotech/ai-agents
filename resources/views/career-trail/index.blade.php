@@ -163,21 +163,17 @@
                                                     <p class="text-[10px] font-bold uppercase tracking-wide text-emerald-900/75">Este passo</p>
                                                     <div class="flex flex-wrap gap-2">
                                                         <a href="{{ route('career-trail.ats') }}"
-                                                           class="inline-flex items-center rounded-lg border border-emerald-600 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-950 shadow-sm hover:bg-emerald-50">
-                                                            Hub ATS
+                                                           class="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700">
+                                                            Biblioteca ATS
                                                         </a>
-                                                        @if ($atsInline && $atsInline->is_active)
-                                                            <a href="{{ route('agents.documents.index', $atsInline) }}"
-                                                               class="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700">
-                                                                CV e JD
-                                                            </a>
+                                                        @if ($atsInline && $atsInline->is_active && ($atsAllowsCheck ?? false))
                                                             <a href="{{ route('agents.chat', $atsInline) }}"
                                                                class="inline-flex items-center rounded-lg border border-emerald-700 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-950 shadow-sm hover:bg-emerald-50">
                                                                 ATS check
                                                             </a>
                                                         @elseif ($atsInline && ! $atsInline->is_active)
                                                             <span class="text-xs text-amber-800">Assistente ATS inativo.</span>
-                                                        @else
+                                                        @elseif (! $atsInline)
                                                             <span class="text-xs text-slate-600">Configure o agente ATS na administração.</span>
                                                         @endif
                                                     </div>
@@ -287,15 +283,11 @@
                                     @elseif ($currentStep->slug === 'ats')
                                         @if ($focusTrailUrl)
                                             <a href="{{ route('career-trail.ats') }}"
-                                               class="inline-flex items-center rounded-lg border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-950 shadow-sm hover:bg-indigo-50">
-                                                Hub ATS
+                                               class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700">
+                                                Biblioteca ATS
                                             </a>
                                         @endif
-                                        @if (($atsStepAgent ?? null) && $atsStepAgent->is_active)
-                                            <a href="{{ route('agents.documents.index', $atsStepAgent) }}"
-                                               class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700">
-                                                CV e JD
-                                            </a>
+                                        @if (($atsStepAgent ?? null) && $atsStepAgent->is_active && ($atsAllowsCheck ?? false))
                                             <a href="{{ route('agents.chat', $atsStepAgent) }}"
                                                class="inline-flex items-center rounded-lg border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-950 shadow-sm hover:bg-indigo-50">
                                                 ATS check

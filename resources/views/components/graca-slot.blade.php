@@ -1,3 +1,4 @@
+{{-- Corpo(s) da Graça: mensagens na BD (placement + passo); só se não existir nenhuma se usa `fallback`. --}}
 @props([
     'placement' => '',
     'processKey' => 'career_trail',

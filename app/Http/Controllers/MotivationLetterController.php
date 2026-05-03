@@ -43,7 +43,7 @@ class MotivationLetterController extends Controller
         $library = ChatKitDocumentLibraryService::forUserAndAgent((int) Auth::id(), $agent);
         $jdOptions = $library['jds'] ?? [];
         $hubAgentId = (int) ($library['documents_hub_agent_id'] ?? $agent->id);
-        $documentsHubUrl = route('agents.documents.index', Agent::query()->find($hubAgentId) ?? $agent);
+        $documentsHubUrl = CareerTrailAgentAccess::documentsHubUrl(Agent::query()->find($hubAgentId) ?? $agent);
 
         return view('agents.motivation-letters.index', [
             'agent' => $agent,
@@ -61,7 +61,7 @@ class MotivationLetterController extends Controller
         $library = ChatKitDocumentLibraryService::forUserAndAgent((int) Auth::id(), $agent);
         $jdOptions = $library['jds'] ?? [];
         $hubAgentId = (int) ($library['documents_hub_agent_id'] ?? $agent->id);
-        $documentsHubUrl = route('agents.documents.index', Agent::query()->find($hubAgentId) ?? $agent);
+        $documentsHubUrl = CareerTrailAgentAccess::documentsHubUrl(Agent::query()->find($hubAgentId) ?? $agent);
         $preselectJd = $request->query('jd_document_id');
 
         return view('agents.motivation-letters.create', [

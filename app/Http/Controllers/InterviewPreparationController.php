@@ -188,7 +188,7 @@ class InterviewPreparationController extends Controller
         $library = ChatKitDocumentLibraryService::forUserAndAgent($userId, $agent);
         $jdOptions = $library['jds'] ?? [];
         $hubAgentId = (int) ($library['documents_hub_agent_id'] ?? $agent->id);
-        $documentsHubUrl = route('agents.documents.index', Agent::query()->find($hubAgentId) ?? $agent);
+        $documentsHubUrl = CareerTrailAgentAccess::documentsHubUrl(Agent::query()->find($hubAgentId) ?? $agent);
 
         $filtersActive = $this->interviewIndexFiltersDeviatedFromDefaults(
             $request,
@@ -344,7 +344,7 @@ class InterviewPreparationController extends Controller
         $jdOptions = $this->jdOptionsExcludingDidNotProceedProcesses($userId, $jdOptionsRaw);
         $allProcessesClosedForNewEntry = $jdOptionsRaw !== [] && $jdOptions === [];
         $hubAgentId = (int) ($library['documents_hub_agent_id'] ?? $agent->id);
-        $documentsHubUrl = route('agents.documents.index', Agent::query()->find($hubAgentId) ?? $agent);
+        $documentsHubUrl = CareerTrailAgentAccess::documentsHubUrl(Agent::query()->find($hubAgentId) ?? $agent);
 
         $preselectJd = $request->query('jd_document_id');
         $effectivePreselect = null;

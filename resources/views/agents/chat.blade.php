@@ -286,10 +286,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
             const data = await res.json();
 
-            if (data.current_step = 0) { 
+            if (data.current_step === 0) {
                 process_ended = true;
             } else {
-                process_ended = false
+                process_ended = false;
             }
            
             // Se existe uma sessão ativa, salva o ID

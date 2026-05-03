@@ -8,6 +8,7 @@ use App\Models\AgentDocumentDefault;
 use App\Models\UserCv;
 use App\Services\CareerTrailAgentAccess;
 use App\Support\AgentDocumentLimits;
+use App\Support\AgentsDocumentLibraryViewData;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,34 +21,10 @@ class AgentDocumentsController extends Controller
         $user = $request->user();
         CareerTrailAgentAccess::abortUnlessCanAccess($user, $agent);
 
-        $profileCvs = UserCv::query()
-            ->where('user_id', $user->id)
-            ->orderByDesc('is_default')
-            ->orderByDesc('updated_at')
-            ->get();
-
-        $jds = AgentDocument::query()
-            ->where('user_id', $user->id)
-            ->where('agent_id', $agent->id)
-            ->where('type', AgentDocument::TYPE_JD)
-            ->with('userCv')
-            ->orderByDesc('updated_at')
-            ->get();
-
-        $defaults = AgentDocumentDefault::query()
-            ->where('user_id', $user->id)
-            ->where('agent_id', $agent->id)
-            ->with(['defaultJdDocument'])
-            ->first();
-
-        return view('agents.documents.index', [
-            'agent' => $agent,
-            'profileCvs' => $profileCvs,
-            'jds' => $jds,
-            'defaults' => $defaults,
-            'maxCvBodyChars' => AgentDocumentLimits::maxCharsForType(AgentDocument::TYPE_CV),
-            'maxJdBodyChars' => AgentDocumentLimits::maxCharsForType(AgentDocument::TYPE_JD),
-        ]);
+        return view('agents.documents.index', array_merge(
+            ['agent' => $agent],
+            AgentsDocumentLibraryViewData::payload($user, $agent),
+        ));
     }
 
     public function content(Request $request, Agent $agent, AgentDocument $document): JsonResponse
@@ -112,8 +89,7 @@ class AgentDocumentsController extends Controller
             $cv->forceFill(['is_default' => true])->save();
         }
 
-        return redirect()
-            ->route('agents.documents.index', $agent)
+        return $this->documentsHubRedirect($request, $agent)
             ->with('status', 'CV guardado no perfil.');
     }
 
@@ -139,8 +115,7 @@ class AgentDocumentsController extends Controller
             $userCv->forceFill(['is_default' => true])->save();
         }
 
-        return redirect()
-            ->route('agents.documents.index', $agent)
+        return $this->documentsHubRedirect($request, $agent)
             ->with('status', 'CV do perfil atualizado.');
     }
 
@@ -181,8 +156,7 @@ class AgentDocumentsController extends Controller
 
         $label = 'Vaga (JD)';
 
-        return redirect()
-            ->route('agents.documents.index', $agent)
+        return $this->documentsHubRedirect($request, $agent)
             ->with('status', "{$label} adicionado.");
     }
 
@@ -222,8 +196,7 @@ class AgentDocumentsController extends Controller
 
         $label = 'Vaga';
 
-        return redirect()
-            ->route('agents.documents.index', $agent)
+        return $this->documentsHubRedirect($request, $agent)
             ->with('status', "{$label} atualizado.");
     }
 
@@ -250,8 +223,7 @@ class AgentDocumentsController extends Controller
 
         $document->delete();
 
-        return redirect()
-            ->route('agents.documents.index', $agent)
+        return $this->documentsHubRedirect($request, $agent)
             ->with('status', 'Documento removido.');
     }
 
@@ -281,8 +253,7 @@ class AgentDocumentsController extends Controller
                 ], 422);
             }
 
-            return redirect()
-                ->route('agents.documents.index', $agent)
+            return $this->documentsHubRedirect($request, $agent)
                 ->withErrors(['defaults' => 'Indique a vaga (JD) que deseja gravar como predefinida.']);
         }
 
@@ -316,9 +287,15 @@ class AgentDocumentsController extends Controller
             ]);
         }
 
-        return redirect()
-            ->route('agents.documents.index', $agent)
+        return $this->documentsHubRedirect($request, $agent)
             ->with('status', 'Predefinições gravadas.');
+    }
+
+    private function documentsHubRedirect(Request $request, Agent $agent): RedirectResponse
+    {
+        return $request->input('trail_return') === 'career_trail_ats'
+            ? redirect()->route('career-trail.ats')
+            : redirect()->route('agents.documents.index', $agent);
     }
 
     private function authorizeOwnedDocument(AgentDocument $document, $user, Agent $agent): void

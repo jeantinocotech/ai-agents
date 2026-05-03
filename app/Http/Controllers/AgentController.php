@@ -79,15 +79,17 @@ class AgentController extends Controller
         auth()->user()->refresh();
         $tokenBalance = auth()->user()->token_balance;
 
-        // Marca todas as sessões anteriores como inativas
+        // Uma sessão ativa por agente: desactiva as outras e mantém esta (getCurrentStep/sendChat filtram por is_active).
         if (auth()->check()) {
             ChatSession::where('user_id', auth()->id())
                 ->where('agent_id', $agent->id)
                 ->where('is_active', true)
+                ->where('id', '!=', $session->id)
                 ->update(['is_active' => false]);
+            ChatSession::whereKey($session->id)->update(['is_active' => true]);
         }
 
-        Log::info('Preparando nova sessão de chat', ['agent_id' => $id]);
+        Log::info('Preparando nova sessão de chat', ['agent_id' => $id, 'session_id' => $session->id]);
 
         $isCareerCvAssistantAgent = CareerTrailStep::query()
             ->where('is_active', true)
@@ -102,7 +104,7 @@ class AgentController extends Controller
             ? null
             : ChatKitDocumentLibraryService::forUserAndAgent((int) auth()->id(), $agent);
 
-        $documentsHubUrl = route('agents.documents.index', $agent);
+        $documentsHubUrl = CareerTrailAgentAccess::documentsHubUrl($agent);
         $jdContentAgentId = (int) $agent->id;
         $jdDefaultsUrl = route('agents.documents.defaults', $agent);
         $motivationLettersIndexUrl = null;
@@ -110,7 +112,7 @@ class AgentController extends Controller
         if ($documentLibrary !== null) {
             $jdContentAgentId = (int) ($documentLibrary['jd_content_agent_id'] ?? $agent->id);
             $hubAgent = Agent::query()->find((int) ($documentLibrary['documents_hub_agent_id'] ?? $agent->id)) ?? $agent;
-            $documentsHubUrl = route('agents.documents.index', $hubAgent);
+            $documentsHubUrl = CareerTrailAgentAccess::documentsHubUrl($hubAgent);
             $jdDefAgent = Agent::query()->find((int) ($documentLibrary['jd_defaults_agent_id'] ?? $agent->id)) ?? $agent;
             $jdDefaultsUrl = route('agents.documents.defaults', $jdDefAgent);
             $bound = CareerTrailAgentAccess::trailStepBoundToAgent($agent);

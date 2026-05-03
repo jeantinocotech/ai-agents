@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CareerTrailGracaMessage;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 
 final class CareerTrailGracaMessageService
 {
@@ -14,6 +15,11 @@ final class CareerTrailGracaMessageService
      */
     public static function bodies(string $processKey, ?int $careerTrailStepId, string $slot): Collection
     {
+        $table = (new CareerTrailGracaMessage)->getTable();
+        if (! Schema::hasTable($table)) {
+            return collect();
+        }
+
         return CareerTrailGracaMessage::query()
             ->where('process_key', $processKey)
             ->where('slot', $slot)
