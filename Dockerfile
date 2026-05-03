@@ -14,7 +14,7 @@ FROM php:8.2-apache
 # Instala dependências do sistema e extensões PHP
 RUN apt-get update \
     && apt-get install -y unzip curl libzip-dev zip \
-    && docker-php-ext-install pdo pdo_mysql \
+    && docker-php-ext-install pdo pdo_mysql zip \
     && a2enmod rewrite
 
 # Instala Composer

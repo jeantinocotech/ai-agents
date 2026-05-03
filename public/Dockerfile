@@ -17,6 +17,10 @@ ENV WEB_DOCUMENT_ROOT /app/public
 # Copia os arquivos da build do frontend e Laravel
 COPY --from=frontend /app /app
 
+# ext-zip é exigido pelo composer.json (PHPWord/DOCX, etc.)
+RUN apk add --no-cache libzip-dev zip \
+    && docker-php-ext-install zip
+
 # Instala dependências PHP
 RUN composer install --no-dev --optimize-autoloader \
     && chown -R application:application /app \
