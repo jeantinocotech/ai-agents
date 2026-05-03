@@ -169,7 +169,7 @@
                                                         @if ($atsInline && $atsInline->is_active && ($atsAllowsCheck ?? false))
                                                             <a href="{{ route('agents.chat', $atsInline) }}"
                                                                class="inline-flex items-center rounded-lg border border-emerald-700 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-950 shadow-sm hover:bg-emerald-50">
-                                                                ATS check
+                                                                ATS Filtro
                                                             </a>
                                                         @elseif ($atsInline && ! $atsInline->is_active)
                                                             <span class="text-xs text-amber-800">Assistente ATS inativo.</span>
@@ -290,7 +290,7 @@
                                         @if (($atsStepAgent ?? null) && $atsStepAgent->is_active && ($atsAllowsCheck ?? false))
                                             <a href="{{ route('agents.chat', $atsStepAgent) }}"
                                                class="inline-flex items-center rounded-lg border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-950 shadow-sm hover:bg-indigo-50">
-                                                ATS check
+                                                ATS Filtro
                                             </a>
                                         @endif
                                         <a href="{{ route('career-trail.cv') }}"

@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="text-xl font-semibold leading-tight text-gray-800">
-            Passo 2 — ATS (filtro e alinhamento com a vaga)
+            Passo 2 — Conseguir uma entrevista, passar pelo filtro (ATS)
         </h2>
     </x-slot>
 
@@ -45,14 +45,14 @@
                                 <div class="mt-4 flex flex-wrap items-center gap-3">
                                     <a href="{{ route('agents.chat', $atsAgent) }}"
                                        class="inline-flex items-center rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-800 shadow-sm hover:bg-slate-50">
-                                        ATS check
+                                        ATS filtro
                                     </a>
                                 </div>
                             @endif
 
                             @if ($atsBackendMisconfigured ?? false)
                                 <div class="mt-4 rounded-xl border border-amber-200/90 bg-amber-50/90 px-4 py-3 text-sm text-amber-950 shadow-sm ring-1 ring-inset ring-amber-100/80" role="alert">
-                                    <p class="font-semibold text-amber-950">ATS check indisponível</p>
+                                    <p class="font-semibold text-amber-950">ATS Filtro indisponível</p>
                                     <p class="mt-1 text-sm leading-relaxed text-amber-950/95">
                                         O agente da etapa ATS precisa de ChatKit (com ID de workflow), OpenAI com Assistant ID, ou modo clássico com passos CV/JD.
                                         Na administração, corrija integração, Assistant ID ou passos.

@@ -120,13 +120,13 @@
                                     <a href="{{ route('career-trail.ats') }}"
                                        title="CV, vagas e ATS na trilha"
                                        class="inline-flex flex-1 items-center justify-center rounded-md bg-emerald-600 px-2 py-1 text-center text-[10px] font-semibold leading-tight text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 sm:flex-initial">
-                                        Biblioteca ATS
+                                        CV / JD
                                     </a>
                                     @if ($atsAllowsCheckBanner)
                                         <a href="{{ route('agents.chat', $atsA) }}"
                                            title="ATS check"
                                            class="inline-flex flex-1 items-center justify-center rounded-md border border-emerald-700 bg-white px-2 py-1 text-center text-[10px] font-semibold leading-tight text-emerald-950 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 sm:flex-initial">
-                                            ATS check
+                                            ATS Filtro
                                         </a>
                                     @endif
                                 </div>
@@ -163,12 +163,12 @@
                                     <a href="{{ $trailUrl }}"
                                        title="Biblioteca de cartas"
                                        class="inline-flex flex-1 items-center justify-center rounded-md bg-emerald-600 px-2 py-1 text-center text-[10px] font-semibold leading-tight text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 sm:flex-initial">
-                                        Manter
+                                        Cartas
                                     </a>
                                     <a href="{{ route('agents.chat', $clAgent) }}"
                                        title="Nova carta (chat)"
                                        class="inline-flex flex-1 items-center justify-center rounded-md border border-emerald-700 bg-white px-2 py-1 text-center text-[10px] font-semibold leading-tight text-emerald-950 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 sm:flex-initial">
-                                        Nova
+                                        Criar Carta
                                     </a>
                                 </div>
                             @elseif ($isUnlocked && (! $clAgent || ! $clAgent->is_active))
@@ -204,7 +204,7 @@
                                     <a href="{{ $trailUrl }}"
                                        title="Registos de entrevistas"
                                        class="inline-flex flex-1 items-center justify-center rounded-md bg-emerald-600 px-2 py-1 text-center text-[10px] font-semibold leading-tight text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 sm:flex-initial">
-                                        Manter
+                                        Histórico
                                     </a>
                                     <a href="{{ route('agents.chat', $eqAgent) }}"
                                        title="Preparar entrevistas (chat)"

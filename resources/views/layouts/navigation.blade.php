@@ -4,7 +4,7 @@
             <!-- Logo / marca (sempre leva ao início) -->
             <a href="{{ url('/') }}" aria-label="GratoAI — início" class="flex items-center shrink-0 space-x-3 rounded-md text-white hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:ring-white">
                 <img src="{{ asset('img/gratoai_black.png') }}" alt="" class="pointer-events-none h-12 w-auto" width="140" height="48">
-                <span class="font-bold text-xl">GratoAI</span>
+                <span class="font-bold text-xl">GratoAI (Versão Beta)</span>
             </a>
 
             <!-- Desktop Nav -->
