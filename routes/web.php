@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AgentController as AdminAgentController;
+use App\Http\Controllers\Admin\CareerTrailStepAdminController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TestimonialAdminController;
 use App\Http\Controllers\AgentController;
@@ -228,6 +229,10 @@ Route::middleware(['auth', 'verified', AdminMiddleware::class])->prefix('admin')
 
     Route::get('/settings/tokens', [SettingsController::class, 'editTokens'])->name('settings.tokens.edit');
     Route::put('/settings/tokens', [SettingsController::class, 'updateTokens'])->name('settings.tokens.update');
+
+    Route::get('/career-trail-steps', [CareerTrailStepAdminController::class, 'index'])->name('career-trail-steps.index');
+    Route::get('/career-trail-steps/{step}/edit', [CareerTrailStepAdminController::class, 'edit'])->name('career-trail-steps.edit');
+    Route::put('/career-trail-steps/{step}', [CareerTrailStepAdminController::class, 'update'])->name('career-trail-steps.update');
 
 });
 

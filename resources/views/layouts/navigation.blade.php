@@ -63,6 +63,9 @@
                                 <x-dropdown-link :href="route('admin.settings.tokens.edit')">
                                     ⚙️ Parâmetros de tokens
                                 </x-dropdown-link>
+                                <x-dropdown-link :href="route('admin.career-trail-steps.index')">
+                                    🪶 Trilha — textos da Graça
+                                </x-dropdown-link>
                             </x-slot>
                         </x-dropdown>
                     @endif
@@ -150,6 +153,9 @@
                     </x-responsive-nav-link>
                     <x-responsive-nav-link :href="route('admin.agents.index')" :active="request()->routeIs('admin.agents.*')">
                         🤖 Gerenciar Agentes
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('admin.career-trail-steps.index')" :active="request()->routeIs('admin.career-trail-steps.*')">
+                        🪶 Trilha — textos da Graça
                     </x-responsive-nav-link>
                 @endif
             @endauth
