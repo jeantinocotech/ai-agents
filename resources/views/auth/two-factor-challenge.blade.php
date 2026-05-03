@@ -1,7 +1,7 @@
 <x-guest-layout>
     <div class="mb-6 text-center text-gray-900">
         <h1 class="text-lg font-semibold">Autenticação em dois passos</h1>
-        <p class="mt-2 text-sm text-gray-600">Introduza o código do aplicativo ou uma chave de recuperação.</p>
+        <p class="mt-2 text-sm text-gray-600">Digite o código do aplicativo ou uma chave de recuperação.</p>
     </div>
 
     <form method="POST" action="{{ route('two-factor.challenge.store') }}" class="space-y-6">

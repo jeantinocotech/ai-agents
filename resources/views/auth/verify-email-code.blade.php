@@ -2,7 +2,7 @@
     <div class="mb-4">
         <h2 class="text-lg font-medium text-gray-900">Confirmar e-mail</h2>
         <p class="mt-1 text-sm text-gray-600">
-            Introduza o endereço e o código de 6 dígitos que enviámos (verifique também o spam).
+            Digite o endereço e o código de 6 dígitos que enviamos (verifique também o spam).
         </p>
     </div>
 

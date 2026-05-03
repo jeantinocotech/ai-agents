@@ -56,7 +56,7 @@ final class ChatKitDocumentLibraryService
             $title = $cv->title !== null && trim((string) $cv->title) !== ''
                 ? (string) $cv->title
                 : 'CV do perfil';
-            $suffix = ' (perfil #'.$cv->id.')'.($cv->is_default ? ' — predefinido' : '');
+            $suffix = ' (perfil #'.$cv->id.')'.($cv->is_default ? ' — padrão' : '');
 
             return [
                 'id' => 'p'.$cv->id,

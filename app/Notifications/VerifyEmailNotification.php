@@ -48,7 +48,7 @@ class VerifyEmailNotification extends Notification
 
         return (new MailMessage)
             ->subject('Confirme o seu endereço de e-mail')
-            ->line('Para activar a conta, clique no botão abaixo ou introduza o código de 6 dígitos na página de iniciar sessão (secção «Confirmar com código»).')
+            ->line('Para ativar a conta, clique no botão abaixo ou digite o código de 6 dígitos na página de iniciar sessão (seção "Confirmar com código").')
             ->line('O seu código é: **'.$this->verificationCodePlain.'**')
             ->action('Confirmar e-mail', $verificationUrl)
             ->line('O link e o código expiram em '.$minutes.' minutos.')

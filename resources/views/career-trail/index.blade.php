@@ -49,7 +49,7 @@
                     @endif
                     @if ($currentStep->slug === 'ats')
                         <p class="mt-3 text-xs text-amber-950/70">
-                            Pode candidatar-se a várias vagas em paralelo na biblioteca ATS; para avançar na trilha basta ter <strong>pelo menos uma</strong> vaga com JD e CV associados. Quando cumprir estes requisitos, <strong>Motivação</strong> (opcional) e <strong>Entrevista</strong> ficam disponíveis em paralelo na barra; ao premir «Avançar», a etapa inicial sugerida é Entrevista.
+                            Você pode se candidatar a várias vagas em paralelo na biblioteca ATS; para avançar na trilha basta ter <strong>pelo menos uma</strong> vaga com JD e CV associados. Quando cumprir estes requisitos, <strong>Motivação</strong> (opcional) e <strong>Entrevista</strong> ficam disponíveis em paralelo na barra; ao clicar em "Avançar", a etapa inicial sugerida é Entrevista.
                         </p>
                     @endif
                 </div>
@@ -359,7 +359,7 @@
                             </button>
                         </form>
                         <p class="w-full text-xs text-slate-500 sm:w-auto sm:flex-1">
-                            O «Avançar» só prossegue quando os requisitos da etapa atual estão cumpridos (passos 1 e 2). Voltar atrás não remove o que já desbloqueou.
+                            O botão Avançar só prossegue quando os requisitos da etapa atual estão cumpridos (passos 1 e 2). Voltar atrás não remove o que já desbloqueou.
                         </p>
                     </div>
                 </div>

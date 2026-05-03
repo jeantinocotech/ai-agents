@@ -8,7 +8,7 @@
             <label for="chatkit-default-cv" class="block text-xs font-semibold uppercase tracking-wide text-slate-600">Currículo (CV)</label>
             <label for="chatkit-save-default-cv" class="flex cursor-pointer items-center gap-2 text-xs text-slate-600">
                 <input type="checkbox" id="chatkit-save-default-cv" value="1" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" @checked($ckDefCv)>
-                <span>Guardar seleção como padrão</span>
+                <span>Salvar seleção como padrão</span>
             </label>
             <select id="chatkit-default-cv" class="w-full rounded-xl border-slate-300 bg-white text-sm text-slate-900 shadow-sm transition focus:border-indigo-500 focus:ring-indigo-500">
                 <option value="">— nenhum —</option>
@@ -21,7 +21,7 @@
             <label for="chatkit-default-jd" class="block text-xs font-semibold uppercase tracking-wide text-slate-600">Vaga (JD)</label>
             <label for="chatkit-save-default-jd" class="flex cursor-pointer items-center gap-2 text-xs text-slate-600">
                 <input type="checkbox" id="chatkit-save-default-jd" value="1" class="rounded border-slate-300 text-indigo-600 shadow-sm focus:ring-indigo-500" @checked($ckDefJd)>
-                <span>Guardar seleção como padrão</span>
+                <span>Salvar seleção como padrão</span>
             </label>
             <div class="flex flex-col gap-2 sm:flex-row sm:items-stretch">
                 <select id="chatkit-default-jd" class="min-w-0 flex-1 rounded-xl border-slate-300 bg-white text-sm text-slate-900 shadow-sm transition focus:border-indigo-500 focus:ring-indigo-500">

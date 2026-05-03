@@ -19,7 +19,7 @@ class TwoFactorSettingsController extends Controller
     {
         $user = $request->user();
         if ($user->two_factor_confirmed_at !== null) {
-            return redirect()->route('profile.edit')->with('info', 'Autenticação em dois passos já está activa.');
+            return redirect()->route('profile.edit')->with('info', 'Autenticação em dois passos já está ativa.');
         }
 
         $secret = (new Google2FA)->generateSecretKey();

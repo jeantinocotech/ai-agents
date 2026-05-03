@@ -14,7 +14,7 @@ $legalFingerprint = config('legal.privacy_policy_version').'|'.config('legal.ter
         @csrf
 
         <p id="register-draft-hint" class="hidden text-xs text-gray-500 mb-3">
-            O nome e o e-mail são guardados apenas neste dispositivo até concluir o registo (as senhas nunca são guardadas).
+            O nome e o e-mail são salvos apenas neste dispositivo até concluir o cadastro (as senhas nunca são salvas).
         </p>
 
         <!-- Name -->
@@ -33,7 +33,7 @@ $legalFingerprint = config('legal.privacy_policy_version').'|'.config('legal.ter
 
         <!-- Password -->
         <div class="mt-4">
-            <x-input-label for="password" value="Palavra-passe" />
+            <x-input-label for="password" value="Senha" />
 
             <x-text-input id="password" class="block mt-1 w-full"
                             type="password"
@@ -45,7 +45,7 @@ $legalFingerprint = config('legal.privacy_policy_version').'|'.config('legal.ter
 
         <!-- Confirm Password -->
         <div class="mt-4">
-            <x-input-label for="password_confirmation" value="Confirmar palavra-passe" />
+            <x-input-label for="password_confirmation" value="Confirmar senha" />
 
             <x-text-input id="password_confirmation" class="block mt-1 w-full"
                             type="password"
@@ -56,7 +56,7 @@ $legalFingerprint = config('legal.privacy_policy_version').'|'.config('legal.ter
 
         <div class="mt-6 space-y-4">
             <p class="text-sm text-gray-600">
-                Abra a política e os termos nos botões abaixo ou em novo separador
+                Abra a política e os termos nos botões abaixo ou em nova aba
                 (<a href="{{ route('privacidade') }}" target="_blank" rel="noopener noreferrer" class="font-medium text-indigo-600 hover:underline">política</a>,
                 <a href="{{ route('termos-uso') }}" target="_blank" rel="noopener noreferrer" class="font-medium text-indigo-600 hover:underline">termos</a>) antes de aceitar.
             </p>
@@ -108,7 +108,7 @@ $legalFingerprint = config('legal.privacy_policy_version').'|'.config('legal.ter
             </a>
 
             <x-primary-button id="register-submit-btn" class="ms-4" :disabled="! $bypassLegalReadGate">
-                Registar
+                Cadastrar
             </x-primary-button>
         </div>
     </form>
@@ -125,8 +125,8 @@ $legalFingerprint = config('legal.privacy_policy_version').'|'.config('legal.ter
                 @include('legal.partials.privacy-body')
             </div>
             <div class="shrink-0 border-t border-gray-100 bg-gray-50 px-4 py-2 text-xs text-gray-500">
-                <a href="{{ route('privacidade') }}" target="_blank" rel="noopener noreferrer" class="font-medium text-indigo-600 hover:underline">Abrir esta página em separador</a>
-                (útil para impressão ou leitura em ecrã inteiro).
+                <a href="{{ route('privacidade') }}" target="_blank" rel="noopener noreferrer" class="font-medium text-indigo-600 hover:underline">Abrir esta página em nova aba</a>
+                (útil para impressão ou leitura em tela cheia).
             </div>
         </div>
     </dialog>
@@ -143,8 +143,8 @@ $legalFingerprint = config('legal.privacy_policy_version').'|'.config('legal.ter
                 @include('legal.partials.terms-body', ['registerModal' => true, 'fromRegister' => false])
             </div>
             <div class="shrink-0 border-t border-gray-100 bg-gray-50 px-4 py-2 text-xs text-gray-500">
-                <a href="{{ route('termos-uso') }}" target="_blank" rel="noopener noreferrer" class="font-medium text-indigo-600 hover:underline">Abrir esta página em separador</a>
-                (útil para impressão ou leitura em ecrã inteiro).
+                <a href="{{ route('termos-uso') }}" target="_blank" rel="noopener noreferrer" class="font-medium text-indigo-600 hover:underline">Abrir esta página em nova aba</a>
+                (útil para impressão ou leitura em tela cheia).
             </div>
         </div>
     </dialog>

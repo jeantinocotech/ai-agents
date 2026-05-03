@@ -8,7 +8,7 @@
             </h2>
             @if ($fromRegister)
                 <a href="{{ route('register') }}" class="text-sm font-semibold text-green-700 hover:text-green-900 hover:underline">
-                    Continuar o registo
+                    Continuar o cadastro
                 </a>
                 <span class="hidden sm:inline text-gray-300 select-none">·</span>
                 <a href="{{ route('home') }}" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline">
@@ -27,7 +27,7 @@
             <article class="rounded-xl bg-white p-8 shadow-sm ring-1 ring-gray-100">
                 @if ($fromRegister)
                     <div class="not-prose mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-950">
-                        Está a registar-se neste mesmo separador — use <a href="{{ route('register') }}" class="font-semibold text-green-900 underline underline-offset-2 hover:text-green-950">voltar ao registo</a> para continuar sem perder dados (nome e e-mail ficam recuperáveis neste equipamento). O botão voltar do navegador pode devolvê-lo à página inicial.
+                        Você está se cadastrando nesta mesma aba — use <a href="{{ route('register') }}" class="font-semibold text-green-900 underline underline-offset-2 hover:text-green-950">voltar ao cadastro</a> para continuar sem perder dados (nome e e-mail ficam recuperáveis neste dispositivo). O botão voltar do navegador pode levá-lo de volta à página inicial.
                     </div>
                 @endif
 

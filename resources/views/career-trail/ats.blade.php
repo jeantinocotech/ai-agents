@@ -38,7 +38,7 @@
                                 :placement="\App\Support\CareerTrailGracaSlots::TRAIL_STEP_HEADER"
                                 :step="$atsStep"
                                 paragraph-class="mt-2 text-sm leading-relaxed text-slate-600"
-                                :fallback="'Associe um CV do perfil a cada vaga (JD) abaixo. Quando houver pelo menos um par completo, poderá abrir o ATS check para alinhar o texto à vaga.'"
+                                :fallback="'Associe um CV do perfil a cada vaga (JD) abaixo. Quando houver pelo menos um par completo, você poderá abrir o ATS check para alinhar o texto à vaga.'"
                             />
 
                             @if ($atsAgentActive && $atsAgent && $atsAllowsCheck)
@@ -52,10 +52,10 @@
 
                             @if ($atsBackendMisconfigured ?? false)
                                 <div class="mt-4 rounded-xl border border-amber-200/90 bg-amber-50/90 px-4 py-3 text-sm text-amber-950 shadow-sm ring-1 ring-inset ring-amber-100/80" role="alert">
-                                    <p class="font-semibold text-amber-950">ATS Filtro indisponível</p>
+                                    <p class="font-semibold text-amber-950">ATS check indisponível</p>
                                     <p class="mt-1 text-sm leading-relaxed text-amber-950/95">
-                                        O agente da etapa ATS precisa de ChatKit (com ID de workflow), OpenAI com Assistant ID, ou modo clássico com passos CV/JD.
-                                        Na administração, corrija integração, Assistant ID ou passos.
+                                        O agente da etapa ATS precisa ter ChatKit (com ID de workflow), OpenAI com Assistant ID ou modo clássico com passos CV/JD.
+                                        Na administração, corrija a integração, o Assistant ID ou os passos.
                                     </p>
                                 </div>
                             @endif
@@ -91,7 +91,7 @@
                         <div class="rounded-xl border border-slate-200 bg-slate-50/90 px-4 py-4 text-sm text-slate-700">
                             <p class="font-semibold text-slate-900">Assistente ATS ainda não está configurado</p>
                             <p class="mt-1 text-sm text-slate-700">
-                                Para guardar vagas e usar o ATS check, o administrador precisa de associar um agente à etapa ATS
+                                Para salvar vagas e usar o ATS check, o administrador precisa associar um agente à etapa ATS
                                 (ou definir <code class="rounded bg-white px-1 py-0.5 font-mono text-[11px]">CAREER_TRAIL_ATS_AGENT_ID</code>).
                             </p>
                             <div class="mt-4 flex flex-wrap gap-3">
@@ -110,7 +110,7 @@
                     <div class="border-b border-slate-100 bg-slate-50/90 px-6 py-4 sm:px-8">
                         <h2 class="text-lg font-semibold text-slate-900">Biblioteca ATS — CV do perfil e vagas (JD)</h2>
                         <p class="mt-1 text-sm text-slate-600">
-                            Crie ou edite vagas e escolha o CV de perfil para cada uma. Depois de gravar, o botão <strong class="text-slate-800">ATS check</strong> abre o assistente com um par válido.
+                            Crie ou edite vagas e escolha o CV de perfil para cada uma. Depois de salvar, o botão <strong class="text-slate-800">ATS check</strong> abre o assistente com um par válido.
                         </p>
                     </div>
                     @include('agents.documents.partials.library-forms', array_merge(

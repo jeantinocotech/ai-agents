@@ -24,7 +24,7 @@
             <div class="overflow-hidden bg-white shadow-sm ring-1 ring-slate-200 sm:rounded-xl">
                 <div class="flex flex-col gap-4 border-b border-slate-100 bg-slate-50/80 px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
                     <div class="min-w-0">
-                        <h1 class="text-lg font-semibold text-slate-900">Registos de entrevistas</h1>
+                        <h1 class="text-lg font-semibold text-slate-900">Registros de entrevistas</h1>
                         <p class="mt-1 text-sm text-slate-600">Agrupado por processo (vaga ATS + CV). Rondas listadas por sequência dentro de cada processo.</p>
                     </div>
                     <div class="flex shrink-0 flex-wrap gap-2">
@@ -53,10 +53,10 @@
                                     <p class="mt-1 text-xs leading-snug text-slate-500">
                                         Estado das <strong>rondas</strong>, <strong>resultado global da candidatura</strong> e pesquisa livre.
                                         <span class="group-open:hidden"> Clique nesta linha para expandir.</span>
-                                        <span class="hidden group-open:inline"> Clique em «Ocultar» ou na linha para recolher.</span>
+                                        <span class="hidden group-open:inline"> Clique em Ocultar ou na linha para recolher.</span>
                                     </p>
                                     <p class="mt-1.5 text-[11px] leading-snug text-slate-400 group-open:hidden">
-                                        Pré‑selecção ao entrar: todas as personas · ronda «Em processo» + «Avançou» · candidatura «Em curso» + «Aprovado» (global).
+                                        Pré-seleção ao entrar: todas as personas · ronda "Em processo" + "Avançou" · candidatura "Em curso" + "Aprovado" (global).
                                     </p>
                                 </div>
                                 <div class="flex shrink-0 items-center gap-2">
@@ -97,7 +97,7 @@
                             <fieldset id="fld-statuses" class="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
                                 <legend class="w-full px-0.5 text-sm font-semibold text-slate-800">Estado da ronda</legend>
                                 <p class="mt-1 px-0.5 text-xs text-slate-500">
-                                    Pré‑seleccionado: <strong>Em processo</strong> e <strong>Avançou</strong>. Interruptor abaixo inclui todos os estados.
+                                    Pré-selecionado: <strong>Em processo</strong> e <strong>Avançou</strong>. O interruptor abaixo inclui todos os estados.
                                 </p>
                                 <label for="iv-all-statuses" class="mt-3 flex cursor-pointer items-center gap-2 rounded-lg bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-200 hover:bg-violet-50/40">
                                     <input type="checkbox" name="all_statuses" id="iv-all-statuses" value="1"
@@ -122,7 +122,7 @@
                             <fieldset id="fld-outcomes" class="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
                                 <legend class="w-full px-0.5 text-sm font-semibold text-slate-800">Resultado da candidatura (global)</legend>
                                 <p class="mt-1 px-0.5 text-xs text-slate-500">
-                                    Pré‑seleccionado: <strong>Em curso</strong> e <strong>Aprovado</strong>. Interruptor abaixo inclui todos os resultados (ex. «Não prosseguiu» global).
+                                    Pré-selecionado: <strong>Em curso</strong> e <strong>Aprovado</strong>. O interruptor abaixo inclui todos os resultados (ex.: "Não prosseguiu" global).
                                 </p>
                                 <label for="iv-all-process-outcomes" class="mt-3 flex cursor-pointer items-center gap-2 rounded-lg bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-200 hover:bg-violet-50/40">
                                     <input type="checkbox" name="all_process_outcomes" id="iv-all-process-outcomes" value="1"
@@ -243,7 +243,7 @@
                                                             @endif
                                                         </div>
                                                     @else
-                                                        <p class="mt-2 max-w-xl text-[11px] text-slate-600">Este processo ficou como «Não prosseguiu» no conjunto porque há pelo menos uma ronda terminada assim (pelo lado da vaga ou com desistência). Ajuste a ronda ou apague registos quando fizer sentido.</p>
+                                                        <p class="mt-2 max-w-xl text-[11px] text-slate-600">Este processo ficou como "Não prosseguiu" no resultado global porque há pelo menos uma ronda terminada assim (pelo lado da vaga ou com desistência). Ajuste a ronda ou apague registros quando fizer sentido.</p>
                                                     @endif
                                                 @endif
                                             @endif

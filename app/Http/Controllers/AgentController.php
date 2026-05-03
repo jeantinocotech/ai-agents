@@ -928,7 +928,7 @@ class AgentController extends Controller
         }
 
         if ($this->findCvJdStepPair((int) $validated['agent_id']) === null) {
-            return response()->json(['message' => 'Este agente não suporta guardar CV (passos CV+JD).'], 422);
+            return response()->json(['message' => 'Este agente não suporta salvar CV (passos CV+JD).'], 422);
         }
 
         $session = ChatSession::query()->findOrFail($validated['session_id']);
@@ -968,7 +968,7 @@ class AgentController extends Controller
         $defaults->default_cv_document_id = $doc->id;
         $defaults->save();
 
-        return response()->json(['success' => true, 'message' => 'CV guardado na biblioteca e definido como predefinido. Na próxima conversa só precisará enviar a nova vaga (JD).']);
+        return response()->json(['success' => true, 'message' => 'CV salvo na biblioteca e definido como padrão. Na próxima conversa você só precisará enviar a nova vaga (JD).']);
     }
 
     public function destroySavedCv(Request $request)
@@ -1002,7 +1002,7 @@ class AgentController extends Controller
             ->where('agent_id', $validated['agent_id'])
             ->update(['default_cv_document_id' => null]);
 
-        return response()->json(['success' => true, 'message' => 'Todos os CVs deste agente foram removidos da biblioteca e a predefinição foi limpa.']);
+        return response()->json(['success' => true, 'message' => 'Todos os CVs deste agente foram removidos da biblioteca e a preferência padrão foi limpa.']);
     }
 
     private function extractLatestCvBodyFromSession(int $chatSessionId): ?string

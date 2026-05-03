@@ -47,7 +47,7 @@
                         @empty
                             <tr>
                                 <td colspan="5" class="px-4 py-8 text-center text-gray-500">
-                                    Ainda não há encomendas registadas.
+                                    Ainda não há pedidos registrados.
                                 </td>
                             </tr>
                         @endforelse

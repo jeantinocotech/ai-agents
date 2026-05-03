@@ -12,8 +12,8 @@
                 <a href="{{ route('career-trail.index') }}" class="text-sm text-blue-600 hover:underline">&larr; Voltar à trilha</a>
                 <h2 class="mt-2 text-2xl font-bold">Biblioteca de CVs e vagas</h2>
                 <p class="mt-1 text-sm text-gray-600">
-                    Comece por criar ou editar uma <strong>vaga (JD)</strong> e associar um CV do perfil; depois pode definir a <strong>JD predefinida</strong> para o ChatKit e, ao final, <strong>criar ou ajustar</strong> outro CV de perfil se precisar.
-                    Pode alterar títulos e textos ou apagar entradas nas secções correspondentes.
+                    Comece por criar ou editar uma <strong>vaga (JD)</strong> e associar um CV do perfil; depois pode definir a <strong>JD padrão</strong> para o ChatKit e, ao final, <strong>criar ou ajustar</strong> outro CV de perfil se precisar.
+                    Você pode alterar títulos e textos ou apagar entradas nas seções correspondentes.
                     Cada texto na biblioteca tem no máximo {{ number_format($maxCvBodyChars, 0, ',', '.') }} caracteres (CV) e {{ number_format($maxJdBodyChars, 0, ',', '.') }} (JD), Unicode.
                 </p>
             </div>
@@ -47,7 +47,7 @@
                     <option value="">— rascunho (sem CV) —</option>
                     @foreach ($profileCvs as $pcv)
                         <option value="{{ $pcv->id }}" @selected((int) $defaultProfileCvId === (int) $pcv->id)>
-                            {{ ($pcv->title ?: 'CV do perfil').' (#'.$pcv->id.')' }}{{ $pcv->is_default ? ' — predefinido' : '' }}
+                            {{ ($pcv->title ?: 'CV do perfil').' (#'.$pcv->id.')' }}{{ $pcv->is_default ? ' — padrão' : '' }}
                         </option>
                     @endforeach
                 </select>
@@ -59,7 +59,7 @@
             </div>
             <label class="inline-flex items-center gap-2 text-sm">
                 <input type="checkbox" name="set_as_default" value="1" class="rounded border-gray-300">
-                Definir como vaga predefinida
+                Definir como vaga padrão
             </label>
             <div>
                 <button type="submit" class="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">Adicionar vaga</button>
@@ -69,7 +69,7 @@
 
     <section class="rounded-lg border border-gray-200 p-4">
         <h3 class="mb-3 text-lg font-semibold">Vagas (JD) — editar ou atualizar</h3>
-        <p class="mb-3 text-sm text-gray-600">Cada vaga guardada pode ser revista abaixo: título, texto da descrição e CV associado. Use <strong>Guardar alterações</strong> após editar.</p>
+        <p class="mb-3 text-sm text-gray-600">Cada vaga salva pode ser revisada abaixo: título, texto da descrição e CV associado. Use <strong>Salvar alterações</strong> após editar.</p>
         @if ($jds->isEmpty())
             <p class="text-sm text-gray-500">Ainda não tem vagas na biblioteca.</p>
         @else
@@ -80,10 +80,10 @@
                             <div>
                                 <span class="font-medium">{{ $jd->title ?: 'Vaga #'.$jd->id }}</span>
                                 @if ((int) $defJdId === (int) $jd->id)
-                                    <span class="ml-2 rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-800">predefinida</span>
+                                    <span class="ml-2 rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-800">padrão</span>
                                 @endif
                                 @if ($jd->userCv)
-                                    <p class="mt-1 text-xs text-gray-500">CV associado: {{ ($jd->userCv->title ?: 'CV do perfil #'.$jd->userCv->id).($jd->userCv->is_default ? ' — predefinido' : '') }}</p>
+                                    <p class="mt-1 text-xs text-gray-500">CV associado: {{ ($jd->userCv->title ?: 'CV do perfil #'.$jd->userCv->id).($jd->userCv->is_default ? ' — padrão' : '') }}</p>
                                 @endif
                             </div>
                             <form method="post" action="{{ route('agents.documents.destroy', [$agent, $jd]) }}" onsubmit="return confirm('Remover esta vaga?');">
@@ -106,16 +106,16 @@
                                 <option value="">— rascunho (sem CV) —</option>
                                 @foreach ($profileCvs as $pcv)
                                     <option value="{{ $pcv->id }}" @selected((int) $jd->user_cv_id === (int) $pcv->id)>
-                                        {{ ($pcv->title ?: 'CV do perfil').' (#'.$pcv->id.')' }}{{ $pcv->is_default ? ' — predefinido' : '' }}
+                                        {{ ($pcv->title ?: 'CV do perfil').' (#'.$pcv->id.')' }}{{ $pcv->is_default ? ' — padrão' : '' }}
                                     </option>
                                 @endforeach
                             </select>
                             <textarea name="body" rows="6" required maxlength="{{ $maxJdBodyChars }}" class="w-full rounded-md border-gray-300 font-mono text-sm shadow-sm">{{ old('body', $jd->body) }}</textarea>
                             <label class="inline-flex items-center gap-2 text-sm">
                                 <input type="checkbox" name="set_as_default" value="1" class="rounded border-gray-300" @checked((int) $defJdId === (int) $jd->id)>
-                                Predefinida
+                                Padrão da lista
                             </label>
-                            <button type="submit" class="text-sm text-blue-600 hover:underline">Guardar alterações</button>
+                            <button type="submit" class="text-sm text-blue-600 hover:underline">Salvar alterações</button>
                         </form>
                     </li>
                 @endforeach
@@ -124,9 +124,9 @@
     </section>
 
     <section class="rounded-lg border border-gray-200 p-4">
-        <h3 class="mb-3 text-lg font-semibold">Predefinições</h3>
+        <h3 class="mb-3 text-lg font-semibold">Preferências (JD padrão)</h3>
         <p class="mb-3 text-sm text-gray-600">
-            Os CVs são sempre do seu perfil. Para o ATS, cada vaga (JD) aponta para um CV do perfil (ou fica em rascunho sem CV). A predefinição indica qual JD o ChatKit sugere por defeito quando existem várias vagas.
+            Os CVs são sempre do seu perfil. Para o ATS, cada vaga (JD) aponta para um CV do perfil (ou fica em rascunho sem CV). A JD padrão indica qual vaga o ChatKit sugere automaticamente quando existem várias.
         </p>
         <form method="post" action="{{ route('agents.documents.defaults', $agent) }}" class="space-y-3">
             @csrf
@@ -134,7 +134,7 @@
                 <input type="hidden" name="trail_return" value="career_trail_ats">
             @endif
             <div>
-                <label class="mb-1 block text-sm font-medium text-gray-700">Vaga (JD) predefinida</label>
+                <label class="mb-1 block text-sm font-medium text-gray-700">Vaga (JD) padrão</label>
                 <select name="default_jd_document_id" class="w-full rounded-md border-gray-300 text-sm shadow-sm">
                     <option value="">— nenhuma —</option>
                     @foreach ($jds as $jd)
@@ -145,7 +145,7 @@
                 </select>
             </div>
             <button type="submit" class="inline-flex items-center rounded-md bg-gray-800 px-4 py-2 text-sm text-white hover:bg-gray-900">
-                Guardar predefinições
+                Salvar preferências
             </button>
         </form>
     </section>
@@ -160,11 +160,11 @@
                 <option value="">— criar novo CV —</option>
                 @foreach ($profileCvs as $pcv)
                     <option value="{{ $pcv->id }}" @selected((int) $defaultProfileCvId === (int) $pcv->id)>
-                        {{ ($pcv->title ?: 'CV do perfil').' (#'.$pcv->id.')' }}{{ $pcv->is_default ? ' — predefinido' : '' }}
+                        {{ ($pcv->title ?: 'CV do perfil').' (#'.$pcv->id.')' }}{{ $pcv->is_default ? ' — padrão' : '' }}
                     </option>
                 @endforeach
             </select>
-            <p class="mt-1 text-xs text-gray-500">Ao selecionar, o formulário abaixo será preenchido para edição. Se escolher «criar novo», será criada uma nova versão em <code>user_cvs</code>.</p>
+            <p class="mt-1 text-xs text-gray-500">Ao selecionar, o formulário abaixo será preenchido para edição. Se escolher criar novo CV, será criada uma nova versão em <code>user_cvs</code>.</p>
         </div>
 
         <form id="profile-cv-form-{{ $agent->id }}" method="post" action="{{ route('agents.profile-cvs.store', $agent) }}" class="profile-cv-form space-y-3">
@@ -183,10 +183,10 @@
             </div>
             <label class="inline-flex items-center gap-2 text-sm">
                 <input type="checkbox" name="make_default" value="1" class="rounded border-gray-300">
-                Definir como CV predefinido do perfil
+                Definir como CV padrão do perfil
             </label>
             <div>
-                <button type="submit" class="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">Guardar CV</button>
+                <button type="submit" class="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">Salvar CV</button>
             </div>
         </form>
     </section>

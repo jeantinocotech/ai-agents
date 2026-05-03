@@ -415,7 +415,7 @@ class InterviewPreparationController extends Controller
             ->where('jd_document_id', $jd->id)
             ->where('outcome', InterviewApplicationOutcome::DidNotProceed->value)
             ->exists();
-        abort_if($processDidNotProceed, 422, 'Este processo está marcado como «Não prosseguiu»; não é possível registar novas rondas.');
+        abort_if($processDidNotProceed, 422, 'Este processo está marcado como "Não prosseguiu"; não é possível registrar novas rondas.');
 
         $sequence = $this->nextSequence((int) $request->user()->id, (int) $jd->id);
 
@@ -438,7 +438,7 @@ class InterviewPreparationController extends Controller
 
         return redirect()
             ->route('agents.interview-preparations.index', $agent)
-            ->with('status', 'Entrevista registada.');
+            ->with('status', 'Entrevista registrada.');
     }
 
     public function update(Request $request, Agent $agent, InterviewPreparation $interviewPreparation): RedirectResponse
@@ -482,7 +482,7 @@ class InterviewPreparationController extends Controller
 
         return redirect()
             ->route('agents.interview-preparations.index', $agent)
-            ->with('status', 'Registo removido.');
+            ->with('status', 'Registro removido.');
     }
 
     /**

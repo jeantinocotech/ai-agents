@@ -32,7 +32,7 @@ class EnsureAcceptedLegalDocuments
 
         return redirect()
             ->route('legal.consent.show')
-            ->with('warning', 'Aceite a política de privacidade e os termos de uso na versão actual para continuar.');
+            ->with('warning', 'Aceite a política de privacidade e os termos de uso na versão atual para continuar.');
     }
 
     private function shouldBypass(Request $request): bool

@@ -11,7 +11,7 @@
         </div>
 
         <div class="mt-4">
-            <x-input-label for="password" value="Palavra-passe" />
+            <x-input-label for="password" value="Senha" />
 
             <x-text-input id="password" class="mt-1 block w-full"
                 type="password"
@@ -24,19 +24,19 @@
         <div class="mt-4 block">
             <label for="remember_me" class="inline-flex items-center">
                 <input id="remember_me" type="checkbox" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="remember">
-                <span class="ms-2 text-sm text-gray-600">Manter sessão neste equipamento</span>
+                <span class="ms-2 text-sm text-gray-600">Manter sessão neste dispositivo</span>
             </label>
         </div>
 
         <p class="mt-4 text-sm text-gray-600">
             Precisa confirmar o e-mail?
-            <a class="font-medium text-indigo-600 hover:underline focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded-md" href="{{ route('verification.code.form') }}">Introduzir código</a>
+            <a class="font-medium text-indigo-600 hover:underline focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 rounded-md" href="{{ route('verification.code.form') }}">Inserir código</a>
         </p>
 
         <div class="mt-6 flex items-center justify-end">
             @if (Route::has('password.request'))
                 <a class="text-sm text-gray-600 underline hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" href="{{ route('password.request') }}">
-                    Esqueceu a palavra-passe?
+                    Esqueceu a senha?
                 </a>
             @endif
 

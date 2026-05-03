@@ -235,7 +235,7 @@ class AgentDocumentsController extends Controller
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'CV de perfil não usa predefinições desta biblioteca.',
+                    'message' => 'CV de perfil não usa as preferências padrão desta biblioteca.',
                 ]);
             }
 
@@ -249,12 +249,12 @@ class AgentDocumentsController extends Controller
         if (! array_key_exists('default_jd_document_id', $validated)) {
             if ($request->expectsJson()) {
                 return response()->json([
-                    'message' => 'Indique a vaga (JD) predefinida (ou desactive «Guardar seleção» no CV).',
+                    'message' => 'Indique a vaga (JD) padrão (ou desative "Salvar seleção" no CV).',
                 ], 422);
             }
 
             return $this->documentsHubRedirect($request, $agent)
-                ->withErrors(['defaults' => 'Indique a vaga (JD) que deseja gravar como predefinida.']);
+                ->withErrors(['defaults' => 'Indique a vaga (JD) que deseja salvar como padrão.']);
         }
 
         $user = $request->user();
@@ -280,7 +280,7 @@ class AgentDocumentsController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Predefinições gravadas.',
+                'message' => 'Preferências salvas.',
                 'defaults' => [
                     'jd_document_id' => $defaults->default_jd_document_id,
                 ],
@@ -288,7 +288,7 @@ class AgentDocumentsController extends Controller
         }
 
         return $this->documentsHubRedirect($request, $agent)
-            ->with('status', 'Predefinições gravadas.');
+            ->with('status', 'Preferências salvas.');
     }
 
     private function documentsHubRedirect(Request $request, Agent $agent): RedirectResponse

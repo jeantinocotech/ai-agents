@@ -92,7 +92,7 @@ final class InterviewProcessOutcomeService
             ])
             ->exists();
 
-        abort_if($blocked, 422, 'Não é possível aprovar: existe uma ronda com «Não prosseguiu» ou «Desistiu».');
+        abort_if($blocked, 422, 'Não é possível aprovar: existe uma ronda com "Não prosseguiu" ou "Desistiu".');
 
         $process = InterviewProcess::query()->firstOrCreate(
             [
@@ -121,7 +121,7 @@ final class InterviewProcessOutcomeService
         abort_unless(
             $process->outcome === InterviewApplicationOutcome::Approved,
             422,
-            'Só pode repor «em curso» quando a candidatura está aprovada.'
+            'Só é possível reabrir como "em curso" quando a candidatura está aprovada.'
         );
 
         $process->outcome = InterviewApplicationOutcome::Ongoing;

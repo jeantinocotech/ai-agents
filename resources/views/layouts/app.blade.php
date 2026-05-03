@@ -51,7 +51,7 @@
        <!-- Cookie Consent Banner -->
         <div id="cookie-banner" class="fixed bottom-0 left-0 w-full z-50 flex items-center justify-between bg-[#181D20] text-white p-4 shadow-lg" style="display:none;">
             <div class="flex-1 text-sm md:text-base">
-                Este site pode guardar cookies no seu dispositivo. O tratamento dos seus dados como utilizador registado está descrito na
+                Este site pode guardar cookies no seu dispositivo. O tratamento dos seus dados como usuário cadastrado está descrito na
                 <a href="{{ route('privacidade') }}" class="underline text-blue-300 hover:text-blue-200" target="_blank" rel="noopener noreferrer">Política de Privacidade</a>.
             </div>
             <div class="flex gap-2 ml-4">

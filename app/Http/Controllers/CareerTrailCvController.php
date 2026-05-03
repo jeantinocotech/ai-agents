@@ -112,7 +112,7 @@ class CareerTrailCvController extends Controller
         if ($body === '') {
             $ext = strtolower((string) $file->getClientOriginalExtension());
             $cvFileMsg = ($ext === 'docx' && ! UserCvTextExtractor::phpZipAvailableForDocx())
-                ? 'Arquivos DOCX exigem a extensão PHP «zip» no servidor (pacote php-zip ou equivalente). Peça ao administrador para instalar ou ativar. Até lá, use PDF, TXT ou cole o texto do CV.'
+                ? 'Arquivos DOCX exigem a extensão PHP "zip" no servidor (pacote php-zip ou equivalente). Peça ao administrador para instalar ou ativar. Até lá, use PDF, TXT ou cole o texto do CV.'
                 : 'Não foi possível extrair texto deste arquivo (Word/PDF). Experimente PDF ou TXT, ou cole o conteúdo na caixa de texto.';
 
             return response()->json([
@@ -205,7 +205,7 @@ class CareerTrailCvController extends Controller
         }
 
         $msg = $makeDefault
-            ? 'Novo CV salvo e definido como predefinido na conta.'
+            ? 'Novo CV salvo e definido como padrão na conta.'
             : 'Novo CV salvo na conta.';
 
         return redirect()
@@ -288,7 +288,7 @@ class CareerTrailCvController extends Controller
 
         return redirect()
             ->route('career-trail.cv')
-            ->with('status', 'CV predefinido da conta atualizado.');
+            ->with('status', 'CV padrão da conta atualizado.');
     }
 
     public function destroyProfileCv(Request $request, UserCv $userCv): RedirectResponse
@@ -358,7 +358,7 @@ class CareerTrailCvController extends Controller
         }
 
         $msg = $makeDefault
-            ? 'CV da biblioteca do agente copiado para a sua conta e definido como predefinido.'
+            ? 'CV da biblioteca do agente copiado para a sua conta e definido como padrão.'
             : 'CV da biblioteca do agente copiado para a sua conta.';
 
         return redirect()
@@ -415,12 +415,12 @@ class CareerTrailCvController extends Controller
         if (! $doc) {
             return redirect()
                 ->route('career-trail.cv')
-                ->with('error', 'Guarde primeiro um CV de perfil predefinido.');
+                ->with('error', 'Salve primeiro um CV de perfil como padrão.');
         }
 
         return redirect()
             ->route('agents.documents.index', $agent)
-            ->with('status', 'CV predefinido copiado para a biblioteca deste agente e definido como predefinido.');
+            ->with('status', 'CV padrão copiado para a biblioteca deste agente.');
     }
 
     private function abortUnlessOwnCv(User $user, UserCv $userCv): void

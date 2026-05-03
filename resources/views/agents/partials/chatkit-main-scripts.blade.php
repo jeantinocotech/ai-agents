@@ -146,7 +146,7 @@ function initChatKitSimpleConversationBilling(chatKitEl) {
             })
             .catch(function () {
                 if (window.chatApp && window.chatApp.showErrorMessage) {
-                    window.chatApp.showErrorMessage('Erro de rede ao registar tokens da conversa.');
+                    window.chatApp.showErrorMessage('Erro de rede ao registrar tokens da conversa.');
                 }
             });
     });
@@ -422,7 +422,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 })
                 .catch(function () {
                     if (window.chatApp && window.chatApp.showErrorMessage) {
-                        window.chatApp.showErrorMessage('Erro de rede ao registar tokens da consulta.');
+                        window.chatApp.showErrorMessage('Erro de rede ao registrar tokens da consulta.');
                     }
                 });
         }
@@ -616,7 +616,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                     }
                     return;
                 }
-                statusEl.textContent = (o.data && o.data.message) || 'Predefinições gravadas.';
+                statusEl.textContent = (o.data && o.data.message) || 'Preferências salvas.';
                 if (window.chatApp && window.chatApp.showSuccessMessage) {
                     window.chatApp.showSuccessMessage(statusEl.textContent);
                 }
@@ -624,7 +624,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
             .catch(function () {
                 statusEl.textContent = 'Erro de rede.';
                 if (window.chatApp && window.chatApp.showErrorMessage) {
-                    window.chatApp.showErrorMessage('Erro de rede ao gravar predefinições.');
+                    window.chatApp.showErrorMessage('Erro de rede ao salvar preferências.');
                 }
             });
     }

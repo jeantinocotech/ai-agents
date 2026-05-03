@@ -52,7 +52,7 @@
                             :placement="\App\Support\CareerTrailGracaSlots::CV_PAGE_INTRO"
                             :step="$cvTrailStep"
                             :min-chars-placeholder="$minProfileCvChars"
-                            :fallback="'Pode guardar vários CVs na conta e escolher qual é o predefinido — é esse que a trilha usa para avançar (texto com pelo menos __MIN_CHARS__ caracteres) e que os assistentes tratam como «CV do perfil». CVs criados na biblioteca ATS também pode copiar ou gerir aqui.'"
+                            :fallback="'Você pode salvar vários CVs na conta e escolher qual é o padrão — é esse que a trilha usa para avançar (texto com pelo menos __MIN_CHARS__ caracteres) e que os assistentes tratam como o CV do perfil na conta. CVs criados na biblioteca ATS também podem ser copiados ou geridos aqui.'"
                         />
                     </div>
                 </div>
@@ -65,7 +65,7 @@
                     <div class="flex flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                         <h3 class="text-sm font-semibold text-slate-900">Adicionar CV na conta</h3>
                         <p class="mt-2 flex-1 text-sm text-slate-600">
-                            Carregue TXT, PDF ou Word, ou cole o texto no formulário — é o caminho directo para cumprir o passo&nbsp;1 da trilha.
+                            Carregue TXT, PDF ou Word, ou cole o texto no formulário — é o caminho direto para cumprir o passo&nbsp;1 da trilha.
                         </p>
                         <a href="#sec-cv-form"
                            class="mt-4 inline-flex w-fit items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">
@@ -89,7 +89,7 @@
                         @else
                             <h3 class="text-sm font-semibold text-slate-800">Assistente de CV</h3>
                             <p class="mt-2 text-xs text-slate-600">
-                                Ainda não está disponível: na administração, associe um agente ChatKit activo ao passo <strong>Criar um CV</strong> da trilha (campo «Passo da trilha» ao criar ou editar o agente).
+                                Ainda não está disponível: na administração, associe um agente ChatKit ativo ao passo <strong>Criar um CV</strong> da trilha (campo Passo da trilha ao criar ou editar o agente).
                             </p>
                         @endif
                     </div>
@@ -117,7 +117,7 @@
                         'text-emerald-900/90' => $defaultMeetsTrail,
                         'text-amber-950/80' => ! $defaultMeetsTrail,
                     ])>
-                        O seu CV predefinido é <strong>{{ $defaultCv->title ?: 'Sem título' }}</strong> e tem
+                        O seu CV padrão é <strong>{{ $defaultCv->title ?: 'Sem título' }}</strong> e tem
                         <strong>{{ number_format($defaultLen, 0, ',', '.') }}</strong> caracteres
                         (mínimo: <strong>{{ number_format((int) $minProfileCvChars, 0, ',', '.') }}</strong>).
                     </p>
@@ -151,7 +151,7 @@
                         </div>
                     @else
                         <p class="mt-3 text-xs text-amber-950/70">
-                            Dica: se já tiver outro CV mais completo, marque-o como <strong>predefinido</strong> na lista «Meus CVs» mais abaixo.
+                            Dica: se já tiver outro CV mais completo, marque-o como <strong>padrão</strong> na lista Meus CVs mais abaixo.
                         </p>
                     @endif
                 </div>
@@ -193,7 +193,7 @@
                                             <div class="flex flex-wrap items-center gap-2">
                                                 <span class="font-medium text-slate-900">{{ $cv->title ?: 'Sem título' }}</span>
                                                 @if ($cv->is_default)
-                                                    <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-900">Predefinido</span>
+                                                    <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-900">Padrão</span>
                                                 @endif
                                                 <span class="text-xs text-slate-500">{{ $cvSourceLabels[(string) $cv->source] ?? $cv->source }}</span>
                                             </div>
@@ -211,7 +211,7 @@
                                                 <form method="post" action="{{ route('career-trail.cv.default', $cv) }}" class="inline">
                                                     @csrf
                                                     <button type="submit" class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-900 hover:bg-indigo-100">
-                                                        Usar como predefinido
+                                                        Usar como padrão
                                                     </button>
                                                 </form>
                                             @endif
@@ -266,7 +266,7 @@
                                                     <input type="hidden" name="agent_document_id" value="{{ $doc->id }}">
                                                     <input type="hidden" name="make_default" value="1">
                                                     <button type="submit" class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900 hover:bg-emerald-100">
-                                                        Copiar e tornar predefinido
+                                                        Copiar e tornar padrão
                                                     </button>
                                                 </form>
                                             @endif
@@ -303,26 +303,26 @@
 
                         @if ($firstCvSuggestion)
                             <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
-                                É o seu <strong>primeiro CV</strong> na conta — ao salvar, será definido automaticamente como <strong>predefinido</strong> (você pode alterar depois na lista de CVs).
+                                É o seu <strong>primeiro CV</strong> na conta — ao salvar, será definido automaticamente como <strong>padrão</strong> (você pode alterar depois na lista de CVs).
                             </div>
                         @endif
 
                         @if (! $firstCvSuggestion && ! $formCv)
                             <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 px-4 py-3">
                                 <input type="checkbox" name="make_default" value="1" class="mt-1 rounded border-slate-300 text-indigo-600" @checked(old('make_default'))>
-                                <span class="text-sm text-slate-700"><strong>Definir como CV predefinido</strong> da conta ao salvar (substitui o predefinido atual).</span>
+                                <span class="text-sm text-slate-700"><strong>Definir como CV padrão</strong> da conta ao salvar (substitui o padrão atual).</span>
                             </label>
                         @endif
 
                         @if ($formCv)
                             @if ($formCv->is_default)
                                 <p class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
-                                    Este CV é o <strong>predefinido</strong> na conta. Para usar outro como principal, escolha «Usar como predefinido» na lista ou marque a opção em outro CV ao salvar.
+                                    Este CV é o <strong>padrão</strong> na conta. Para usar outro como principal, escolha Usar como padrão na lista ou marque a opção em outro CV ao salvar.
                                 </p>
                             @else
                                 <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 px-4 py-3">
                                     <input type="checkbox" name="make_default" value="1" class="mt-1 rounded border-slate-300 text-indigo-600" @checked(old('make_default'))>
-                                    <span class="text-sm text-slate-700"><strong>Tornar este o CV predefinido</strong> ao salvar.</span>
+                                    <span class="text-sm text-slate-700"><strong>Tornar este o CV padrão</strong> ao salvar.</span>
                                 </label>
                             @endif
                         @endif
@@ -348,7 +348,7 @@
                                       aria-live="polite"
                                       title="">Nenhum arquivo selecionado</span>
                             </div>
-                            <p class="mt-1 text-xs text-slate-500">Opcional — Aceita TXT, PDF ou Word (até 20&nbsp;MB). Ao escolher o arquivo, o texto extraído é colocado na área «Texto do CV» para você revisar antes de salvar.</p>
+                            <p class="mt-1 text-xs text-slate-500">Opcional — Aceita TXT, PDF ou Word (até 20&nbsp;MB). Ao escolher o arquivo, o texto extraído é colocado na área Texto do CV para você revisar antes de salvar.</p>
                             <p id="cv_extract_status" class="mt-2 hidden text-xs font-medium text-slate-700" role="status" aria-live="polite"></p>
                             <x-input-error class="mt-2" :messages="$errors->get('cv_file')" />
                         </div>
@@ -362,7 +362,7 @@
                                 <p class="text-slate-500">Limite máximo {{ number_format($maxCvBodyChars, 0, ',', '.') }} caracteres (Unicode).</p>
                                 <p id="cv-char-hint" class="font-medium text-slate-600" aria-live="polite">
                                     <span id="cv-char-count">0</span> caracteres
-                                    · mínimo trilha (predefinido): <span class="text-indigo-700">{{ number_format($minProfileCvChars, 0, ',', '.') }}</span>
+                                    · mínimo trilha (CV padrão): <span class="text-indigo-700">{{ number_format($minProfileCvChars, 0, ',', '.') }}</span>
                                 </p>
                             </div>
                             <x-input-error class="mt-2" :messages="$errors->get('body')" />
@@ -498,7 +498,7 @@
                                         titleEl.value = res.json.suggested_title;
                                     }
                                 }
-                                statusEl.textContent = 'Texto colado em «Texto do CV». Revise e clique em Salvar quando estiver pronto.';
+                                statusEl.textContent = 'Texto colado em Texto do CV. Revise e clique em Salvar quando estiver pronto.';
                                 statusEl.classList.remove('hidden', 'text-slate-700', 'text-red-700');
                                 statusEl.classList.add('text-emerald-800');
                                 fileEl.value = '';

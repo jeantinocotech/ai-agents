@@ -135,7 +135,7 @@ class MotivationLetterController extends Controller
 
         return redirect()
             ->route('agents.motivation-letters.index', $agent)
-            ->with('status', 'Carta actualizada.');
+            ->with('status', 'Carta atualizada.');
     }
 
     public function destroy(Agent $agent, MotivationLetter $motivationLetter): RedirectResponse

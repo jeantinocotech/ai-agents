@@ -91,7 +91,7 @@ class ChatKitSessionController extends Controller
                 'timeout_seconds' => $timeoutSeconds,
             ]);
 
-            return response()->json(['message' => 'Erro ao contactar a API OpenAI.'], 502);
+            return response()->json(['message' => 'Erro ao contatar a API OpenAI.'], 502);
         }
 
         if (! $response->successful()) {
@@ -180,7 +180,7 @@ class ChatKitSessionController extends Controller
 
         if ((int) $user->token_balance < $amount) {
             return response()->json([
-                'message' => 'Saldo insuficiente para registar esta consulta (tokens: '.$amount.').',
+                'message' => 'Saldo insuficiente para registrar esta consulta (tokens: '.$amount.').',
                 'error' => 'insufficient_tokens',
                 'required' => $amount,
                 'token_balance' => (int) $user->token_balance,

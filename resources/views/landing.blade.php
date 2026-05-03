@@ -14,7 +14,7 @@
                 <div class="min-w-0 flex-1">
                     @php
                         $mentor = config('career_trail.mentor_label', 'Sra. Graça');
-                        $landingAuthFallback = "Como é a primeira vez que nos cruzamos aqui, deixe-me apresentar-me: eu sou a orientadora da sua trilha de carreira na GratoAI. Acompanho-o passo a passo — do currículo a entrevistas e propostas — e ajudo-o a perceber o que fazer em cada etapa, em conjunto com os assistentes de IA quando fizer sentido.\n\nNão precisa de memorizar nada: volte a falar comigo no mapa da trilha sempre que quiser recolher rumo.";
+                        $landingAuthFallback = "Como é a primeira vez que nos cruzamos aqui, deixe-me apresentar-me: eu sou a orientadora da sua trilha de carreira na GratoAI. Vou te acompanhar passo a passo — do currículo a entrevistas e propostas — e ajudar você a entender o que fazer em cada etapa, junto com os assistentes de IA quando fizer sentido.\n\nVocê não precisa memorizar nada: volte a falar comigo no mapa da trilha sempre que quiser se reorientar.";
                     @endphp
                     <p class="text-xs font-semibold uppercase tracking-wide text-violet-700">Bem-vindo</p>
                     <h1 class="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
@@ -35,7 +35,7 @@
                     <ul class="mt-3 space-y-2 text-sm text-slate-600">
                         <li class="flex gap-2">
                             <span class="mt-0.5 font-bold text-violet-600" aria-hidden="true">•</span>
-                            <span><strong class="text-slate-800">Já tem um CV</strong> e quer <strong>guardá-lo na plataforma</strong> para usar nas etapas seguintes? Use a área completa — cola o texto, revê e grava.</span>
+                            <span><strong class="text-slate-800">Já tem um CV</strong> e quer <strong>salvá-lo na plataforma</strong> para usar nas etapas seguintes? Use a área completa — cole o texto, revise e salve.</span>
                         </li>
                         <li class="flex gap-2">
                             <span class="mt-0.5 font-bold text-violet-600" aria-hidden="true">•</span>
@@ -43,7 +43,7 @@
                         </li>
                     </ul>
                     <p class="mt-4 text-xs text-slate-500">
-                        Se já tem texto final para arquivo, prefira «CV completo». Se quer conversar com o assistente para estruturar ou refinar, prefira «CV Creator».
+                        Se já tem texto final para arquivo, prefira <strong>CV completo</strong>. Se quer conversar com o assistente para estruturar ou refinar, prefira <strong>CV Creator</strong>.
                     </p>
                     <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                         <a href="{{ route('career-trail.cv') }}"
@@ -147,7 +147,7 @@
         <section class="py-16 bg-white">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="text-center mb-12">
-                    <h2 class="text-3xl font-extrabold text-gray-900">O que dizem os utilizadores</h2>
+                    <h2 class="text-3xl font-extrabold text-gray-900">O que dizem os usuários</h2>
                     <p class="mt-4 max-w-2xl mx-auto text-xl text-gray-500">
                         Histórias reais de quem já usa o GratoAI na carreira.
                     </p>
@@ -163,7 +163,7 @@
                                 @endphp
                                 <img class="h-12 w-12 rounded-full object-cover" src="{{ $img }}" alt="{{ $testimonial->author_name }}">
                                 <div class="ml-4">
-                                    <h4 class="text-lg font-medium text-gray-900">{{ $testimonial->author_name ?? 'Utilizador GratoAI' }}</h4>
+                                    <h4 class="text-lg font-medium text-gray-900">{{ $testimonial->author_name ?? 'Usuário GratoAI' }}</h4>
                                     @if ($testimonial->author_role)
                                         <p class="text-gray-600 text-sm">{{ $testimonial->author_role }}</p>
                                     @endif

@@ -13,7 +13,7 @@
                 @endif
                 <h1 class="text-lg font-semibold text-gray-900">Aceite obrigatório</h1>
                 <p class="mt-2 text-sm leading-relaxed text-gray-600">
-                    A versão vigente dos documentos abaixo mudou ou ainda não tinha registado o seu aceite.
+                    A versão vigente dos documentos abaixo mudou ou você ainda não tinha registrado o seu aceite.
                     São necessários para tratarmos os seus dados (LGPD) e para usar a plataforma.
                 </p>
                 <div class="mt-4 rounded-md bg-slate-50 p-4 text-xs text-slate-600">

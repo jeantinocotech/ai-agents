@@ -25,6 +25,6 @@ class GuestEmailVerificationResendController extends Controller
             $user->sendEmailVerificationNotification();
         }
 
-        return back()->with('status', 'Se existir uma conta pendente com este e-mail, enviámos uma nova mensagem de confirmação.');
+        return back()->with('status', 'Se existir uma conta pendente com este e-mail, enviamos uma nova mensagem de confirmação.');
     }
 }

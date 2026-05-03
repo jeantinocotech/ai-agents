@@ -5,7 +5,7 @@
         </h2>
 
         <p class="mt-1 text-sm text-gray-600">
-            {{ __("Mantenha suas informações atualiyadas.") }}
+            {{ __('Mantenha suas informações atualizadas.') }}
         </p>
     </header>
 
@@ -77,11 +77,11 @@
         </div>
 
         <div>
-            <x-input-label for="phone" value="Telefone (WhatsApp / contacto)" />
+            <x-input-label for="phone" value="Telefone (WhatsApp / contato)" />
             <x-text-input id="phone" name="phone" type="text" class="mt-1 block w-full"
                 :value="old('phone', $user->phone)" autocomplete="tel" />
             <x-input-error class="mt-2" :messages="$errors->get('phone')" />
-            <p class="mt-0.5 text-xs text-gray-500">Útil para facturação e pagamentos.</p>
+            <p class="mt-0.5 text-xs text-gray-500">Útil para faturamento e pagamentos.</p>
         </div>
 
         <div>

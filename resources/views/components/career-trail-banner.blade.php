@@ -202,7 +202,7 @@
                             @if ($interviewLibsOk)
                                 <div class="flex flex-col gap-1 sm:flex-row sm:flex-wrap">
                                     <a href="{{ $trailUrl }}"
-                                       title="Registos de entrevistas"
+                                       title="Registros de entrevistas"
                                        class="inline-flex flex-1 items-center justify-center rounded-md bg-emerald-600 px-2 py-1 text-center text-[10px] font-semibold leading-tight text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 sm:flex-initial">
                                         Histórico
                                     </a>

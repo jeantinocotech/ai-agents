@@ -22,7 +22,7 @@
                             @if (! empty($interviewPreparationsIndexUrl))
                                 <span class="text-slate-300" aria-hidden="true">·</span>
                                 <a href="{{ $interviewPreparationsIndexUrl }}" class="text-sm font-medium text-violet-700 hover:text-violet-900 hover:underline">
-                                    Entrevistas registadas (dados)
+                                    Entrevistas registradas (dados)
                                 </a>
                             @endif
                             <h2 class="text-2xl font-bold tracking-tight text-slate-900">Chat com {{ $agent->name }}</h2>
@@ -249,7 +249,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (banner) {
                     if (data.reused_saved_cv) {
                         banner.classList.remove('hidden');
-                        banner.innerHTML = '<p class="mb-2">Usamos o <strong>CV predefinido</strong> da sua biblioteca para este agente. Envie apenas a <strong>nova vaga (JD)</strong> abaixo.</p>' +
+                        banner.innerHTML = '<p class="mb-2">Usamos o <strong>CV padrão</strong> da sua biblioteca para este agente. Envie apenas a <strong>nova vaga (JD)</strong> abaixo.</p>' +
                             '<button type="button" class="text-sm text-red-700 underline" id="btn-clear-saved-cv">Apagar todos os CVs da biblioteca e voltar a pedir CV na próxima vez</button>';
                         const clearBtn = document.getElementById('btn-clear-saved-cv');
                         if (clearBtn) {

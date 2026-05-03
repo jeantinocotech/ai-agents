@@ -75,7 +75,7 @@ final class CareerTrailStepCompletion
             return [
                 'ready' => false,
                 'reason' => null,
-                'blocked_message' => 'Guarde um CV na área «Meu CV» antes de avançar para a etapa seguinte.',
+                'blocked_message' => 'Salve um CV na área "Meu CV" antes de avançar para a etapa seguinte.',
             ];
         }
 
@@ -84,13 +84,13 @@ final class CareerTrailStepCompletion
             return [
                 'ready' => false,
                 'reason' => null,
-                'blocked_message' => 'O texto do CV de perfil deve ter pelo menos '.$min.' caracteres. Continue na área «Meu CV».',
+                'blocked_message' => 'O texto do CV de perfil deve ter pelo menos '.$min.' caracteres. Continue na área "Meu CV".',
             ];
         }
 
         return [
             'ready' => true,
-            'reason' => 'Já tem um CV de perfil guardado. Quando estiver pronto, avance para a etapa ATS (filtro e alinhamento com a vaga).',
+            'reason' => 'Você já tem um CV de perfil salvo. Quando estiver pronto, avance para a etapa ATS (filtro e alinhamento com a vaga).',
             'blocked_message' => null,
         ];
     }
@@ -117,13 +117,13 @@ final class CareerTrailStepCompletion
             return [
                 'ready' => false,
                 'reason' => null,
-                'blocked_message' => 'Na biblioteca do assistente ATS, guarde um CV e uma descrição de vaga (JD) e associe-os (uma vaga com par CV+JD). Depois pode analisar e otimizar o CV para essa vaga.',
+                'blocked_message' => 'Na biblioteca do assistente ATS, salve um CV e uma descrição de vaga (JD) e associe-os (uma vaga com par CV+JD). Depois você pode analisar e otimizar o CV para essa vaga.',
             ];
         }
 
         return [
             'ready' => true,
-            'reason' => 'Tem pelo menos uma vaga com JD e CV associados. Pode usar Motivação (opcional) e Entrevista em paralelo; ao avançar, a etapa inicial sugerida é Entrevista.',
+            'reason' => 'Você tem pelo menos uma vaga com JD e CV associados. Pode usar Motivação (opcional) e Entrevista em paralelo; ao avançar, a etapa inicial sugerida é Entrevista.',
             'blocked_message' => null,
         ];
     }
@@ -139,7 +139,7 @@ final class CareerTrailStepCompletion
         $lenOk = $hasCv && mb_strlen(trim((string) $cv->body)) >= $min;
 
         return [
-            ['label' => 'CV de perfil guardado na plataforma', 'done' => $hasCv],
+            ['label' => 'CV de perfil salvo na plataforma', 'done' => $hasCv],
             ['label' => 'Texto do CV com pelo menos '.$min.' caracteres', 'done' => $lenOk],
         ];
     }
