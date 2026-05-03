@@ -38,7 +38,7 @@
                 </div>
             @endif
 
-            {{-- Orientação da Graça + objetivo do passo 1 --}}
+            {{-- Orientação da Graça + objetivo do passo 1 (texto em BD: slot cv_page_intro) --}}
             <div class="mb-6 overflow-hidden rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white shadow-sm">
                 <div class="flex flex-col gap-4 p-5 sm:flex-row sm:items-start">
                     <div class="shrink-0 rounded-2xl bg-white p-1 shadow ring-1 ring-violet-100">
@@ -48,31 +48,72 @@
                     </div>
                     <div class="min-w-0 flex-1 text-sm leading-relaxed text-slate-700">
                         <p class="font-semibold text-violet-950">{{ config('career_trail.mentor_label', 'Sra. Graça') }}</p>
-                        <p class="mt-2">
-                            Pode guardar <strong class="text-slate-900">vários CVs na conta</strong> e escolher qual é o <strong class="text-slate-900">predefinido</strong>
-                            — é esse que a trilha usa para avançar (texto com pelo menos <strong class="text-slate-900">{{ number_format($minProfileCvChars, 0, ',', '.') }} caracteres</strong>)
-                            e que os assistentes tratam como «CV do perfil». CVs criados na biblioteca ATS também pode <strong class="text-slate-900">copiar ou gerir aqui</strong>.
-                        </p>
+                        <x-graca-slot
+                            :placement="\App\Support\CareerTrailGracaSlots::CV_PAGE_INTRO"
+                            :step="$cvTrailStep"
+                            :min-chars-placeholder="$minProfileCvChars"
+                            :fallback="'Pode guardar vários CVs na conta e escolher qual é o predefinido — é esse que a trilha usa para avançar (texto com pelo menos __MIN_CHARS__ caracteres) e que os assistentes tratam como «CV do perfil». CVs criados na biblioteca ATS também pode copiar ou gerir aqui.'"
+                        />
                     </div>
                 </div>
             </div>
 
+            {{-- Passo 2: duas opções claras (antes do checklist) --}}
+            <div class="mb-6">
+                <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">2 · Escolha</p>
+                <div class="grid gap-4 sm:grid-cols-2">
+                    <div class="flex flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                        <h3 class="text-sm font-semibold text-slate-900">Adicionar CV na conta</h3>
+                        <p class="mt-2 flex-1 text-sm text-slate-600">
+                            Carregue TXT, PDF ou Word, ou cole o texto no formulário — é o caminho directo para cumprir o passo&nbsp;1 da trilha.
+                        </p>
+                        <a href="#sec-cv-form"
+                           class="mt-4 inline-flex w-fit items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">
+                            Ir para o formulário
+                        </a>
+                    </div>
+                    <div class="flex flex-col rounded-xl border border-indigo-200 bg-indigo-50/60 p-5 shadow-sm">
+                        @if ($cvAssistantChatUrl)
+                            <h3 class="text-sm font-semibold text-indigo-950">Assistente de CV</h3>
+                            <p class="mt-2 flex-1 text-sm text-indigo-900/90">
+                                @if ($profileCvs->isEmpty())
+                                    Converse no chat e depois <strong>cole o resultado no formulário</strong> (secção abaixo) e guarde como novo CV.
+                                @else
+                                    Reabra para afinar secções; copie o texto para o formulário ao criar ou editar um CV.
+                                @endif
+                            </p>
+                            <button type="button" id="btn-open-cv-assistant"
+                                    class="mt-4 inline-flex w-fit items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700">
+                                Abrir assistente de CV
+                            </button>
+                        @else
+                            <h3 class="text-sm font-semibold text-slate-800">Assistente de CV</h3>
+                            <p class="mt-2 text-xs text-slate-600">
+                                Ainda não está disponível: na administração, associe um agente ChatKit activo ao passo <strong>Criar um CV</strong> da trilha (campo «Passo da trilha» ao criar ou editar o agente).
+                            </p>
+                        @endif
+                    </div>
+                </div>
+            </div>
+
+            {{-- Passo 3: checklist / progresso na trilha --}}
             @if ($defaultCv)
                 <div @class([
                     'mb-6 rounded-2xl border px-5 py-4 shadow-sm ring-1',
                     'border-emerald-300 bg-emerald-50 ring-emerald-200/60' => $defaultMeetsTrail,
                     'border-amber-300 bg-amber-50 ring-amber-200/60' => ! $defaultMeetsTrail,
                 ])>
-                    <p @class([
+                    <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-600/80">3 · Progresso</p>
+                    <h3 @class([
                         'text-sm font-semibold',
                         'text-emerald-950' => $defaultMeetsTrail,
                         'text-amber-950' => ! $defaultMeetsTrail,
                     ])>
-                        Passo 1 e desbloqueio do ATS
-                    </p>
+                        Checklist — Passo 1
+                    </h3>
 
                     <p @class([
-                        'mt-1 text-sm',
+                        'mt-2 text-sm',
                         'text-emerald-900/90' => $defaultMeetsTrail,
                         'text-amber-950/80' => ! $defaultMeetsTrail,
                     ])>
@@ -110,12 +151,13 @@
                         </div>
                     @else
                         <p class="mt-3 text-xs text-amber-950/70">
-                            Dica: se já tiver outro CV mais completo, marque-o como <strong>predefinido</strong> na lista «Meus CVs» abaixo.
+                            Dica: se já tiver outro CV mais completo, marque-o como <strong>predefinido</strong> na lista «Meus CVs» mais abaixo.
                         </p>
                     @endif
                 </div>
             @elseif (count($cvStepChecklist ?? []) > 0)
                 <div class="mb-6 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
+                    <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">3 · Progresso</p>
                     <h3 class="text-sm font-semibold text-slate-900">Checklist — Passo 1</h3>
                     <ul class="mt-3 space-y-2 text-sm">
                         @foreach ($cvStepChecklist as $item)
@@ -137,11 +179,7 @@
 
             <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <div class="border-b border-slate-100 bg-slate-50/80 px-6 py-5">
-                    <h1 class="text-xl font-bold text-slate-900">Os seus CVs na conta</h1>
-                    <p class="mt-1 text-sm text-slate-600">
-                        Guarde tantas versões quantas precisar; <strong class="text-slate-900">uma</strong> fica como <strong class="text-slate-900">predefinida</strong>
-                        para a trilha, tokens e cópias para agentes. Cópias na biblioteca de cada agente (ex.: ATS) aparecem abaixo para copiar ou eliminar.
-                    </p>
+                    <h1 class="text-xl font-bold text-slate-900">Meus CVs</h1>
                 </div>
 
                 <div class="px-6 py-6 space-y-8">
@@ -247,112 +285,76 @@
                         </div>
                     @endif
 
-                    @if ($cvAssistantChatUrl)
-                        <div class="rounded-xl border border-indigo-200 bg-indigo-50/60 px-5 py-4">
-                            @if ($profileCvs->isEmpty())
-                                <h2 class="text-sm font-semibold text-indigo-950">Opção A — Criar ou rever com o assistente</h2>
-                                <p class="mt-1 text-sm text-indigo-900/90">
-                                    Abra o chat, converse com o assistente e depois <strong>cole o resultado no formulário abaixo</strong> e guarde como novo CV na conta.
-                                </p>
-                            @else
-                                <h2 class="text-sm font-semibold text-indigo-950">Assistente de CV</h2>
-                                <p class="mt-1 text-sm text-indigo-900/90">
-                                    Reabra quando quiser para afinar secções. Copie o texto para o formulário abaixo e guarde (novo CV ou ao editar um existente).
-                                </p>
-                            @endif
-                            <button type="button" id="btn-open-cv-assistant"
-                                    class="mt-3 inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700">
-                                Abrir assistente de CV
-                            </button>
-                        </div>
-                    @else
-                        <div class="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-600">
-                            Associe na administração um agente ChatKit activo ao passo <strong>Criar um CV</strong> da trilha (campo «Passo da trilha» ao criar ou editar o agente).
-                        </div>
-                    @endif
-
-                    <div class="relative">
-                        <div class="absolute -top-3 left-0 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                            {{ $formCv ? 'Editar CV' : 'Adicionar CV' }}
-                        </div>
-                    </div>
-
+                    <div id="sec-cv-form" class="scroll-mt-24">
                     @if ($formCv)
-                        <form method="post" action="{{ route('career-trail.cv.update', $formCv) }}" enctype="multipart/form-data" class="space-y-6 rounded-xl border border-indigo-200 bg-indigo-50/30 px-4 py-5 sm:px-5">
+                        <form method="post" action="{{ route('career-trail.cv.update', $formCv) }}" class="space-y-6 rounded-xl border border-indigo-200 bg-indigo-50/30 px-4 py-5 sm:px-5">
                             @csrf
                             @method('PATCH')
                     @else
-                        <form method="post" action="{{ route('career-trail.cv.store') }}" enctype="multipart/form-data" class="space-y-6">
+                        <form method="post" action="{{ route('career-trail.cv.store') }}" class="space-y-6 rounded-xl border border-transparent px-1">
                             @csrf
                     @endif
 
-                        <div class="flex flex-wrap items-center justify-between gap-2">
-                            <p class="text-sm font-semibold text-slate-900">
-                                {{ $formCv ? 'Editar «'.($formCv->title ?: 'CV').'»' : 'Novo CV na conta' }}
-                            </p>
-                            @if ($formCv)
+                        @if ($formCv)
+                            <div class="flex justify-end">
                                 <a href="{{ route('career-trail.cv') }}" class="text-xs font-semibold text-indigo-700 hover:underline">Cancelar edição</a>
-                            @endif
-                        </div>
-
-                        <fieldset>
-                            <legend class="text-sm font-semibold text-slate-800">Já tem um CV em ficheiro?</legend>
-                            <p class="mt-1 text-xs text-slate-500">Pode carregar TXT, PDF ou Word, ou colar diretamente na caixa de texto.</p>
-                            <div class="mt-3 flex flex-col gap-3 sm:flex-row">
-                                <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-4 py-3 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
-                                    <input type="radio" name="has_existing_cv" value="1" class="text-indigo-600" @checked(old('has_existing_cv', $formCv ? '1' : '1') === '1')>
-                                    <span class="text-sm font-medium text-slate-800">Sim — carregar ou colar um CV existente</span>
-                                </label>
-                                <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-200 px-4 py-3 has-[:checked]:border-indigo-500 has-[:checked]:bg-indigo-50/50">
-                                    <input type="radio" name="has_existing_cv" value="0" class="text-indigo-600" @checked(old('has_existing_cv', $formCv ? '1' : '1') === '0')>
-                                    <span class="text-sm font-medium text-slate-800">Não — escrever um rascunho só na caixa</span>
-                                </label>
                             </div>
-                        </fieldset>
+                        @endif
 
                         @if ($firstCvSuggestion)
                             <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
-                                É o seu <strong>primeiro CV</strong> na conta — ao guardar, será definido automaticamente como <strong>predefinido</strong> (pode alterar depois na lista acima).
+                                É o seu <strong>primeiro CV</strong> na conta — ao salvar, será definido automaticamente como <strong>predefinido</strong> (você pode alterar depois na lista de CVs).
                             </div>
                         @endif
 
                         @if (! $firstCvSuggestion && ! $formCv)
                             <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 px-4 py-3">
                                 <input type="checkbox" name="make_default" value="1" class="mt-1 rounded border-slate-300 text-indigo-600" @checked(old('make_default'))>
-                                <span class="text-sm text-slate-700"><strong>Definir como CV predefinido</strong> da conta ao guardar (substitui o predefinido atual).</span>
+                                <span class="text-sm text-slate-700"><strong>Definir como CV predefinido</strong> da conta ao salvar (substitui o predefinido atual).</span>
                             </label>
                         @endif
 
                         @if ($formCv)
                             @if ($formCv->is_default)
                                 <p class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
-                                    Este CV é o <strong>predefinido</strong> na conta. Para usar outro como principal, escolha «Usar como predefinido» na lista ou marque a opção noutro CV ao gravar.
+                                    Este CV é o <strong>predefinido</strong> na conta. Para usar outro como principal, escolha «Usar como predefinido» na lista ou marque a opção em outro CV ao salvar.
                                 </p>
                             @else
                                 <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 px-4 py-3">
                                     <input type="checkbox" name="make_default" value="1" class="mt-1 rounded border-slate-300 text-indigo-600" @checked(old('make_default'))>
-                                    <span class="text-sm text-slate-700"><strong>Tornar este o CV predefinido</strong> ao gravar.</span>
+                                    <span class="text-sm text-slate-700"><strong>Tornar este o CV predefinido</strong> ao salvar.</span>
                                 </label>
                             @endif
                         @endif
 
                         <div>
-                            <label for="cv_title" class="block text-sm font-medium text-slate-700">Título (opcional)</label>
+                            <label for="cv_title" class="block text-sm font-medium text-slate-700">Título</label>
                             <input type="text" name="title" id="cv_title" value="{{ old('title', $formCv?->title) }}"
                                    class="mt-1 w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                   placeholder="Ex.: CV — área comercial">
+                                   placeholder="Ex.: CV — área comercial"
+                                   required autocomplete="off">
+                            <x-input-error class="mt-2" :messages="$errors->get('title')" />
                         </div>
 
                         <div>
-                            <label for="cv_file" class="block text-sm font-medium text-slate-700">Ficheiro (opcional)</label>
-                            <input type="file" name="cv_file" id="cv_file" accept=".txt,.pdf,.doc,.docx"
-                                   class="mt-1 block w-full text-sm text-slate-600 file:mr-4 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100">
-                            <p class="mt-1 text-xs text-slate-500">Se enviar ficheiro, o texto extraído substitui o da caixa abaixo ao guardar (máx. 20&nbsp;MB).</p>
+                            <span class="block text-sm font-medium text-slate-700">Tenho um CV <span class="font-normal text-slate-500"></span></span>
+                            <div class="mt-1 flex flex-wrap items-center gap-3">
+                                <label class="inline-flex cursor-pointer items-center rounded-lg bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 shadow-sm ring-1 ring-inset ring-indigo-100 hover:bg-indigo-100 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-indigo-500">
+                                    <span>Selecionar arquivo</span>
+                                    <input type="file" id="cv_extract_file" accept=".txt,.pdf,.doc,.docx" class="sr-only">
+                                </label>
+                                <span id="cv_extract_filename"
+                                      class="min-w-0 max-w-full flex-1 truncate text-sm text-slate-600"
+                                      aria-live="polite"
+                                      title="">Nenhum arquivo selecionado</span>
+                            </div>
+                            <p class="mt-1 text-xs text-slate-500">Opcional — Aceita TXT, PDF ou Word (até 20&nbsp;MB). Ao escolher o arquivo, o texto extraído é colocado na área «Texto do CV» para você revisar antes de salvar.</p>
+                            <p id="cv_extract_status" class="mt-2 hidden text-xs font-medium text-slate-700" role="status" aria-live="polite"></p>
                             <x-input-error class="mt-2" :messages="$errors->get('cv_file')" />
                         </div>
 
                         <div>
-                            <label for="cv_body" class="block text-sm font-medium text-slate-700">Texto do CV</label>
+                            <label for="cv_body" class="block text-sm font-medium text-slate-700">Conteúdo do CV</label>
                             <textarea name="body" id="cv_body" rows="14" maxlength="{{ $maxCvBodyChars }}"
                                       class="mt-1 w-full rounded-lg border-slate-300 font-mono text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                       placeholder="Cole ou escreva o conteúdo completo do CV.">{{ old('body', $formCv?->body) }}</textarea>
@@ -380,30 +382,11 @@
 
                         <div class="flex flex-wrap gap-3">
                             <button type="submit" class="inline-flex items-center rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700">
-                                {{ $formCv ? 'Guardar alterações' : 'Guardar novo CV' }}
+                                {{ $formCv ? 'Salvar alterações' : 'Salvar CV' }}
                             </button>
                         </div>
                     </form>
-
-                    @if ($defaultCv && $agents->isNotEmpty())
-                        <div class="border-t border-slate-200 pt-6">
-                            <h2 class="text-sm font-semibold text-slate-800">Copiar CV predefinido para um agente</h2>
-                            <p class="mt-1 text-xs text-slate-500">Usa o texto do CV marcado como predefinido na lista acima.</p>
-                            <ul class="mt-3 divide-y divide-slate-100 rounded-lg border border-slate-200">
-                                @foreach ($agents as $ag)
-                                    <li class="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
-                                        <span class="text-sm font-medium text-slate-800">{{ $ag->name }}</span>
-                                        <form method="post" action="{{ route('career-trail.cv.sync', $ag) }}" class="inline">
-                                            @csrf
-                                            <button type="submit" class="text-xs font-semibold text-indigo-600 hover:text-indigo-800">
-                                                Copiar predefinido →
-                                            </button>
-                                        </form>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
+                    </div>
                 </div>
             </div>
         </div>
@@ -425,34 +408,119 @@
                     </div>
                 </div>
             </div>
+        @endif
+        <script>
+            (function () {
+                var ta = document.getElementById('cv_body');
+                var countEl = document.getElementById('cv-char-count');
+                var hintEl = document.getElementById('cv-char-hint');
+                var minTrail = {{ (int) $minProfileCvChars }};
+                var fileEl = document.getElementById('cv_extract_file');
+                var filenameEl = document.getElementById('cv_extract_filename');
+                var titleEl = document.getElementById('cv_title');
+                var statusEl = document.getElementById('cv_extract_status');
+                var extractUrl = @json(route('career-trail.cv.extract-file'));
+                var tokenEl = document.querySelector('meta[name="csrf-token"]');
+
+                function updateCount() {
+                    if (!ta || !countEl) return;
+                    var n = Array.from(ta.value).length;
+                    countEl.textContent = n;
+                    if (hintEl) {
+                        hintEl.classList.toggle('text-emerald-700', n >= minTrail);
+                        hintEl.classList.toggle('text-amber-800', n > 0 && n < minTrail);
+                        hintEl.classList.toggle('text-slate-600', n === 0);
+                    }
+                }
+
+                if (ta) {
+                    ta.addEventListener('input', updateCount);
+                    updateCount();
+                }
+
+                function syncCvExtractFilename() {
+                    if (!filenameEl || !fileEl) return;
+                    if (!fileEl.files || !fileEl.files[0]) {
+                        filenameEl.textContent = 'Nenhum arquivo selecionado';
+                        filenameEl.removeAttribute('title');
+                        return;
+                    }
+                    var n = fileEl.files[0].name;
+                    filenameEl.textContent = n;
+                    filenameEl.setAttribute('title', n);
+                }
+
+                if (fileEl && statusEl && extractUrl && tokenEl) {
+                    fileEl.addEventListener('change', function () {
+                        syncCvExtractFilename();
+                        if (!fileEl.files || !fileEl.files[0]) return;
+
+                        var fd = new FormData();
+                        fd.append('cv_file', fileEl.files[0]);
+                        fd.append('_token', tokenEl.getAttribute('content'));
+
+                        statusEl.classList.remove('hidden', 'text-red-700', 'text-emerald-800');
+                        statusEl.classList.add('text-slate-700');
+                        statusEl.textContent = 'Extraindo texto do arquivo…';
+
+                        fetch(extractUrl, {
+                            method: 'POST',
+                            body: fd,
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest',
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': tokenEl.getAttribute('content')
+                            },
+                            credentials: 'same-origin'
+                        })
+                            .then(function (r) {
+                                return r.json().then(function (j) {
+                                    return { ok: r.ok, json: j };
+                                });
+                            })
+                            .then(function (res) {
+                                if (!res.ok) {
+                                    var msg = res.json.message
+                                        || (res.json.errors && res.json.errors.cv_file && res.json.errors.cv_file[0])
+                                        || 'Não foi possível extrair texto deste arquivo.';
+                                    statusEl.textContent = msg;
+                                    statusEl.classList.remove('hidden', 'text-slate-700', 'text-emerald-800');
+                                    statusEl.classList.add('text-red-700');
+                                    return;
+                                }
+                                if (ta) {
+                                    ta.value = res.json.body || '';
+                                    updateCount();
+                                    ta.focus();
+                                }
+                                if (titleEl && res.json.suggested_title) {
+                                    if ((titleEl.value || '').trim() === '') {
+                                        titleEl.value = res.json.suggested_title;
+                                    }
+                                }
+                                statusEl.textContent = 'Texto colado em «Texto do CV». Revise e clique em Salvar quando estiver pronto.';
+                                statusEl.classList.remove('hidden', 'text-slate-700', 'text-red-700');
+                                statusEl.classList.add('text-emerald-800');
+                                fileEl.value = '';
+                                syncCvExtractFilename();
+                            })
+                            .catch(function () {
+                                statusEl.classList.remove('hidden', 'text-slate-700', 'text-emerald-800');
+                                statusEl.classList.add('text-red-700');
+                                statusEl.textContent = 'Erro ao enviar o arquivo. Tente novamente.';
+                            });
+                    });
+                }
+            })();
+        </script>
+        @if ($cvAssistantChatUrl)
             <script>
                 (function () {
                     var modal = document.getElementById('cv-assistant-modal');
                     var iframe = document.getElementById('cv-assistant-iframe');
-                    var btn = document.getElementById('btn-open-cv-assistant');
-                    var ta = document.getElementById('cv_body');
-                    var countEl = document.getElementById('cv-char-count');
-                    var hintEl = document.getElementById('cv-char-hint');
+                    var assistantBtn = document.getElementById('btn-open-cv-assistant');
                     var chatUrl = @json($cvAssistantChatIframeUrl ?? '');
-                    var minTrail = {{ (int) $minProfileCvChars }};
-
-                    function updateCount() {
-                        if (!ta || !countEl) return;
-                        var n = Array.from(ta.value).length;
-                        countEl.textContent = n;
-                        if (hintEl) {
-                            hintEl.classList.toggle('text-emerald-700', n >= minTrail);
-                            hintEl.classList.toggle('text-amber-800', n > 0 && n < minTrail);
-                            hintEl.classList.toggle('text-slate-600', n === 0);
-                        }
-                    }
-
-                    if (ta) {
-                        ta.addEventListener('input', updateCount);
-                        updateCount();
-                    }
-
-                    if (!modal || !iframe || !btn || !chatUrl) return;
+                    if (!modal || !iframe || !assistantBtn || !chatUrl) return;
 
                     function openModal() {
                         if (!iframe.getAttribute('src')) {
@@ -461,44 +529,18 @@
                         modal.classList.remove('hidden');
                         document.body.classList.add('overflow-hidden');
                     }
-
                     function closeModal() {
                         modal.classList.add('hidden');
                         document.body.classList.remove('overflow-hidden');
                     }
 
-                    btn.addEventListener('click', openModal);
+                    assistantBtn.addEventListener('click', openModal);
                     modal.querySelectorAll('[data-cv-assistant-close], [data-cv-assistant-backdrop]').forEach(function (el) {
                         el.addEventListener('click', closeModal);
                     });
                     document.addEventListener('keydown', function (e) {
-                        if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
-                            closeModal();
-                        }
+                        if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
                     });
-                })();
-            </script>
-        @else
-            <script>
-                (function () {
-                    var ta = document.getElementById('cv_body');
-                    var countEl = document.getElementById('cv-char-count');
-                    var hintEl = document.getElementById('cv-char-hint');
-                    var minTrail = {{ (int) $minProfileCvChars }};
-                    function updateCount() {
-                        if (!ta || !countEl) return;
-                        var n = Array.from(ta.value).length;
-                        countEl.textContent = n;
-                        if (hintEl) {
-                            hintEl.classList.toggle('text-emerald-700', n >= minTrail);
-                            hintEl.classList.toggle('text-amber-800', n > 0 && n < minTrail);
-                            hintEl.classList.toggle('text-slate-600', n === 0);
-                        }
-                    }
-                    if (ta) {
-                        ta.addEventListener('input', updateCount);
-                        updateCount();
-                    }
                 })();
             </script>
         @endif

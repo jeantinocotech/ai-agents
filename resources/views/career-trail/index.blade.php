@@ -64,14 +64,12 @@
                         <div class="min-w-0 flex-1">
                             <p class="text-xs font-semibold uppercase tracking-wide text-violet-700">A sua guia na trilha</p>
                             <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900">{{ config('career_trail.mentor_label', 'Sra. Graça') }}</h1>
-                            <p class="mt-2 text-sm leading-relaxed text-slate-600">
-                                @if (trim((string) ($currentStep->graca_guidance ?? '')) !== '')
-                                    {{ $currentStep->graca_guidance }}
-                                @else
-                                    Psicóloga, coaching e aconselhadora de carreira. Vou acompanhar cada etapa com calma e objetivos claros —
-                                    começamos pelo essencial e avançamos no seu ritmo.
-                                @endif
-                            </p>
+                            <x-graca-slot
+                                :placement="\App\Support\CareerTrailGracaSlots::TRAIL_STEP_HEADER"
+                                :step="$currentStep"
+                                paragraph-class="mt-2 text-sm leading-relaxed text-slate-600"
+                                :fallback="'Psicóloga, coaching e aconselhadora de carreira. Vou acompanhar cada etapa com calma e objetivos claros — começamos pelo essencial e avançamos no seu ritmo.'"
+                            />
                         </div>
                     </div>
                 </div>

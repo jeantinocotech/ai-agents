@@ -26,19 +26,19 @@ test('admin can view career trail steps index', function () {
     $this->actingAs($admin)
         ->get(route('admin.career-trail-steps.index'))
         ->assertOk()
-        ->assertSee('Trilha — textos da Graça', false)
+        ->assertSee('Trilha — passos', false)
         ->assertSee('cv', false);
 });
 
 test('admin can update step texts', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $step = CareerTrailStep::query()->where('slug', 'cv')->firstOrFail();
+    $originalGracaGuidance = $step->graca_guidance;
 
     $this->actingAs($admin)
         ->put(route('admin.career-trail-steps.update', $step), [
             'title' => 'Novo título CV',
             'short_description' => 'Descrição curta actualizada.',
-            'graca_guidance' => 'Nova orientação da Graça para o passo CV.',
             'is_active' => '1',
         ])
         ->assertRedirect(route('admin.career-trail-steps.index'))
@@ -47,6 +47,6 @@ test('admin can update step texts', function () {
     $step->refresh();
     expect($step->title)->toBe('Novo título CV');
     expect($step->short_description)->toBe('Descrição curta actualizada.');
-    expect($step->graca_guidance)->toBe('Nova orientação da Graça para o passo CV.');
+    expect($step->graca_guidance)->toBe($originalGracaGuidance);
     expect($step->is_active)->toBeTrue();
 });

@@ -30,6 +30,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             TokenSettingsSeeder::class,
             CareerTrailStepsSeeder::class,
+            CareerTrailGracaMessagesSeeder::class,
             AgentSeeder::class,
             AdminUserSeeder::class,
         ]);

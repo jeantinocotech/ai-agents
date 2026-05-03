@@ -713,7 +713,7 @@ class AgentController extends Controller
 
             if ($agent->isChatKitWorkflow()) {
                 return response()->json([
-                    'message' => 'Este agente usa ChatKit. Envie ficheiros pelo widget de chat.',
+                    'message' => 'Este agente usa ChatKit. Envie arquivos pelo widget de chat.',
                 ], 422);
             }
 
@@ -917,7 +917,7 @@ class AgentController extends Controller
 
         $body = $this->extractLatestCvBodyFromSession((int) $session->id);
         if ($body === null || trim($body) === '') {
-            return response()->json(['message' => 'Não foi encontrado texto de CV nesta sessão. Envie o ficheiro CV primeiro.'], 422);
+            return response()->json(['message' => 'Não foi encontrado texto de CV nesta sessão. Envie o arquivo do CV primeiro.'], 422);
         }
 
         try {

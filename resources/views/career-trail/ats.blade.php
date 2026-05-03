@@ -34,13 +34,12 @@
                         <div class="min-w-0 flex-1">
                             <p class="text-xs font-semibold uppercase tracking-wide text-violet-700">A sua guia neste passo</p>
                             <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900">{{ config('career_trail.mentor_label', 'Sra. Graça') }}</h1>
-                            <p class="mt-2 text-sm leading-relaxed text-slate-600">
-                                @if (trim((string) ($atsStep->graca_guidance ?? '')) !== '')
-                                    {{ $atsStep->graca_guidance }}
-                                @else
-                                    Alinhe o seu CV à vaga: palavras-chave e clareza. Guarde a JD na biblioteca e use o ATS check para pedir sugestões concretas.
-                                @endif
-                            </p>
+                            <x-graca-slot
+                                :placement="\App\Support\CareerTrailGracaSlots::TRAIL_STEP_HEADER"
+                                :step="$atsStep"
+                                paragraph-class="mt-2 text-sm leading-relaxed text-slate-600"
+                                :fallback="'Alinhe o seu CV à vaga: palavras-chave e clareza. Guarde a JD na biblioteca e use o ATS check para pedir sugestões concretas.'"
+                            />
                             <p class="mt-3 text-sm leading-relaxed text-slate-600">
                                 Comece pela <strong class="text-slate-900">biblioteca (CV e JD)</strong>, depois o <strong class="text-slate-900">ATS check</strong>.
                                 Pode registar várias vagas — para avançar na trilha basta <strong class="text-slate-900">uma</strong> com par completo.

@@ -15,7 +15,7 @@ use Smalot\PdfParser\Parser as PdfParser;
 final class UserCvTextExtractor
 {
     /**
-     * Ficheiros .docx são ZIP (OOXML); o PhpWord usa ZipArchive.
+     * Arquivos .docx são ZIP (OOXML); o PhpWord usa ZipArchive.
      */
     public static function phpZipAvailableForDocx(): bool
     {

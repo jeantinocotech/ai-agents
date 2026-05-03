@@ -37,6 +37,16 @@ class CareerTrailStep extends Model
     }
 
     /**
+     * Blocos de texto «Graça» (avatar + corpo) associados a este passo.
+     *
+     * @return HasMany<CareerTrailGracaMessage, $this>
+     */
+    public function gracaMessages(): HasMany
+    {
+        return $this->hasMany(CareerTrailGracaMessage::class, 'career_trail_step_id');
+    }
+
+    /**
      * Agente Laravel associado à etapa (coluna `agent_id` em `career_trail_steps`), com fallback por .env por slug.
      */
     public function resolvedAgent(): ?Agent

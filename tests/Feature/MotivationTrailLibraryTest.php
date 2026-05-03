@@ -37,7 +37,7 @@ test('cover letter chatkit library reuses jds from ats agent bucket', function (
     $userCv = UserCv::query()->create([
         'user_id' => $user->id,
         'title' => 'CV',
-        'body' => str_repeat('c', 50),
+        'body' => str_repeat('c', 400),
         'is_default' => true,
         'source' => UserCv::SOURCE_MANUAL,
     ]);
@@ -85,7 +85,7 @@ test('motivation letter can be stored for an ats jd process from cover letter ag
     $userCv = UserCv::query()->create([
         'user_id' => $user->id,
         'title' => 'CV',
-        'body' => str_repeat('d', 50),
+        'body' => str_repeat('d', 400),
         'is_default' => true,
         'source' => UserCv::SOURCE_MANUAL,
     ]);

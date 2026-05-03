@@ -64,7 +64,10 @@
                                     ⚙️ Parâmetros de tokens
                                 </x-dropdown-link>
                                 <x-dropdown-link :href="route('admin.career-trail-steps.index')">
-                                    🪶 Trilha — textos da Graça
+                                    🪶 Trilha — passos
+                                </x-dropdown-link>
+                                <x-dropdown-link :href="route('admin.career-trail-graca-messages.index')">
+                                    🪶 Mensagens da Graça (trilha)
                                 </x-dropdown-link>
                             </x-slot>
                         </x-dropdown>
@@ -155,7 +158,10 @@
                         🤖 Gerenciar Agentes
                     </x-responsive-nav-link>
                     <x-responsive-nav-link :href="route('admin.career-trail-steps.index')" :active="request()->routeIs('admin.career-trail-steps.*')">
-                        🪶 Trilha — textos da Graça
+                        🪶 Trilha — passos
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('admin.career-trail-graca-messages.index')" :active="request()->routeIs('admin.career-trail-graca-messages.*')">
+                        🪶 Mensagens da Graça
                     </x-responsive-nav-link>
                 @endif
             @endauth

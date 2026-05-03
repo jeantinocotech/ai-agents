@@ -8,10 +8,12 @@ use App\Models\User;
 use App\Models\UserCareerTrailProgress;
 use App\Models\UserCv;
 use App\Support\CareerTrailStepCompletion;
+use Database\Seeders\CareerTrailGracaMessagesSeeder;
 use Database\Seeders\CareerTrailStepsSeeder;
 
 beforeEach(function () {
     $this->seed(CareerTrailStepsSeeder::class);
+    $this->seed(CareerTrailGracaMessagesSeeder::class);
 });
 
 test('guest is redirected from career trail', function () {
@@ -38,7 +40,7 @@ test('user can advance and go back along the trail', function () {
     UserCv::query()->create([
         'user_id' => $user->id,
         'title' => 'CV',
-        'body' => str_repeat('x', 50),
+        'body' => str_repeat('x', 400),
         'is_default' => true,
         'source' => UserCv::SOURCE_MANUAL,
     ]);
@@ -75,7 +77,7 @@ test('career trail banner suggests advance when cv step is satisfied', function 
     UserCv::query()->create([
         'user_id' => $user->id,
         'title' => 'CV',
-        'body' => str_repeat('x', 50),
+        'body' => str_repeat('x', 400),
         'is_default' => true,
         'source' => UserCv::SOURCE_MANUAL,
     ]);
@@ -132,7 +134,7 @@ test('cannot advance from ats step without paired cv and jd in ats library', fun
     UserCv::query()->create([
         'user_id' => $user->id,
         'title' => 'CV',
-        'body' => str_repeat('y', 50),
+        'body' => str_repeat('y', 400),
         'is_default' => true,
         'source' => UserCv::SOURCE_MANUAL,
     ]);
@@ -162,7 +164,7 @@ test('agent linked to a future trail step is blocked until advance unlocks it', 
     UserCv::query()->create([
         'user_id' => $user->id,
         'title' => 'CV',
-        'body' => str_repeat('z', 50),
+        'body' => str_repeat('z', 400),
         'is_default' => true,
         'source' => UserCv::SOURCE_MANUAL,
     ]);
@@ -189,7 +191,7 @@ test('jd created via chat pairing paired_cv_document_id gets user_cv_id and unlo
     $userCv = UserCv::query()->create([
         'user_id' => $user->id,
         'title' => 'CV perfil',
-        'body' => str_repeat('b', 50),
+        'body' => str_repeat('b', 400),
         'is_default' => true,
         'source' => UserCv::SOURCE_MANUAL,
     ]);
@@ -237,7 +239,7 @@ test('ats completion unlocks motivation and interviews in parallel; advance land
     $userCv = UserCv::query()->create([
         'user_id' => $user->id,
         'title' => 'CV',
-        'body' => str_repeat('a', 50),
+        'body' => str_repeat('a', 400),
         'is_default' => true,
         'source' => UserCv::SOURCE_MANUAL,
     ]);
@@ -296,7 +298,7 @@ test('banner badge marks ats completed when jd cv pair exists even if pointer is
     $cvProfile = UserCv::query()->create([
         'user_id' => $user->id,
         'title' => 'CV',
-        'body' => str_repeat('p', 50),
+        'body' => str_repeat('p', 400),
         'is_default' => true,
         'source' => UserCv::SOURCE_MANUAL,
     ]);
@@ -352,7 +354,7 @@ test('banner badge motivation is false until a letter is saved', function () {
     $profileCv = UserCv::query()->create([
         'user_id' => $user->id,
         'title' => 'CV',
-        'body' => str_repeat('m', 50),
+        'body' => str_repeat('m', 400),
         'is_default' => true,
         'source' => UserCv::SOURCE_MANUAL,
     ]);
@@ -364,7 +366,7 @@ test('banner badge motivation is false until a letter is saved', function () {
         'agent_id' => $ats->id,
         'type' => AgentDocument::TYPE_JD,
         'title' => 'Vaga',
-        'body' => str_repeat('d', 50),
+        'body' => str_repeat('d', 400),
         'user_cv_id' => $profileCv->id,
     ]);
 

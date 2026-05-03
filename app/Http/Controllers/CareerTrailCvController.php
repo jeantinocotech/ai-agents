@@ -9,11 +9,15 @@ use App\Models\CareerTrailStep;
 use App\Models\User;
 use App\Models\UserCv;
 use App\Services\CareerTrailAgentAccess;
+use App\Services\ProfileCvAgentLibrary;
+use App\Services\ProfileDefaultCvAtsSync;
 use App\Support\AgentDocumentLimits;
 use App\Support\CareerTrailStepCompletion;
 use App\Support\UserCvTextExtractor;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -41,14 +45,14 @@ class CareerTrailCvController extends Controller
             $editingCv = $candidate;
         }
 
-        $agents = Agent::query()
+        $accessibleAgentIds = Agent::query()
             ->where('is_active', true)
             ->orderBy('name')
-            ->get(['id', 'name'])
+            ->get(['id'])
             ->filter(fn (Agent $agent) => CareerTrailAgentAccess::userCanAccessTrailAgent($user, $agent))
-            ->values();
-
-        $accessibleAgentIds = $agents->pluck('id')->all();
+            ->map(fn (Agent $agent): int => (int) $agent->id)
+            ->values()
+            ->all();
 
         $agentLibraryCvs = collect();
         if ($accessibleAgentIds !== []) {
@@ -85,14 +89,54 @@ class CareerTrailCvController extends Controller
             'editingCv' => $editingCv,
             'agentLibraryCvs' => $agentLibraryCvs,
             'maxCvBodyChars' => AgentDocumentLimits::maxCharsForType(AgentDocument::TYPE_CV),
-            'minProfileCvChars' => max(1, (int) config('career_trail.min_profile_cv_chars', 40)),
-            'agents' => $agents,
+            'minProfileCvChars' => max(1, (int) config('career_trail.min_profile_cv_chars', 400)),
             'linkedinUrl' => $user->linkedin_url,
             'cvAssistantChatUrl' => $cvAssistantChatUrl,
             'cvAssistantChatIframeUrl' => $cvAssistantChatIframeUrl,
             'cvStepReadiness' => $cvStepReadiness,
             'cvStepChecklist' => $cvStepChecklist,
+            'cvTrailStep' => $cvTrailStep,
         ]);
+    }
+
+    public function extractFile(Request $request): JsonResponse
+    {
+        $request->validate([
+            'cv_file' => ['required', 'file', 'mimes:txt,pdf,doc,docx', 'max:20480'],
+        ]);
+
+        $file = $request->file('cv_file');
+        $extracted = UserCvTextExtractor::extract($file);
+        $body = trim($extracted);
+
+        if ($body === '') {
+            $ext = strtolower((string) $file->getClientOriginalExtension());
+            $cvFileMsg = ($ext === 'docx' && ! UserCvTextExtractor::phpZipAvailableForDocx())
+                ? 'Arquivos DOCX exigem a extensão PHP «zip» no servidor (pacote php-zip ou equivalente). Peça ao administrador para instalar ou ativar. Até lá, use PDF, TXT ou cole o texto do CV.'
+                : 'Não foi possível extrair texto deste arquivo (Word/PDF). Experimente PDF ou TXT, ou cole o conteúdo na caixa de texto.';
+
+            return response()->json([
+                'message' => $cvFileMsg,
+                'errors' => ['cv_file' => [$cvFileMsg]],
+            ], 422);
+        }
+
+        try {
+            AgentDocumentLimits::assertBodyWithinLimit(AgentDocument::TYPE_CV, $body);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'O texto extraído excede o limite permitido para um CV.',
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
+        $payload = ['body' => $body];
+        $suggested = $this->suggestedCvTitleFromUploadedFile($file);
+        if ($suggested !== null && $suggested !== '') {
+            $payload['suggested_title'] = $suggested;
+        }
+
+        return response()->json($payload);
     }
 
     public function store(Request $request): RedirectResponse
@@ -100,56 +144,36 @@ class CareerTrailCvController extends Controller
         $user = $request->user();
 
         $validated = $request->validate([
-            'has_existing_cv' => 'required|in:0,1',
-            'title' => 'nullable|string|max:255',
+            'title' => 'required|string|max:255',
             'body' => 'nullable|string',
-            'cv_file' => 'nullable|file|mimes:txt,pdf,doc,docx|max:20480',
             'linkedin_url' => 'nullable|string|max:512',
             'make_default' => 'sometimes|boolean',
         ]);
 
-        $hasExisting = $validated['has_existing_cv'] === '1';
-
-        $bodyFromInput = isset($validated['body']) ? trim((string) $validated['body']) : '';
-
-        $bodyFromFile = '';
-        if ($request->hasFile('cv_file')) {
-            $bodyFromFile = UserCvTextExtractor::extract($request->file('cv_file'));
-        }
-
-        $body = $bodyFromFile !== '' ? $bodyFromFile : $bodyFromInput;
-
-        if ($request->hasFile('cv_file') && $bodyFromFile === '' && $bodyFromInput === '') {
-            $ext = strtolower((string) $request->file('cv_file')->getClientOriginalExtension());
-            $cvFileMsg = ($ext === 'docx' && ! UserCvTextExtractor::phpZipAvailableForDocx())
-                ? 'Ficheiros DOCX exigem a extensão PHP «zip» no servidor (pacote php-zip ou equivalente). Peça ao administrador para a instalar ou activar. Até lá, use PDF, TXT ou cole o texto do CV.'
-                : 'Não foi possível extrair texto deste ficheiro (Word/PDF). Experimente PDF ou TXT, ou cole o conteúdo na caixa de texto.';
-
+        $title = trim((string) ($validated['title'] ?? ''));
+        if ($title === '') {
             return redirect()
                 ->route('career-trail.cv')
                 ->withInput()
-                ->withErrors([
-                    'cv_file' => $cvFileMsg,
-                    'body' => 'Se o Word tiver só tabelas ou caixas de texto complexas, cole aqui o texto ou exporte para PDF.',
-                ]);
+                ->withErrors(['title' => 'Informe um título para o CV.']);
         }
 
-        if ($body === '' || str_starts_with($body, '[Erro ao ler') || str_starts_with($body, '[Formato não suportado')) {
+        $body = trim((string) ($validated['body'] ?? ''));
+
+        if ($body === '') {
             return redirect()
                 ->route('career-trail.cv')
                 ->withInput()
-                ->withErrors(['body' => $hasExisting
-                    ? 'Envie um ficheiro suportado (TXT, PDF, DOC/DOCX) ou cole o texto do CV.'
-                    : 'Cole ou escreva o conteúdo do seu CV.', ]);
+                ->withErrors(['body' => 'Digite ou cole o texto do CV na área de texto ou selecione um arquivo para extrair o texto automaticamente para a caixa antes de salvar.']);
         }
 
-        $minChars = max(1, (int) config('career_trail.min_profile_cv_chars', 40));
+        $minChars = max(1, (int) config('career_trail.min_profile_cv_chars', 400));
 
-        if (! $hasExisting && mb_strlen($body) < $minChars) {
+        if (mb_strlen($body) < $minChars) {
             return redirect()
                 ->route('career-trail.cv')
                 ->withInput()
-                ->withErrors(['body' => 'Para começar sem ficheiro, escreva ou cole pelo menos um parágrafo (mínimo '.$minChars.' caracteres).']);
+                ->withErrors(['body' => 'O texto do CV deve ter pelo menos '.$minChars.' caracteres. Revise o conteúdo na área de texto.']);
         }
 
         try {
@@ -170,10 +194,10 @@ class CareerTrailCvController extends Controller
 
         $new = UserCv::query()->create([
             'user_id' => $user->id,
-            'title' => $validated['title'] ?? null,
+            'title' => $title,
             'body' => $body,
             'is_default' => false,
-            'source' => ($request->hasFile('cv_file') && $bodyFromFile !== '') ? UserCv::SOURCE_UPLOAD : UserCv::SOURCE_MANUAL,
+            'source' => UserCv::SOURCE_MANUAL,
         ]);
 
         if ($makeDefault) {
@@ -181,8 +205,8 @@ class CareerTrailCvController extends Controller
         }
 
         $msg = $makeDefault
-            ? 'Novo CV guardado e definido como predefinido na conta.'
-            : 'Novo CV guardado na conta.';
+            ? 'Novo CV salvo e definido como predefinido na conta.'
+            : 'Novo CV salvo na conta.';
 
         return redirect()
             ->route('career-trail.cv')
@@ -195,56 +219,36 @@ class CareerTrailCvController extends Controller
         $this->abortUnlessOwnCv($user, $userCv);
 
         $validated = $request->validate([
-            'has_existing_cv' => 'required|in:0,1',
-            'title' => 'nullable|string|max:255',
+            'title' => 'required|string|max:255',
             'body' => 'nullable|string',
-            'cv_file' => 'nullable|file|mimes:txt,pdf,doc,docx|max:20480',
             'linkedin_url' => 'nullable|string|max:512',
             'make_default' => 'sometimes|boolean',
         ]);
 
-        $hasExisting = $validated['has_existing_cv'] === '1';
-
-        $bodyFromInput = isset($validated['body']) ? trim((string) $validated['body']) : '';
-
-        $bodyFromFile = '';
-        if ($request->hasFile('cv_file')) {
-            $bodyFromFile = UserCvTextExtractor::extract($request->file('cv_file'));
-        }
-
-        $body = $bodyFromFile !== '' ? $bodyFromFile : $bodyFromInput;
-
-        if ($request->hasFile('cv_file') && $bodyFromFile === '' && $bodyFromInput === '') {
-            $ext = strtolower((string) $request->file('cv_file')->getClientOriginalExtension());
-            $cvFileMsg = ($ext === 'docx' && ! UserCvTextExtractor::phpZipAvailableForDocx())
-                ? 'Ficheiros DOCX exigem a extensão PHP «zip» no servidor (pacote php-zip ou equivalente). Peça ao administrador para a instalar ou activar. Até lá, use PDF, TXT ou cole o texto do CV.'
-                : 'Não foi possível extrair texto deste ficheiro (Word/PDF). Experimente PDF ou TXT, ou cole o conteúdo na caixa de texto.';
-
+        $title = trim((string) ($validated['title'] ?? ''));
+        if ($title === '') {
             return redirect()
                 ->route('career-trail.cv', ['edit' => $userCv->id])
                 ->withInput()
-                ->withErrors([
-                    'cv_file' => $cvFileMsg,
-                    'body' => 'Se o Word tiver só tabelas ou caixas de texto complexas, cole aqui o texto ou exporte para PDF.',
-                ]);
+                ->withErrors(['title' => 'Informe um título para o CV.']);
         }
 
-        if ($body === '' || str_starts_with($body, '[Erro ao ler') || str_starts_with($body, '[Formato não suportado')) {
+        $body = trim((string) ($validated['body'] ?? ''));
+
+        if ($body === '') {
             return redirect()
                 ->route('career-trail.cv', ['edit' => $userCv->id])
                 ->withInput()
-                ->withErrors(['body' => $hasExisting
-                    ? 'Envie um ficheiro suportado (TXT, PDF, DOC/DOCX) ou cole o texto do CV.'
-                    : 'Cole ou escreva o conteúdo do seu CV.', ]);
+                ->withErrors(['body' => 'Digite ou cole o texto do CV na área de texto ou selecione um arquivo para extrair o texto automaticamente para a caixa antes de salvar.']);
         }
 
-        $minChars = max(1, (int) config('career_trail.min_profile_cv_chars', 40));
+        $minChars = max(1, (int) config('career_trail.min_profile_cv_chars', 400));
 
-        if (! $hasExisting && mb_strlen($body) < $minChars) {
+        if (mb_strlen($body) < $minChars) {
             return redirect()
                 ->route('career-trail.cv', ['edit' => $userCv->id])
                 ->withInput()
-                ->withErrors(['body' => 'Para começar sem ficheiro, escreva ou cole pelo menos um parágrafo (mínimo '.$minChars.' caracteres).']);
+                ->withErrors(['body' => 'O texto do CV deve ter pelo menos '.$minChars.' caracteres. Revise o conteúdo na área de texto.']);
         }
 
         try {
@@ -260,15 +264,14 @@ class CareerTrailCvController extends Controller
         $user->linkedin_url = $linkedin !== '' ? $linkedin : null;
         $user->save();
 
-        $userCv->title = $validated['title'] ?? null;
+        $userCv->title = $title;
         $userCv->body = $body;
-        if ($request->hasFile('cv_file') && $bodyFromFile !== '') {
-            $userCv->source = UserCv::SOURCE_UPLOAD;
-        }
         $userCv->save();
 
         if ($request->boolean('make_default')) {
             $this->setUserCvAsOnlyDefault($user, $userCv);
+        } elseif ($userCv->is_default) {
+            ProfileDefaultCvAtsSync::sync($user);
         }
 
         return redirect()
@@ -305,6 +308,7 @@ class CareerTrailCvController extends Controller
             if ($next !== null) {
                 UserCv::query()->where('user_id', $userId)->update(['is_default' => false]);
                 $next->forceFill(['is_default' => true])->save();
+                ProfileDefaultCvAtsSync::sync($user);
             }
         }
 
@@ -399,39 +403,20 @@ class CareerTrailCvController extends Controller
     public function syncToAgent(Request $request, Agent $agent): RedirectResponse
     {
         $user = $request->user();
-        CareerTrailAgentAccess::abortUnlessCanAccess($user, $agent);
-
-        $cv = UserCv::defaultForUserId((int) $user->id);
-
-        if (! $cv) {
-            return redirect()
-                ->route('career-trail.cv')
-                ->with('error', 'Guarde primeiro um CV de perfil predefinido.');
-        }
 
         try {
-            AgentDocumentLimits::assertBodyWithinLimit(AgentDocument::TYPE_CV, $cv->body);
+            $doc = ProfileCvAgentLibrary::upsertDefaultProfileCv($user, $agent, true);
         } catch (ValidationException $e) {
             return redirect()
                 ->route('career-trail.cv')
                 ->withErrors($e->errors());
         }
 
-        $doc = AgentDocument::query()->create([
-            'user_id' => $user->id,
-            'agent_id' => $agent->id,
-            'type' => AgentDocument::TYPE_CV,
-            'title' => $cv->title ?: 'CV do perfil',
-            'body' => $cv->body,
-            'paired_cv_document_id' => null,
-        ]);
-
-        $defaults = AgentDocumentDefault::firstOrNew([
-            'user_id' => $user->id,
-            'agent_id' => $agent->id,
-        ]);
-        $defaults->default_cv_document_id = $doc->id;
-        $defaults->save();
+        if (! $doc) {
+            return redirect()
+                ->route('career-trail.cv')
+                ->with('error', 'Guarde primeiro um CV de perfil predefinido.');
+        }
 
         return redirect()
             ->route('agents.documents.index', $agent)
@@ -447,5 +432,24 @@ class CareerTrailCvController extends Controller
     {
         UserCv::query()->where('user_id', $user->id)->update(['is_default' => false]);
         $cv->forceFill(['is_default' => true])->save();
+        ProfileDefaultCvAtsSync::sync($user);
+    }
+
+    private function suggestedCvTitleFromUploadedFile(UploadedFile $file): ?string
+    {
+        $name = $file->getClientOriginalName();
+        if ($name === '') {
+            return null;
+        }
+
+        $base = pathinfo($name, PATHINFO_FILENAME);
+        $base = str_replace(['_', '-'], ' ', (string) $base);
+        $collapsed = preg_replace('/\s+/u', ' ', $base);
+        $trimmed = trim((string) $collapsed);
+        if ($trimmed === '') {
+            return null;
+        }
+
+        return mb_strlen($trimmed) > 255 ? mb_substr($trimmed, 0, 255) : $trimmed;
     }
 }

@@ -188,6 +188,6 @@ final class CareerTrailStepCompletion
 
     private static function minProfileCvChars(): int
     {
-        return max(1, (int) config('career_trail.min_profile_cv_chars', 40));
+        return max(1, (int) config('career_trail.min_profile_cv_chars', 400));
     }
 }

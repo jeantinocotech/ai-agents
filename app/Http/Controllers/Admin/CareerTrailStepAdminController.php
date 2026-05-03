@@ -29,14 +29,12 @@ class CareerTrailStepAdminController extends Controller
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'short_description' => ['nullable', 'string', 'max:65000'],
-            'graca_guidance' => ['nullable', 'string', 'max:65000'],
             'is_active' => ['required', 'boolean'],
         ]);
 
         $step->fill([
             'title' => $validated['title'],
             'short_description' => $validated['short_description'] ?? null,
-            'graca_guidance' => $validated['graca_guidance'] ?? null,
             'is_active' => $validated['is_active'],
         ]);
         $step->save();

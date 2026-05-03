@@ -40,7 +40,7 @@ test('rejectround sets process outcome did not proceed', function () {
     $cv = UserCv::query()->create([
         'user_id' => $user->id,
         'title' => 'CV',
-        'body' => str_repeat('z', 50),
+        'body' => str_repeat('z', 400),
         'is_default' => true,
         'source' => UserCv::SOURCE_MANUAL,
     ]);
@@ -92,7 +92,7 @@ test('marking candidate approved unlocks offer step on career trail progress', f
     $cv = UserCv::query()->create([
         'user_id' => $user->id,
         'title' => 'CV',
-        'body' => str_repeat('z', 50),
+        'body' => str_repeat('z', 400),
         'is_default' => true,
         'source' => UserCv::SOURCE_MANUAL,
     ]);

@@ -36,14 +36,10 @@
                         @enderror
                     </div>
 
-                    <div>
-                        <label for="graca_guidance" class="block text-sm font-medium text-gray-700">Orientação da Graça</label>
-                        <p class="text-xs text-gray-500 mt-0.5">Texto que a mentora mostra neste passo (página da trilha / ATS).</p>
-                        <textarea name="graca_guidance" id="graca_guidance" rows="8"
-                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('graca_guidance', $step->graca_guidance) }}</textarea>
-                        @error('graca_guidance')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
+                    <div class="rounded-lg border border-violet-100 bg-violet-50/60 px-4 py-3 text-sm text-slate-700">
+                        Os blocos de texto <strong>ao lado do avatar da Graça</strong> para este passo gerem-se em
+                        <a href="{{ route('admin.career-trail-graca-messages.index', ['career_trail_step_id' => $step->id]) }}" class="font-semibold text-indigo-700 hover:underline">Mensagens da Graça (trilha)</a>
+                        (slot «Trilha / ATS — texto principal» na página da trilha e ATS; «Meu CV — texto introdutório» só para o passo <span class="font-mono text-xs">cv</span>).
                     </div>
 
                     <div class="flex items-center gap-2">

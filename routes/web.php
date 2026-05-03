@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AgentController as AdminAgentController;
+use App\Http\Controllers\Admin\CareerTrailGracaMessageAdminController;
 use App\Http\Controllers\Admin\CareerTrailStepAdminController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TestimonialAdminController;
@@ -54,6 +55,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/trilha', [CareerTrailController::class, 'index'])->name('career-trail.index');
     Route::get('/trilha/cv', [CareerTrailCvController::class, 'show'])->name('career-trail.cv');
     Route::get('/trilha/ats', [CareerTrailController::class, 'ats'])->name('career-trail.ats');
+    Route::post('/trilha/cv/extrair-arquivo', [CareerTrailCvController::class, 'extractFile'])->name('career-trail.cv.extract-file');
     Route::post('/trilha/cv', [CareerTrailCvController::class, 'store'])->name('career-trail.cv.store');
     Route::post('/trilha/cv/importar-agente', [CareerTrailCvController::class, 'importFromAgentDocument'])->name('career-trail.cv.import-agent');
     Route::delete('/trilha/cv/biblioteca-agente/{agent}/{document}', [CareerTrailCvController::class, 'destroyAgentDocument'])->name('career-trail.cv.agent-document.destroy');
@@ -233,6 +235,8 @@ Route::middleware(['auth', 'verified', AdminMiddleware::class])->prefix('admin')
     Route::get('/career-trail-steps', [CareerTrailStepAdminController::class, 'index'])->name('career-trail-steps.index');
     Route::get('/career-trail-steps/{step}/edit', [CareerTrailStepAdminController::class, 'edit'])->name('career-trail-steps.edit');
     Route::put('/career-trail-steps/{step}', [CareerTrailStepAdminController::class, 'update'])->name('career-trail-steps.update');
+
+    Route::resource('career-trail-graca-messages', CareerTrailGracaMessageAdminController::class)->except(['show']);
 
 });
 

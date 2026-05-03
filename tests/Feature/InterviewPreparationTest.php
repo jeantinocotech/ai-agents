@@ -40,7 +40,7 @@ test('interview preparations crud respects ats jd and enum fields', function () 
     $cv = UserCv::query()->create([
         'user_id' => $user->id,
         'title' => 'CV',
-        'body' => str_repeat('z', 50),
+        'body' => str_repeat('z', 400),
         'is_default' => true,
         'source' => UserCv::SOURCE_MANUAL,
     ]);
@@ -131,7 +131,7 @@ test('interview create form hides processes with global outcome did not proceed'
     $cv = UserCv::query()->create([
         'user_id' => $user->id,
         'title' => 'CV',
-        'body' => str_repeat('z', 50),
+        'body' => str_repeat('z', 400),
         'is_default' => true,
         'source' => UserCv::SOURCE_MANUAL,
     ]);

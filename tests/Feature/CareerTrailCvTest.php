@@ -2,13 +2,17 @@
 
 use App\Models\Agent;
 use App\Models\AgentDocument;
+use App\Models\AgentDocumentDefault;
 use App\Models\CareerTrailStep;
 use App\Models\User;
 use App\Models\UserCv;
+use Database\Seeders\CareerTrailGracaMessagesSeeder;
 use Database\Seeders\CareerTrailStepsSeeder;
+use Illuminate\Http\UploadedFile;
 
 beforeEach(function () {
     $this->seed(CareerTrailStepsSeeder::class);
+    $this->seed(CareerTrailGracaMessagesSeeder::class);
 });
 
 function bindCareerCvStepAgent(int $agentId): void
@@ -31,6 +35,35 @@ function makeCareerTrailChatKitAgent(array $overrides = []): Agent
 
 test('guest cannot access career trail cv page', function () {
     $this->get(route('career-trail.cv'))->assertRedirect(route('login'));
+});
+
+test('guest cannot extract career trail cv file', function () {
+    $file = UploadedFile::fake()->createWithContent('a.txt', 'hello');
+
+    $this->post(route('career-trail.cv.extract-file'), ['cv_file' => $file])
+        ->assertRedirect(route('login'));
+});
+
+test('authenticated user can extract text from uploaded txt via extract endpoint', function () {
+    $user = User::factory()->create();
+    $content = str_repeat('x', 420);
+    $file = UploadedFile::fake()->createWithContent('cv.txt', $content);
+
+    $this->actingAs($user)->post(route('career-trail.cv.extract-file'), ['cv_file' => $file])
+        ->assertOk()
+        ->assertJson(['body' => $content, 'suggested_title' => 'cv']);
+});
+
+test('profile cv store requires title', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post(route('career-trail.cv.store'), [
+            'body' => str_repeat('a', 400),
+        ])
+        ->assertSessionHasErrors('title');
+
+    expect(UserCv::query()->where('user_id', $user->id)->count())->toBe(0);
 });
 
 test('guest cannot destroy profile cv', function () {
@@ -69,9 +102,8 @@ test('user can save profile cv from text', function () {
 
     $this->actingAs($user)
         ->post(route('career-trail.cv.store'), [
-            'has_existing_cv' => '0',
             'title' => 'O meu CV',
-            'body' => str_repeat('a', 50),
+            'body' => str_repeat('a', 400),
             'linkedin_url' => 'https://www.linkedin.com/in/example',
         ])
         ->assertRedirect(route('career-trail.cv'));
@@ -90,16 +122,15 @@ test('second profile cv stays non default unless requested', function () {
     $first = UserCv::query()->create([
         'user_id' => $user->id,
         'title' => 'A',
-        'body' => str_repeat('x', 50),
+        'body' => str_repeat('x', 400),
         'is_default' => true,
         'source' => UserCv::SOURCE_MANUAL,
     ]);
 
     $this->actingAs($user)
         ->post(route('career-trail.cv.store'), [
-            'has_existing_cv' => '0',
             'title' => 'B',
-            'body' => str_repeat('y', 50),
+            'body' => str_repeat('y', 400),
         ])
         ->assertRedirect(route('career-trail.cv'));
 
@@ -153,7 +184,7 @@ test('user can import cv from agent library to profile', function () {
         'agent_id' => $agent->id,
         'type' => AgentDocument::TYPE_CV,
         'title' => 'CV ATS',
-        'body' => str_repeat('z', 60),
+        'body' => str_repeat('z', 400),
         'paired_cv_document_id' => null,
     ]);
 
@@ -165,7 +196,7 @@ test('user can import cv from agent library to profile', function () {
 
     $profile = UserCv::defaultForUserId((int) $user->id);
     expect($profile)->not->toBeNull();
-    expect($profile->body)->toBe(str_repeat('z', 60));
+    expect($profile->body)->toBe(str_repeat('z', 400));
     expect($profile->source)->toBe(UserCv::SOURCE_AGENT_IMPORT);
 });
 
@@ -212,7 +243,7 @@ test('career trail cv page still shows assistant when user already has default c
     UserCv::query()->create([
         'user_id' => $user->id,
         'title' => 'Existente',
-        'body' => str_repeat('x', 40),
+        'body' => str_repeat('x', 400),
         'is_default' => true,
         'source' => UserCv::SOURCE_MANUAL,
     ]);
@@ -222,6 +253,43 @@ test('career trail cv page still shows assistant when user already has default c
         ->assertOk()
         ->assertSee('btn-open-cv-assistant', false)
         ->assertSee('Abrir assistente de CV', false);
+});
+
+test('default profile cv is upserted to ats agent library when saved as predefinido', function () {
+    $ats = makeCareerTrailChatKitAgent(['name' => 'ATS auto-sync']);
+    CareerTrailStep::query()->where('slug', 'ats')->update(['agent_id' => $ats->id]);
+
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->post(route('career-trail.cv.store'), [
+        'title' => 'CV perfil',
+        'body' => str_repeat('t', 400),
+    ])->assertRedirect(route('career-trail.cv'));
+
+    $defaults = AgentDocumentDefault::query()
+        ->where('user_id', $user->id)
+        ->where('agent_id', $ats->id)
+        ->first();
+    expect($defaults)->not->toBeNull();
+    expect($defaults->default_cv_document_id)->not->toBeNull();
+
+    $doc = AgentDocument::query()->findOrFail((int) $defaults->default_cv_document_id);
+    expect($doc->type)->toBe(AgentDocument::TYPE_CV)
+        ->and($doc->body)->toBe(str_repeat('t', 400));
+
+    $this->actingAs($user)->post(route('career-trail.cv.store'), [
+        'title' => 'Outro',
+        'body' => str_repeat('u', 400),
+    ])->assertRedirect(route('career-trail.cv'));
+
+    $doc->refresh();
+    expect($doc->body)->toBe(str_repeat('t', 400));
+
+    $cvB = UserCv::query()->where('user_id', $user->id)->where('title', 'Outro')->firstOrFail();
+    $this->actingAs($user)->post(route('career-trail.cv.default', $cvB))->assertRedirect(route('career-trail.cv'));
+
+    $doc->refresh();
+    expect($doc->body)->toBe(str_repeat('u', 400));
 });
 
 test('career trail cv page does not expose assistant when configured agent is inactive', function () {

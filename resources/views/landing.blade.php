@@ -14,18 +14,20 @@
                 <div class="min-w-0 flex-1">
                     @php
                         $mentor = config('career_trail.mentor_label', 'Sra. Graça');
+                        $landingAuthFallback = "Como é a primeira vez que nos cruzamos aqui, deixe-me apresentar-me: eu sou a orientadora da sua trilha de carreira na GratoAI. Acompanho-o passo a passo — do currículo a entrevistas e propostas — e ajudo-o a perceber o que fazer em cada etapa, em conjunto com os assistentes de IA quando fizer sentido.\n\nNão precisa de memorizar nada: volte a falar comigo no mapa da trilha sempre que quiser recolher rumo.";
                     @endphp
                     <p class="text-xs font-semibold uppercase tracking-wide text-violet-700">Bem-vindo</p>
                     <h1 class="mt-2 text-3xl font-extrabold tracking-tight text-slate-900 sm:text-4xl">
                         Sou a {{ $mentor }}
                     </h1>
                     <div class="mt-5 space-y-3 text-base leading-relaxed text-slate-700 sm:text-lg">
-                        <p>
-                            Como é a primeira vez que nos cruzamos aqui, <strong class="text-slate-900">deixe-me apresentar-me</strong>: eu sou a orientadora da sua <strong class="text-slate-900">trilha de carreira</strong> na GratoAI. Acompanho-o passo a passo — do currículo a entrevistas e propostas — e ajudo-o a perceber <em>o que fazer em cada etapa</em>, em conjunto com os assistentes de IA quando fizer sentido.
-                        </p>
-                        <p class="text-slate-600">
-                            Não precisa de memorizar nada: volte a falar comigo no <strong class="text-slate-800">mapa da trilha</strong> sempre que quiser recolher rumo.
-                        </p>
+                        <x-graca-slot
+                            :placement="\App\Support\CareerTrailGracaSlots::LANDING_AUTH_INTRO"
+                            :step="null"
+                            tag="div"
+                            paragraph-class="space-y-3 text-base leading-relaxed text-slate-700 sm:text-lg"
+                            :fallback="$landingAuthFallback"
+                        />
                     </div>
                     <h2 class="mt-8 text-lg font-semibold tracking-tight text-slate-900 sm:text-xl">
                         O primeiro passo é o seu CV — o que prefere fazer agora?
@@ -67,9 +69,13 @@
             <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-10">
                 <div class="md:w-2/3 text-white">
                     <h1 class="text-4xl md:text-5xl font-extrabold mb-4">A sua trilha de carreira, com apoio de IA</h1>
-                    <p class="text-xl text-gray-300 mb-8">
-                        Deixe o CV passar no ATS, prepare entrevistas e negocie propostas — passo a passo, com a Sra. Graça a orientar e assistentes de IA em cada etapa.
-                    </p>
+                    <x-graca-slot
+                        :placement="\App\Support\CareerTrailGracaSlots::LANDING_GUEST_HERO"
+                        :step="null"
+                        tag="div"
+                        paragraph-class="text-xl text-gray-300 mb-8"
+                        :fallback="'Deixe o CV passar no ATS, prepare entrevistas e negocie propostas — passo a passo, com a Sra. Graça a orientar e assistentes de IA em cada etapa.'"
+                    />
                     <div class="flex flex-wrap gap-3">
                         <a href="{{ route('register') }}"
                            class="inline-block px-8 py-3 rounded-full bg-white text-black font-semibold shadow hover:bg-gray-200 transition">
