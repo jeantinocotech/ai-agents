@@ -56,6 +56,7 @@ class CareerTrailController extends Controller
         $atsChatBackendReady = $agent !== null && (
             ($agent->isChatKitWorkflow() && trim((string) ($agent->chatkit_workflow_id ?? '')) !== '')
             || (! $agent->isChatKitWorkflow() && $agent->steps()->exists())
+            || (! $agent->isChatKitWorkflow() && trim((string) ($agent->assistant_id ?? '')) !== '')
         );
         $atsCvJdPairOk = $agentActive && $agent !== null && CareerTrailStepCompletion::hasAtsCvJdPair($user, $agent);
         $atsAllowsCheck = $agentActive && $agent !== null && $atsChatBackendReady && $atsCvJdPairOk;

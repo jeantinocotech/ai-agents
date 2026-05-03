@@ -179,6 +179,32 @@ test('user on ats step can open chat when ats agent is chatkit with workflow id'
         ->assertOk();
 });
 
+test('ats agent with openai assistant id opens chat without agent steps', function () {
+    $agent = Agent::query()->create([
+        'name' => 'ATS Assistants API',
+        'price' => 0,
+        'model_type' => 'gpt-4o-mini',
+        'assistant_id' => 'asst_trail_no_steps',
+        'is_active' => true,
+    ]);
+    CareerTrailStep::query()->where('slug', 'ats')->update(['agent_id' => $agent->id]);
+
+    $user = User::factory()->create();
+    UserCv::query()->create([
+        'user_id' => $user->id,
+        'title' => 'CV perfil',
+        'body' => str_repeat('a', 400),
+        'is_default' => true,
+        'source' => UserCv::SOURCE_MANUAL,
+    ]);
+
+    $this->actingAs($user)->get(route('career-trail.index'));
+
+    $this->actingAs($user)
+        ->get(route('agents.chat', $agent))
+        ->assertOk();
+});
+
 test('ats chat redirects to ats hub when agent is openai without steps', function () {
     $agent = Agent::query()->create([
         'name' => 'ATS openai sem passos',

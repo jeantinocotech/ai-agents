@@ -118,9 +118,8 @@
         </div>
         <div id="modal-container"></div>
     </div>
-</x-app-layout>
 
-
+    @push('scripts')
 @unless($agent->isChatKitWorkflow())
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
@@ -705,3 +704,5 @@ document.addEventListener('DOMContentLoaded', function() {
 @endif
 
 @include('agents.partials.chatkit-rating-scripts')
+    @endpush
+</x-app-layout>

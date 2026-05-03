@@ -61,7 +61,7 @@ class AgentController extends Controller
                 ->route('career-trail.ats')
                 ->with(
                     'error',
-                    'O ATS check precisa do assistente em ChatKit workflow (com ID do workflow) ou, em modo OpenAI, de passos CV/JD na administração. Peça para corrigir a configuração do agente da etapa ATS.'
+                    'O ATS check precisa de ChatKit (ID do workflow), ou OpenAI com Assistant ID, ou passos CV/JD em modo clássico. Peça para corrigir o agente da etapa ATS.'
                 );
         }
 
@@ -558,20 +558,20 @@ class AgentController extends Controller
             set_time_limit(120);
             $provider = '';
 
-            if (strtolower($aiModel) === 'gpt-4') {
-                if ($agent->assistant_id) {
-                    Log::info('Call AI assistant');
-                    $aiResult = $this->callOpenAIUsingAssistant($agent, $session, $request->message);
-                    $provider = 'openai';
-                } else {
-                    Log::info('Call OpenAI direct');
-                    $aiResult = $this->callOpenAI($agent, $messages);
-                    $provider = 'openai';
-                }
+            $assistantId = trim((string) ($agent->assistant_id ?? ''));
+
+            if ($assistantId !== '') {
+                Log::info('Call AI assistant', ['agent_id' => $agent->id, 'model_field' => $aiModel]);
+                $aiResult = $this->callOpenAIUsingAssistant($agent, $session, $request->message);
+                $provider = 'openai';
             } elseif (strtolower($aiModel) === 'claude-3') {
                 Log::info('Call Claude direct');
                 $aiResult = $this->callAnthropic($agent, $messages);
                 $provider = 'anthropic';
+            } else {
+                Log::info('Call OpenAI Chat Completions');
+                $aiResult = $this->callOpenAI($agent, $messages);
+                $provider = 'openai';
             }
 
             if (! $aiResult || ($aiResult['text'] ?? '') === '') {
@@ -1150,7 +1150,7 @@ class AgentController extends Controller
             Log::info('CallOpenAI Message Completa', [$messages]);
 
             $response = Http::withHeaders([
-                'Authorization' => 'Bearer '.trim($agent->api_key),
+                'Authorization' => 'Bearer '.$this->openAiApiKeyForAgent($agent),
                 'OpenAI-Organization' => trim($agent->organization ?? ''),
                 'OpenAI-Project' => trim($agent->project_id ?? ''),
                 'Content-Type' => 'application/json',
@@ -1248,6 +1248,13 @@ class AgentController extends Controller
 
         Log::info('AI assistant');
 
+        $apiKey = $this->openAiApiKeyForAgent($agent);
+        if ($apiKey === '') {
+            Log::error('OpenAI API key ausente para chamadas ao Assistant', ['agent_id' => $agent->id]);
+
+            return null;
+        }
+
         // Monta headers obrigatórios
         $headers = [
             'OpenAI-Beta' => 'assistants=v2',
@@ -1257,7 +1264,7 @@ class AgentController extends Controller
             $headers['OpenAI-Project'] = $agent->project_id;
         }
 
-        $http = Http::withToken($agent->api_key)->withHeaders($headers);
+        $http = Http::withToken($apiKey)->withHeaders($headers);
 
         // Cria thread se necessário
         if (! $session->thread_id) {
@@ -1396,6 +1403,15 @@ class AgentController extends Controller
             return trim((string) ($agent->chatkit_workflow_id ?? '')) !== '';
         }
 
-        return $steps->isNotEmpty();
+        if ($steps->isNotEmpty()) {
+            return true;
+        }
+
+        return trim((string) ($agent->assistant_id ?? '')) !== '';
+    }
+
+    private function openAiApiKeyForAgent(Agent $agent): string
+    {
+        return trim((string) ($agent->api_key ?: config('services.openai.api_key')));
     }
 }

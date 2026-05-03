@@ -45,6 +45,8 @@
             </main>
         </div>
 
+        @stack('scripts')
+
        <!-- Cookie Consent Banner -->
         <div id="cookie-banner" class="fixed bottom-0 left-0 w-full z-50 flex items-center justify-between bg-[#181D20] text-white p-4 shadow-lg" style="display:none;">
             <div class="flex-1 text-sm md:text-base">

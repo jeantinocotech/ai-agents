@@ -1,40 +1,23 @@
 <nav x-data="{ open: false }" class="sticky top-0 z-50 bg-black shadow-md">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
-            <!-- Logo -->
-            <div class="flex items-center space-x-3">
-                <img src="{{ asset('img/gratoai_black.png') }}" alt="GratoAI" class="h-12 w-auto">
-                <span class="font-bold text-xl text-white">GratoAI</span>
-            </div>
+            <!-- Logo / marca (sempre leva ao início) -->
+            <a href="{{ url('/') }}" aria-label="GratoAI — início" class="flex items-center shrink-0 space-x-3 rounded-md text-white hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-black focus-visible:ring-white">
+                <img src="{{ asset('img/gratoai_black.png') }}" alt="" class="pointer-events-none h-12 w-auto" width="140" height="48">
+                <span class="font-bold text-xl">GratoAI</span>
+            </a>
 
             <!-- Desktop Nav -->
             <div class="hidden sm:flex sm:items-center space-x-8">
-                <x-nav-link :href="url('/')" :active="request()->is('/')">
-                    Início
-                </x-nav-link>
                 @guest
                     <x-nav-link :href="url('/#trilha-teaser')" :active="false">
                         A trilha
                     </x-nav-link>
                 @endguest
-                @auth
-                    <x-nav-link :href="route('tokens.purchase')" :active="request()->routeIs('tokens.purchase')">
-                        Comprar tokens
-                    </x-nav-link>
-                    <x-nav-link :href="route('tokens.history')" :active="request()->routeIs('tokens.history')">
-                        Histórico tokens
-                    </x-nav-link>
-                @endauth
 
                 @auth
                     <x-nav-link :href="route('career-trail.index')" :active="request()->routeIs('dashboard') || request()->routeIs('career-trail.index') || request()->routeIs('career-trail.advance') || request()->routeIs('career-trail.back')">
                         Trilha
-                    </x-nav-link>
-                    <x-nav-link :href="route('career-trail.cv')" :active="request()->routeIs('career-trail.cv*')">
-                        Meu CV
-                    </x-nav-link>
-                    <x-nav-link :href="route('testimonials.mine')" :active="request()->routeIs('testimonials.mine')" class="font-semibold">
-                        <i class="fas fa-comment-dots mr-1"></i> Meus Depoimentos
                     </x-nav-link>
                 @endauth
 
@@ -80,22 +63,35 @@
                 @auth
                     <x-dropdown align="right" width="48">
                         <x-slot name="trigger">
-                            <button class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-300 bg-[#23272a] hover:text-white focus:outline-none transition">
+                            <button type="button" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-300 bg-[#23272a] hover:text-white focus:outline-none transition">
                                 <span>{{ Auth::user()->name }}</span>
-                                <svg class="ms-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                                <svg class="ms-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
                                     <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                                 </svg>
                             </button>
                         </x-slot>
                         <x-slot name="content">
+                            <div class="border-b border-gray-100 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                Área pessoal
+                            </div>
+                            <x-dropdown-link :href="route('tokens.purchase')">
+                                Comprar tokens
+                            </x-dropdown-link>
+                            <x-dropdown-link :href="route('tokens.history')">
+                                Histórico de tokens
+                            </x-dropdown-link>
+                            <x-dropdown-link :href="route('testimonials.mine')">
+                                Meus depoimentos
+                            </x-dropdown-link>
+                            <div class="my-1 border-t border-gray-100"></div>
                             <x-dropdown-link :href="route('profile.edit')">
-                                {{ __('Profile') }}
+                                Perfil da conta
                             </x-dropdown-link>
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
                                 <x-dropdown-link :href="route('logout')"
                                         onclick="event.preventDefault(); this.closest('form').submit();">
-                                    {{ __('Log Out') }}
+                                    Sair da sessão
                                 </x-dropdown-link>
                             </form>
                         </x-slot>
@@ -127,28 +123,14 @@
     <!-- Mobile Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden bg-[#23272a]">
         <div class="pt-2 pb-3 space-y-1">
-            <x-responsive-nav-link :href="url('/')" :active="request()->is('/')">
-                Início
-            </x-responsive-nav-link>
             @guest
                 <x-responsive-nav-link :href="url('/#trilha-teaser')" :active="false">
                     A trilha
                 </x-responsive-nav-link>
             @endguest
             @auth
-                <x-responsive-nav-link :href="route('tokens.purchase')" :active="request()->routeIs('tokens.purchase')">
-                    Comprar tokens
-                </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('tokens.history')" :active="request()->routeIs('tokens.history')">
-                    Histórico tokens
-                </x-responsive-nav-link>
-            @endauth
-            @auth
                 <x-responsive-nav-link :href="route('career-trail.index')" :active="request()->routeIs('dashboard') || request()->routeIs('career-trail.index') || request()->routeIs('career-trail.advance') || request()->routeIs('career-trail.back')">
                     Trilha
-                </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('career-trail.cv')" :active="request()->routeIs('career-trail.cv*')">
-                    Meu CV
                 </x-responsive-nav-link>
                 @if(Auth::user()->isAdmin())
                     <x-responsive-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')">
@@ -175,15 +157,25 @@
                     <div class="font-medium text-sm text-gray-400">{{ Auth::user()->email }}</div>
                 </div>
                 <div class="mt-3 space-y-1">
+                    <p class="px-4 text-xs font-semibold uppercase tracking-wide text-gray-500">Área pessoal</p>
+                    <x-responsive-nav-link :href="route('tokens.purchase')" :active="request()->routeIs('tokens.purchase')">
+                        Comprar tokens
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('tokens.history')" :active="request()->routeIs('tokens.history')">
+                        Histórico de tokens
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('testimonials.mine')" :active="request()->routeIs('testimonials.mine')">
+                        Meus depoimentos
+                    </x-responsive-nav-link>
                     <x-responsive-nav-link :href="route('profile.edit')">
-                        {{ __('Profile') }}
+                        Perfil da conta
                     </x-responsive-nav-link>
                     <form method="POST" action="{{ route('logout') }}">
                         @csrf
                         <x-responsive-nav-link :href="route('logout')"
-                                onclick="event.preventDefault();
+                                        onclick="event.preventDefault();
                                             this.closest('form').submit();">
-                            {{ __('Log Out') }}
+                            Sair da sessão
                         </x-responsive-nav-link>
                     </form>
                 </div>

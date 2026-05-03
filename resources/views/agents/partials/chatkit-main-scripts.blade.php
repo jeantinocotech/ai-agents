@@ -17,11 +17,34 @@ window.chatApp = {
         setTimeout(function () { notification.remove(); }, 12000);
     },
 };
+var chatKitBootAttempts = 0;
+var chatKitMaxBootAttempts = 240;
+
 (function loadChatKitScript() {
+    if (window.__openAiChatKitScriptQueued) {
+        return;
+    }
+    window.__openAiChatKitScriptQueued = true;
     var s = document.createElement('script');
     s.src = 'https://cdn.platform.openai.com/deployments/chatkit/chatkit.js';
     s.async = true;
-    s.onload = function () { setTimeout(bootOpenAiChatKit, 0); };
+    s.onload = function () {
+        chatKitBootAttempts = 0;
+        setTimeout(bootOpenAiChatKit, 0);
+    };
+    s.onerror = function () {
+        window.__openAiChatKitScriptQueued = false;
+        var msg =
+            'Não foi possível descarregar o script ChatKit da OpenAI (CDN). Confirme rede, firewall ou extensões de bloqueio.';
+        if (window.chatApp && window.chatApp.showErrorMessage) {
+            window.chatApp.showErrorMessage(msg);
+        }
+        console.error('[ChatKit] Script CDN falhou');
+        var st = document.getElementById('chatkit-documents-status');
+        if (st) {
+            st.textContent = msg;
+        }
+    };
     document.head.appendChild(s);
 })();
 
@@ -135,9 +158,47 @@ function bootOpenAiChatKit() {
         return;
     }
     if (typeof el.setOptions !== 'function') {
+        chatKitBootAttempts += 1;
+        if (chatKitBootAttempts > chatKitMaxBootAttempts) {
+            var stallMsg =
+                'Widget ChatKit não ficou disponível a tempo (elemento não está pronto). Recarregue a página.';
+            if (window.chatApp && window.chatApp.showErrorMessage) {
+                window.chatApp.showErrorMessage(stallMsg);
+            }
+            console.error('[ChatKit] Timeout a aguardar setOptions');
+            var st = document.getElementById('chatkit-documents-status');
+            if (st && !st.textContent) {
+                st.textContent = stallMsg;
+            }
+            return;
+        }
         setTimeout(bootOpenAiChatKit, 50);
         return;
     }
+
+    if (!el.dataset.chatkitErrBound) {
+        el.dataset.chatkitErrBound = '1';
+        el.addEventListener(
+            'chatkit.error',
+            function (ev) {
+                var d = ev.detail || {};
+                var err = d.error || d;
+                var text =
+                    (err && typeof err.message === 'string' && err.message) ||
+                    (typeof err === 'string' ? err : 'Erro ao iniciar o ChatKit.');
+                if (window.chatApp && window.chatApp.showErrorMessage) {
+                    window.chatApp.showErrorMessage(text);
+                }
+                console.error('[chatkit.error]', err);
+                var sx = document.getElementById('chatkit-documents-status');
+                if (sx && text) {
+                    sx.textContent = text;
+                }
+            },
+            false
+        );
+    }
+
     el.setOptions({
         api: {
             getClientSecret: async function (currentClientSecret) {
