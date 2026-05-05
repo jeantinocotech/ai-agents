@@ -1,4 +1,20 @@
-@php($chatkitSimpleChat = $chatkitSimpleChat ?? false)
+@php
+    $chatkitSimpleChat = $chatkitSimpleChat ?? false;
+    $compactTrailCvOnly = ($compactTrailCvOnly ?? false) === true;
+    if ($chatkitSimpleChat) {
+        $ckStartGreeting = 'Descreva a sua experiência ou o que pretende no CV. Quando o assistente tiver ajudado a estruturar o texto, copie-o para a página da trilha e guarde.';
+        $ckComposerPlaceholder = 'Escreva a sua mensagem…';
+    } elseif ($compactTrailCvOnly) {
+        $ckStartGreeting = (string) config(
+            'career_trail.cv_assistant_chat_start_greeting',
+            'Escolha um CV na lista acima e clique em «Enviar CV para revisão».'
+        );
+        $ckComposerPlaceholder = '';
+    } else {
+        $ckStartGreeting = 'Clique no botão «Enviar CV» e depois da resposta, clique no botão «Enviar Vaga».';
+        $ckComposerPlaceholder = '';
+    }
+@endphp
 <script>
 window.chatApp = {
     showSuccessMessage: function (message) {
@@ -200,6 +216,20 @@ function bootOpenAiChatKit() {
     }
 
     el.setOptions({
+        locale: 'pt',
+        startScreen: {
+            greeting: @json($ckStartGreeting),
+        },
+        composer: {
+            placeholder: @json($ckComposerPlaceholder),
+        },
+        theme: {
+            density: 'compact',
+            typography: {
+                baseSize: 14,
+                fontFamily: 'ui-sans-serif, system-ui, sans-serif, "Figtree", "Segoe UI", sans-serif',
+            },
+        },
         api: {
             getClientSecret: async function (currentClientSecret) {
                 var csrfMeta = document.querySelector('meta[name="csrf-token"]');
@@ -292,12 +322,16 @@ function bootOpenAiChatKit() {
 }
 
 function initChatKitLibrarySendButtons(chatKitEl) {
+    var chatKitLibraryCvOnly = @json($compactTrailCvOnly ?? false);
     var cvBtn = document.getElementById('chatkit-send-cv');
     var jdBtn = document.getElementById('chatkit-send-jd');
     var cvSel = document.getElementById('chatkit-default-cv');
     var jdSel = document.getElementById('chatkit-default-jd');
     var statusEl = document.getElementById('chatkit-documents-status');
-    if (!cvBtn || !jdBtn || !cvSel || !jdSel || !chatKitEl) {
+    if (!cvBtn || !cvSel || !chatKitEl) {
+        return;
+    }
+    if (!chatKitLibraryCvOnly && (!jdBtn || !jdSel)) {
         return;
     }
     var csrf = document.querySelector('meta[name="csrf-token"]');
@@ -372,6 +406,9 @@ function initChatKitLibrarySendButtons(chatKitEl) {
     }
 
     function syncJdButton() {
+        if (chatKitLibraryCvOnly) {
+            return;
+        }
         var hasJd = jdSel.value !== '';
         jdBtn.disabled = !(hasJd && jdSendAllowed);
     }
@@ -385,7 +422,9 @@ function initChatKitLibrarySendButtons(chatKitEl) {
     cvSel.addEventListener('change', function () {
         resetJdGate();
     });
-    jdSel.addEventListener('change', syncJdButton);
+    if (!chatKitLibraryCvOnly && jdSel) {
+        jdSel.addEventListener('change', syncJdButton);
+    }
 
     chatKitEl.addEventListener('chatkit.response.end', function () {
         if (waitAssistantEndAfterCv) {
@@ -470,15 +509,24 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 return chatKitEl.sendUserMessage({ text: text, newThread: true });
             })
             .then(function () {
-                setStatus(
-                    'Nova conversa iniciada (histórico anterior foi limpo). Aguarde o assistente para enviar o JD.'
-                );
-                if (window.chatApp && window.chatApp.showSuccessMessage) {
-                    window.chatApp.showSuccessMessage('CV enviado — conversa reiniciada para nova análise.');
+                if (chatKitLibraryCvOnly) {
+                    setStatus('CV enviado para revisão. Aguarde o assistente.');
+                    if (window.chatApp && window.chatApp.showSuccessMessage) {
+                        window.chatApp.showSuccessMessage('CV enviado — pode continuar a conversa no chat.');
+                    }
+                    waitAssistantEndAfterCv = false;
+                    jdSendAllowed = false;
+                } else {
+                    setStatus(
+                        'Nova conversa iniciada (histórico anterior foi limpo). Aguarde o assistente antes de clicar em «Enviar Vaga».'
+                    );
+                    if (window.chatApp && window.chatApp.showSuccessMessage) {
+                        window.chatApp.showSuccessMessage('CV enviado — conversa reiniciada para nova análise.');
+                    }
+                    jdSendAllowed = false;
+                    waitAssistantEndAfterCv = true;
+                    syncJdButton();
                 }
-                jdSendAllowed = false;
-                waitAssistantEndAfterCv = true;
-                syncJdButton();
             })
             .catch(function (err) {
                 var msg = err && err.message ? err.message : 'Erro ao enviar CV.';
@@ -495,6 +543,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
             });
     });
 
+    if (!chatKitLibraryCvOnly && jdBtn) {
     jdBtn.addEventListener('click', function () {
         var id = jdSel.value;
         if (!id) {
@@ -516,7 +565,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
             return;
         }
         jdBtn.disabled = true;
-        setStatus('A carregar JD…');
+        setStatus('A carregar a vaga…');
         fetch(contentUrl(id), {
             method: 'GET',
             headers: {
@@ -546,16 +595,16 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 return chatKitEl.sendUserMessage({ text: text });
             })
             .then(function () {
-                setStatus('JD enviado ao chat.');
+                setStatus('Vaga enviada ao chat.');
                 if (window.chatApp && window.chatApp.showSuccessMessage) {
-                    window.chatApp.showSuccessMessage('JD enviado ao chat.');
+                    window.chatApp.showSuccessMessage('Vaga enviada ao chat.');
                 }
                 if (chatkitConsultationCost > 0) {
                     pendingAtsDebit = true;
                 }
             })
             .catch(function (err) {
-                var msg = err && err.message ? err.message : 'Erro ao enviar JD.';
+                var msg = err && err.message ? err.message : 'Erro ao enviar a vaga.';
                 setStatus(msg);
                 if (window.chatApp && window.chatApp.showErrorMessage) {
                     window.chatApp.showErrorMessage(msg);
@@ -567,6 +616,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 syncJdButton();
             });
     });
+    }
 
     syncJdButton();
 }

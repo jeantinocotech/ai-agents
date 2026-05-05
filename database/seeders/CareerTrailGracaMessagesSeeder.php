@@ -35,8 +35,121 @@ class CareerTrailGracaMessagesSeeder extends Seeder
             );
         }
 
+        $atsStep = CareerTrailStep::query()->where('slug', 'ats')->first();
+        if ($atsStep !== null) {
+            $headerBody = CareerTrailGracaMessage::query()
+                ->where('process_key', 'career_trail')
+                ->where('career_trail_step_id', $atsStep->id)
+                ->where('slot', CareerTrailGracaSlots::TRAIL_STEP_HEADER)
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->value('body');
+            $atsChatSeed = trim((string) ($headerBody ?? ''));
+            if ($atsChatSeed === '') {
+                $atsChatSeed = trim((string) config('career_trail.ats_chat_graca_fallback'));
+            }
+            if ($atsChatSeed !== '') {
+                CareerTrailGracaMessage::query()->firstOrCreate(
+                    [
+                        'process_key' => 'career_trail',
+                        'career_trail_step_id' => $atsStep->id,
+                        'slot' => CareerTrailGracaSlots::ATS_CHAT_PAGE_INTRO,
+                        'sort_order' => 0,
+                    ],
+                    [
+                        'body' => $atsChatSeed,
+                        'is_active' => true,
+                    ]
+                );
+            }
+        }
+
+        $coverStep = CareerTrailStep::query()->where('slug', 'cover-letter')->first();
+        if ($coverStep !== null) {
+            $headerBodyCl = CareerTrailGracaMessage::query()
+                ->where('process_key', 'career_trail')
+                ->where('career_trail_step_id', $coverStep->id)
+                ->where('slot', CareerTrailGracaSlots::TRAIL_STEP_HEADER)
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->value('body');
+            $clChatSeed = trim((string) ($headerBodyCl ?? ''));
+            if ($clChatSeed === '') {
+                $clChatSeed = trim((string) config('career_trail.cover_letter_chat_graca_fallback'));
+            }
+            if ($clChatSeed !== '') {
+                CareerTrailGracaMessage::query()->firstOrCreate(
+                    [
+                        'process_key' => 'career_trail',
+                        'career_trail_step_id' => $coverStep->id,
+                        'slot' => CareerTrailGracaSlots::COVER_LETTER_CHAT_PAGE_INTRO,
+                        'sort_order' => 0,
+                    ],
+                    [
+                        'body' => $clChatSeed,
+                        'is_active' => true,
+                    ]
+                );
+            }
+        }
+
+        $interviewsStep = CareerTrailStep::query()->where('slug', 'interviews')->first();
+        if ($interviewsStep !== null) {
+            $headerBodyIv = CareerTrailGracaMessage::query()
+                ->where('process_key', 'career_trail')
+                ->where('career_trail_step_id', $interviewsStep->id)
+                ->where('slot', CareerTrailGracaSlots::TRAIL_STEP_HEADER)
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->value('body');
+            $ivChatSeed = trim((string) ($headerBodyIv ?? ''));
+            if ($ivChatSeed === '') {
+                $ivChatSeed = trim((string) config('career_trail.interviews_chat_graca_fallback'));
+            }
+            if ($ivChatSeed !== '') {
+                CareerTrailGracaMessage::query()->firstOrCreate(
+                    [
+                        'process_key' => 'career_trail',
+                        'career_trail_step_id' => $interviewsStep->id,
+                        'slot' => CareerTrailGracaSlots::INTERVIEWS_CHAT_PAGE_INTRO,
+                        'sort_order' => 0,
+                    ],
+                    [
+                        'body' => $ivChatSeed,
+                        'is_active' => true,
+                    ]
+                );
+            }
+        }
+
         $cvStep = CareerTrailStep::query()->where('slug', 'cv')->first();
         if ($cvStep !== null) {
+            $headerCvChat = CareerTrailGracaMessage::query()
+                ->where('process_key', 'career_trail')
+                ->where('career_trail_step_id', $cvStep->id)
+                ->where('slot', CareerTrailGracaSlots::TRAIL_STEP_HEADER)
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->value('body');
+            $cvAssistantSeed = trim((string) ($headerCvChat ?? ''));
+            if ($cvAssistantSeed === '') {
+                $cvAssistantSeed = trim((string) config('career_trail.cv_assistant_chat_graca_fallback'));
+            }
+            if ($cvAssistantSeed !== '') {
+                CareerTrailGracaMessage::query()->firstOrCreate(
+                    [
+                        'process_key' => 'career_trail',
+                        'career_trail_step_id' => $cvStep->id,
+                        'slot' => CareerTrailGracaSlots::CV_ASSISTANT_CHAT_PAGE_INTRO,
+                        'sort_order' => 0,
+                    ],
+                    [
+                        'body' => $cvAssistantSeed,
+                        'is_active' => true,
+                    ]
+                );
+            }
+
             $cvIntro = <<<'TXT'
 Pode guardar vários CVs na conta e escolher qual é o predefinido — é esse que a trilha usa para avançar (texto com pelo menos __MIN_CHARS__ caracteres) e que os assistentes tratam como «CV do perfil». CVs criados na biblioteca ATS também pode copiar ou gerir aqui.
 TXT;

@@ -231,7 +231,8 @@ test('career trail cv page shows embedded assistant when user has no cv and agen
 
     $response->assertOk();
     $html = str_replace('\\/', '/', $response->getContent());
-    expect($html)->toContain('embedded=1')->toContain('no_documents=1');
+    expect($html)->toContain('embedded=1');
+    expect($html)->not->toContain('no_documents=1');
     expect($html)->toContain('/agents/'.$agent->id.'/chat');
     $response->assertSee('btn-open-cv-assistant', false);
 });
@@ -341,6 +342,20 @@ test('career cv assistant full page uses app chat layout like ats including trai
         ->assertSee('Nesta visita', false)
         ->assertSee('Converse diretamente com o assistente', false)
         ->assertDontSee('Documentos para o assistente', false);
+});
+
+test('embedded career cv assistant without no_documents uses compact cv-only workspace', function () {
+    $user = User::factory()->create();
+    $agent = makeCareerTrailChatKitAgent();
+    bindCareerCvStepAgent((int) $agent->id);
+
+    $this->actingAs($user)
+        ->get(route('agents.chat', $agent).'?embedded=1')
+        ->assertOk()
+        ->assertViewHas('chatkitSimpleChat', false)
+        ->assertViewHas('compactTrailChatUi', true)
+        ->assertSee('Gerir CVs (Meu CV)', false)
+        ->assertDontSee('Vaga (JD)', false);
 });
 
 test('embedded no_documents is ignored for agents that are not the career cv assistant', function () {

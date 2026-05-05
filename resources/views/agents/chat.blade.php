@@ -1,13 +1,36 @@
 <x-app-layout>
-    <div class="py-12">
+    <div @class(['py-4 sm:py-6' => $compactTrailChatUi ?? false, 'py-12' => ! ($compactTrailChatUi ?? false)])>
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
+                <div @class(['p-4 sm:p-5 text-gray-900' => $compactTrailChatUi ?? false, 'p-6 text-gray-900' => ! ($compactTrailChatUi ?? false)])>
                     @if (session('status'))
                         <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900" role="status">
                             {{ session('status') }}
                         </div>
                     @endif
+                    @if ($compactTrailChatUi ?? false)
+                        <div class="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-slate-100 pb-2">
+                            <h2 class="text-base font-semibold tracking-tight text-slate-900 sm:text-lg">{{ $compactTrailChatTitle ?? 'Chat' }}</h2>
+                            @if ($agent->isChatKitWorkflow())
+                                <p class="text-xs text-slate-600">
+                                    Consumidos na sessão:
+                                    <strong id="chatkit-session-tokens-used" class="tabular-nums font-semibold text-amber-700">0</strong>
+                                </p>
+                            @endif
+                        </div>
+                        @if (! empty($compactTrailStep))
+                            @include('agents.partials.compact-trail-graca-frame', [
+                                'gracaStep' => $compactTrailStep,
+                                'gracaSlot' => match ($compactTrailStep->slug) {
+                                    'ats' => \App\Support\CareerTrailGracaSlots::ATS_CHAT_PAGE_INTRO,
+                                    'cover-letter' => \App\Support\CareerTrailGracaSlots::COVER_LETTER_CHAT_PAGE_INTRO,
+                                    'interviews' => \App\Support\CareerTrailGracaSlots::INTERVIEWS_CHAT_PAGE_INTRO,
+                                    'cv' => \App\Support\CareerTrailGracaSlots::CV_ASSISTANT_CHAT_PAGE_INTRO,
+                                    default => \App\Support\CareerTrailGracaSlots::ATS_CHAT_PAGE_INTRO,
+                                },
+                            ])
+                        @endif
+                    @else
                     <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
                         <div class="flex min-w-0 flex-wrap items-center gap-3">
                             <a href="{{ route('career-trail.index') }}" class="shrink-0 text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline">
@@ -55,9 +78,11 @@
                             </a>
                         </div>
                     </div>
+                    @endif
 
                     @if($agent->isChatKitWorkflow())
                     @php
+                        $compactTrailCvOnly = ($compactTrailChatUi ?? false) && (($compactTrailStep->slug ?? null) === 'cv');
                         $ckLib = $documentLibrary ?? ['cvs' => [], 'jds' => [], 'defaults' => ['cv_document_id' => null, 'jd_document_id' => null]];
                         $ckDefCv = $ckLib['defaults']['cv_document_id'] ?? null;
                         $ckDefJd = $ckLib['defaults']['jd_document_id'] ?? null;
@@ -68,26 +93,29 @@
                     @if ($chatkitSimpleChat ?? false)
                         @include('agents.partials.chatkit-workspace-simple')
                     @else
-                        @include('agents.partials.chatkit-workspace')
+                        @include('agents.partials.chatkit-workspace', [
+                            'compactTrail' => $compactTrailChatUi ?? false,
+                            'compactCvOnly' => $compactTrailCvOnly,
+                        ])
                     @endif
                     @else
                     <div id="cv-reuse-banner" class="hidden mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950"></div>
                     <!-- Interface de chat -->
                     <div class="border border-gray-300 rounded-lg">
                         <!-- Área de exibição do chat -->
-                        <div id="chatBox" class="p-4 border h-80 overflow-y-scroll mb-4"></div>
+                        <div id="chatBox" class="border mb-4 h-80 overflow-y-scroll p-3 text-sm leading-snug text-gray-800"></div>
 
                         <!-- Área de entrada de mensagem -->
-                        <div class="border-t border-gray-300 p-4">
+                        <div class="border-t border-gray-300 p-3">
 
-                            <div id="dynamic-inputs" class="mb-4"></div>
+                            <div id="dynamic-inputs" class="mb-3 text-sm"></div>
 
-                            <form id="message-form" class="flex">
-                                <input type="text" id="userMessage" 
-                                    class="flex-1 border border-gray-300 rounded-lg px-4 py-2 mr-2" 
+                            <form id="message-form" class="flex gap-2">
+                                <input type="text" id="userMessage"
+                                    class="mr-0 min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm"
                                     placeholder="Digite sua mensagem...">
-                                <button type="submit" 
-                                        class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg">
+                                <button type="submit"
+                                        class="shrink-0 rounded-lg bg-blue-500 px-3 py-2 text-sm text-white hover:bg-blue-600">
                                     Enviar
                                 </button>
                             </form>

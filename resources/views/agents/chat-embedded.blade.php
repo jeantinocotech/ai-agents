@@ -14,10 +14,30 @@
             </div>
         </div>
 
+        @if ($compactTrailChatUi ?? false)
+            {{-- Tokens da sessão ficam na barra superior (evita id duplicado chatkit-session-tokens-used). --}}
+            <div class="mb-3 border-b border-slate-100 pb-2">
+                <h2 class="text-base font-semibold tracking-tight text-slate-900 sm:text-lg">{{ $compactTrailChatTitle ?? 'Chat' }}</h2>
+            </div>
+            @if (! empty($compactTrailStep))
+                @include('agents.partials.compact-trail-graca-frame', [
+                    'gracaStep' => $compactTrailStep,
+                    'gracaSlot' => match ($compactTrailStep->slug) {
+                        'ats' => \App\Support\CareerTrailGracaSlots::ATS_CHAT_PAGE_INTRO,
+                        'cover-letter' => \App\Support\CareerTrailGracaSlots::COVER_LETTER_CHAT_PAGE_INTRO,
+                        'interviews' => \App\Support\CareerTrailGracaSlots::INTERVIEWS_CHAT_PAGE_INTRO,
+                        'cv' => \App\Support\CareerTrailGracaSlots::CV_ASSISTANT_CHAT_PAGE_INTRO,
+                        default => \App\Support\CareerTrailGracaSlots::ATS_CHAT_PAGE_INTRO,
+                    },
+                ])
+            @endif
+        @endif
+
         @php
             $motivationLettersIndexUrl = $motivationLettersIndexUrl ?? null;
             $interviewPreparationsIndexUrl = $interviewPreparationsIndexUrl ?? null;
             $chatkitSimpleChat = $chatkitSimpleChat ?? false;
+            $compactTrailCvOnly = ($compactTrailChatUi ?? false) && (($compactTrailStep->slug ?? null) === 'cv');
             $ckLib = $documentLibrary ?? ['cvs' => [], 'jds' => [], 'defaults' => ['cv_document_id' => null, 'jd_document_id' => null]];
             $ckDefCv = $ckLib['defaults']['cv_document_id'] ?? null;
             $ckDefJd = $ckLib['defaults']['jd_document_id'] ?? null;
@@ -29,7 +49,10 @@
         @if ($chatkitSimpleChat)
             @include('agents.partials.chatkit-workspace-simple')
         @else
-            @include('agents.partials.chatkit-workspace')
+            @include('agents.partials.chatkit-workspace', [
+                'compactTrail' => $compactTrailChatUi ?? false,
+                'compactCvOnly' => $compactTrailCvOnly,
+            ])
         @endif
 
         <div id="modal-container"></div>

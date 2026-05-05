@@ -1,4 +1,67 @@
 <script>
+// Avaliação rápida por polegar (1 ou 5 estrelas equivalentes)
+window.submitQuickThumbRating = function (chatSessionId, agentId, rating) {
+    const row = document.getElementById('chat-rating-thumb-row');
+    if (!row || row.dataset.submitting === '1') {
+        return;
+    }
+    row.dataset.submitting = '1';
+    row.querySelectorAll('button').forEach(function (btn) {
+        btn.disabled = true;
+    });
+
+    const fd = new FormData();
+    fd.append('agent_id', String(agentId));
+    fd.append('chat_session_id', String(chatSessionId));
+    fd.append('rating', String(rating));
+    const csrf = document.querySelector('meta[name="csrf-token"]');
+    const token = csrf ? csrf.getAttribute('content') : '';
+
+    fetch('/ratings/quick-store', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': token,
+            'Accept': 'application/json',
+        },
+        body: fd,
+    })
+        .then(function (response) {
+            return response.json().then(function (data) {
+                return { ok: response.ok, status: response.status, data: data };
+            });
+        })
+        .then(function (result) {
+            if (result.ok && result.data.success) {
+                if (window.chatApp && typeof window.chatApp.showSuccessMessage === 'function') {
+                    window.chatApp.showSuccessMessage(result.data.message);
+                }
+                const r = document.getElementById('chat-rating-thumb-row');
+                if (r) {
+                    r.innerHTML = '<span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800 ring-1 ring-emerald-200">Avaliado</span>';
+                }
+            } else {
+                const msg = (result.data && (result.data.message || result.data.error)) || 'Erro ao salvar avaliação';
+                if (window.chatApp && typeof window.chatApp.showErrorMessage === 'function') {
+                    window.chatApp.showErrorMessage(msg);
+                }
+                row.dataset.submitting = '0';
+                row.querySelectorAll('button').forEach(function (btn) {
+                    btn.disabled = false;
+                });
+            }
+        })
+        .catch(function (error) {
+            console.error('Erro:', error);
+            if (window.chatApp && typeof window.chatApp.showErrorMessage === 'function') {
+                window.chatApp.showErrorMessage('Erro ao salvar avaliação');
+            }
+            row.dataset.submitting = '0';
+            row.querySelectorAll('button').forEach(function (btn) {
+                btn.disabled = false;
+            });
+        });
+};
+
 // Função para mostrar o modal de avaliação (global)
 window.showRatingModal = function(chatSessionId, agentName) {
     console.log('Abrindo modal de avaliação:', chatSessionId, agentName);
@@ -72,13 +135,17 @@ function initializeRatingModal() {
             if (data.success) {
                 window.chatApp.showSuccessMessage(data.message);
                 closeRatingModal();
-                
-                // Atualizar o botão de avaliação se estiver na página
-                const evaluateButton = document.querySelector('button[onclick*="showRatingModal"]');
-                if (evaluateButton) {
-                    evaluateButton.style.display = 'none';
-                    const parent = evaluateButton.parentElement;
-                    parent.innerHTML = '<span class="text-sm text-green-600">✅ Avaliado</span>';
+
+                const thumbRow = document.getElementById('chat-rating-thumb-row');
+                if (thumbRow) {
+                    thumbRow.innerHTML = '<span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-800 ring-1 ring-emerald-200">Avaliado</span>';
+                } else {
+                    const evaluateButton = document.querySelector('button[onclick*="showRatingModal"]');
+                    if (evaluateButton) {
+                        evaluateButton.style.display = 'none';
+                        const parent = evaluateButton.parentElement;
+                        parent.innerHTML = '<span class="text-sm text-green-600">✅ Avaliado</span>';
+                    }
                 }
             } else {
                 window.chatApp.showErrorMessage(data.message || 'Erro ao salvar avaliação');

@@ -52,6 +52,7 @@ class AgentController extends Controller
         $steps = $agent->steps()->orderBy('step_order')->get();
 
         $boundTrailStep = CareerTrailAgentAccess::trailStepBoundToAgent($agent);
+
         if (
             $boundTrailStep !== null
             && $boundTrailStep->slug === 'ats'
@@ -119,6 +120,30 @@ class AgentController extends Controller
             && $isCareerCvAssistantAgent
             && $agent->isChatKitWorkflow();
 
+        $trailChatUiCompactEligible = $boundTrailStep !== null
+            && in_array($boundTrailStep->slug, ['ats', 'cover-letter', 'interviews', 'cv'], true)
+            && $agent->isChatKitWorkflow()
+            && ! $chatkitSimpleChat;
+
+        // Modo compacto na app: não em iframe, ou iframe só para o assistente de CV (Meu CV) — alinhado aos restantes passos sem JD.
+        $compactTrailChatUi = $trailChatUiCompactEligible
+            && (
+                ! $request->boolean('embedded')
+                || ($request->boolean('embedded') && $boundTrailStep->slug === 'cv')
+            );
+
+        $compactTrailChatTitle = $compactTrailChatUi
+            ? match ($boundTrailStep->slug) {
+                'ats' => (string) config('career_trail.ats_chat_heading', 'ATS Filtro'),
+                'cover-letter' => (string) config('career_trail.cover_letter_chat_heading', 'Carta de motivação'),
+                'interviews' => (string) config('career_trail.interviews_chat_heading', 'Entrevista'),
+                'cv' => (string) config('career_trail.cv_assistant_chat_heading', 'Assistente de CV'),
+                default => $agent->name,
+            }
+        : '';
+
+        $compactTrailStep = $compactTrailChatUi ? $boundTrailStep : null;
+
         $documentLibrary = $chatkitSimpleChat
             ? null
             : ChatKitDocumentLibraryService::forUserAndAgent((int) auth()->id(), $agent);
@@ -161,7 +186,10 @@ class AgentController extends Controller
                 'jdContentAgentId',
                 'jdDefaultsUrl',
                 'motivationLettersIndexUrl',
-                'interviewPreparationsIndexUrl'
+                'interviewPreparationsIndexUrl',
+                'compactTrailChatUi',
+                'compactTrailChatTitle',
+                'compactTrailStep'
             ));
         }
 
@@ -177,7 +205,10 @@ class AgentController extends Controller
             'jdContentAgentId',
             'jdDefaultsUrl',
             'motivationLettersIndexUrl',
-            'interviewPreparationsIndexUrl'
+            'interviewPreparationsIndexUrl',
+            'compactTrailChatUi',
+            'compactTrailChatTitle',
+            'compactTrailStep'
         ));
     }
 

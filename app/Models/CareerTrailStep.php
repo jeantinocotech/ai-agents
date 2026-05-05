@@ -97,8 +97,8 @@ class CareerTrailStep extends Model
 
     /**
      * URL do assistente ChatKit do passo «cv» (agente ligado em `career_trail_steps.agent_id` na administração).
-     * Por defeito só envia `no_documents=1`: usa o mesmo layout de aplicação que o chat ATS (trilha, saldo, tokens).
-     * Com `$forIframe` true acrescenta `embedded=1` para usar em iframes (ex.: modal em `/trilha/cv`).
+     * Sem `no_documents`: a biblioteca mostra só CV (modo compacto da trilha), como nos outros chats de etapa.
+     * Com `$forIframe` true: `embedded=1` para iframes (ex. modal em `/trilha/cv`).
      */
     public static function cvEmbeddedCreatorChatUrl(bool $forIframe = false): ?string
     {
@@ -113,9 +113,9 @@ class CareerTrailStep extends Model
             return null;
         }
 
-        $url = route('agents.chat', $assistant).'?no_documents=1';
+        $url = route('agents.chat', $assistant);
 
-        return $forIframe ? $url.'&embedded=1' : $url;
+        return $forIframe ? $url.'?embedded=1' : $url;
     }
 
     /**
