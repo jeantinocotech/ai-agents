@@ -31,6 +31,19 @@
                 <form id="token-checkout-form" class="space-y-4" data-url="{{ route('tokens.purchase.process') }}">
                     @csrf
 
+                    <div>
+                        <label for="token-pack-quantity" class="block text-sm font-medium text-gray-700 mb-1">Quantidade de pacotes</label>
+                        <select id="token-pack-quantity" name="quantity"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md">
+                            @for ($i = 1; $i <= 10; $i++)
+                                <option value="{{ $i }}" @selected(old('quantity', 1) == $i)>{{ $i }}x</option>
+                            @endfor
+                        </select>
+                        <p class="mt-1 text-xs text-gray-500">
+                            Cada pacote tem {{ number_format($tokensAmount, 0, ',', '.') }} tokens.
+                        </p>
+                    </div>
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 mb-1">Nome</label>
@@ -153,9 +166,16 @@
 
             <div class="bg-white rounded-lg shadow-sm border p-6">
                 <h2 class="text-xl font-semibold text-gray-900 mb-6">Resumo</h2>
-                <p class="text-gray-700 mb-2">Pacote atual (definido pelo administrador)</p>
-                <p class="text-2xl font-bold text-green-600 mb-2">{{ number_format($tokensAmount, 0, ',', '.') }} tokens</p>
-                <p class="text-lg text-gray-800">R$ {{ number_format($price, 2, ',', '.') }}</p>
+                <p class="text-gray-700 mb-2">Pacote atual</p>
+                <p class="text-2xl font-bold text-green-600 mb-2">
+                    <span id="token-pack-total-amount">{{ number_format($tokensAmount, 0, ',', '.') }}</span> tokens
+                </p>
+                <p class="text-lg text-gray-800">
+                    R$ <span id="token-pack-total-price">{{ number_format($price, 2, ',', '.') }}</span>
+                </p>
+                <p class="mt-1 text-xs text-gray-500">
+                    ({{ number_format($tokensAmount, 0, ',', '.') }} tokens por pacote · R$ {{ number_format($price, 2, ',', '.') }} cada)
+                </p>
                 <p class="text-sm text-gray-500 mt-4">Saldo atual: <strong>{{ number_format(auth()->user()->token_balance, 0, ',', '.') }}</strong> tokens</p>
                 <p class="text-sm mt-3">
                     <a href="{{ route('tokens.history') }}" class="text-green-700 font-medium hover:underline">Ver histórico de compras</a>
@@ -284,6 +304,25 @@
             }
             paymentMethods.forEach(el => el.addEventListener('change', toggleCard));
             toggleCard();
+
+            const qtySel = document.getElementById('token-pack-quantity');
+            const totalAmountEl = document.getElementById('token-pack-total-amount');
+            const totalPriceEl = document.getElementById('token-pack-total-price');
+            const baseTokens = {{ (int) $tokensAmount }};
+            const basePrice = {{ json_encode((float) $price) }};
+            const fmtTokens = new Intl.NumberFormat('pt-BR');
+            const fmtMoney = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            function syncPackTotals() {
+                if (!qtySel || !totalAmountEl || !totalPriceEl) return;
+                const q = Math.max(1, parseInt(qtySel.value || '1', 10) || 1);
+                totalAmountEl.textContent = fmtTokens.format(baseTokens * q);
+                totalPriceEl.textContent = fmtMoney.format(basePrice * q);
+            }
+            if (qtySel) {
+                qtySel.addEventListener('change', syncPackTotals);
+                syncPackTotals();
+            }
 
             document.getElementById('close-pix-modal').addEventListener('click', () => pixModal.classList.add('hidden'));
             document.getElementById('copy-pix-code').addEventListener('click', function () {

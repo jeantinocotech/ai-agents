@@ -55,6 +55,7 @@ class TokenPackController extends Controller
             'number' => ['required', 'string', 'max:10'],
             'city' => ['required', 'string', 'max:60'],
             'state' => ['required', 'string', 'size:2', 'regex:/^[A-Za-z]{2}$/'],
+            'quantity' => ['nullable', 'integer', 'min:1', 'max:10'],
             'payment_method' => ['required', 'in:credit_card,pix,boleto'],
             'card_number' => ['required_if:payment_method,credit_card', 'nullable', 'string'],
             'card_expiry' => ['required_if:payment_method,credit_card', 'nullable', 'string'],
@@ -62,11 +63,15 @@ class TokenPackController extends Controller
             'card_holder_name' => ['required_if:payment_method,credit_card', 'nullable', 'string'],
         ]);
 
-        $tokensAmount = (int) Setting::get('token_pack_amount', 0);
-        $price = (float) Setting::get('token_pack_price', 0);
-        if ($tokensAmount < 1 || $price <= 0) {
+        $tokensPerPack = (int) Setting::get('token_pack_amount', 0);
+        $pricePerPack = (float) Setting::get('token_pack_price', 0);
+        if ($tokensPerPack < 1 || $pricePerPack <= 0) {
             return response()->json(['success' => false, 'error' => 'Pacote de tokens não configurado.'], 400);
         }
+
+        $qty = max(1, min(10, (int) ($request->input('quantity') ?? 1)));
+        $tokensAmount = $tokensPerPack * $qty;
+        $price = round($pricePerPack * $qty, 2);
 
         if ($request->boolean('save_profile_data')) {
             $u = Auth::user();
