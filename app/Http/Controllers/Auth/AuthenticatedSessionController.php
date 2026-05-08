@@ -73,6 +73,11 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        $welcome = max(0, (int) \App\Models\Setting::get('tokens_welcome_amount', 0));
+        $days = max(1, (int) \App\Models\Setting::get('tokens_renewal_interval_days', 30));
+        $msg = 'Você ganha '.$welcome.' tokens para testar. A cada '.$days.' dias, renovamos para '.$welcome.'. Se você decidir comprar tokens, o acesso passa a ser via compra de pacotes.';
+
+        return redirect('/')
+            ->with('info', $msg);
     }
 }

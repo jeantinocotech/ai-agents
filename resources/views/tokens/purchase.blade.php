@@ -1,10 +1,23 @@
 <x-app-layout>
-    <div class="max-w-6xl mx-auto py-12 px-6">
-        <div class="mb-8">
-            <h1 class="text-3xl font-bold text-gray-900 mb-2">Comprar tokens</h1>
-            <p class="text-gray-600">
-                Use tokens para conversar com os agentes. Após o pagamento confirmado, o saldo é creditado automaticamente.
-            </p>
+    <div class="max-w-6xl mx-auto py-10 px-6">
+        <div class="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div class="flex flex-col gap-6 md:flex-row md:items-start">
+                <div class="shrink-0">
+                    <img src="{{ asset(config('career_trail.mentor_avatar', 'img/graca-avatar.png')) }}"
+                         alt="{{ config('career_trail.mentor_label', 'Sra. Graça') }}"
+                         class="h-24 w-24 rounded-2xl object-cover shadow-sm ring-4 ring-white" />
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-violet-700">Tokens</p>
+                    <h1 class="mt-1 text-3xl font-extrabold tracking-tight text-slate-900">Comprar tokens</h1>
+                    <p class="mt-3 text-sm text-slate-600">
+                        Use tokens para conversar com os agentes. Após o pagamento confirmado, o saldo é creditado automaticamente.
+                    </p>
+                    <div class="mt-4">
+                        <x-token-policy-note />
+                    </div>
+                </div>
+            </div>
         </div>
 
         @if (session('info'))
@@ -151,7 +164,7 @@
         </div>
     </div>
 
-    <div id="pix-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+    <div id="pix-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-bold">PIX</h3>
@@ -171,7 +184,7 @@
         </div>
     </div>
 
-    <div id="checkout-external-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden p-4">
+    <div id="checkout-external-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50 p-4">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-xl font-bold text-gray-900">Pagamento externo</h3>
@@ -180,7 +193,7 @@
             <p id="external-checkout-hint" class="text-sm text-gray-600 mb-4"></p>
             <div class="space-y-3">
                 <a id="checkout-external-link" href="#" target="_blank" rel="noopener noreferrer"
-                   class="hidden block w-full text-center bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700">
+                   class="hidden w-full rounded-lg bg-blue-600 px-4 py-3 text-center font-medium text-white hover:bg-blue-700">
                     Abrir no Asaas
                 </a>
                 <p id="external-checkout-status" class="text-sm text-yellow-900 bg-yellow-50 p-3 rounded-md">À espera da confirmação do pagamento…</p>

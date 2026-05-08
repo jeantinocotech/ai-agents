@@ -35,6 +35,44 @@ class TokenWalletService
         return max(0, (int) Setting::get('tokens_renewal_amount', 0));
     }
 
+    /**
+     * Renovação gratuita: coloca o saldo exatamente no valor de boas-vindas (pode reduzir ou aumentar).
+     *
+     * @param  array<string, mixed>  $meta
+     */
+    public function resetBalanceToWelcome(User $user, array $meta = []): void
+    {
+        $welcome = $this->welcomeAmount();
+
+        DB::transaction(function () use ($user, $meta, $welcome) {
+            $locked = User::query()->whereKey($user->id)->lockForUpdate()->first();
+            if (! $locked) {
+                return;
+            }
+
+            $oldBalance = (int) $locked->token_balance;
+            $newBalance = (int) $welcome;
+            $delta = $newBalance - $oldBalance;
+
+            if ($delta === 0) {
+                return;
+            }
+
+            $locked->token_balance = $newBalance;
+            $locked->save();
+
+            TokenTransaction::query()->create([
+                'user_id' => $locked->id,
+                'delta' => $delta,
+                'balance_after' => $newBalance,
+                'type' => TokenTransaction::TYPE_RENEWAL,
+                'reference_type' => null,
+                'reference_id' => null,
+                'meta' => $meta,
+            ]);
+        });
+    }
+
     public function grantWelcome(User $user): void
     {
         $amount = $this->welcomeAmount();

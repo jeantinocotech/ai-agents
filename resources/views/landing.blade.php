@@ -1,4 +1,24 @@
 <x-app-layout>
+    @if (session('status') || session('info') || session('success'))
+        <div class="mx-auto max-w-5xl px-4 pt-6">
+            @if (session('status'))
+                <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950" role="status">
+                    {{ session('status') }}
+                </div>
+            @endif
+            @if (session('success'))
+                <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950" role="status">
+                    {{ session('success') }}
+                </div>
+            @endif
+            @if (session('info'))
+                <div class="mb-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950" role="status">
+                    {{ session('info') }}
+                </div>
+            @endif
+        </div>
+    @endif
+
     @auth
         {{-- Utilizador autenticado sem CV de perfil: orientação no passo 1 (a rota / redireciona para a trilha quando já existe CV). --}}
         <section class="border-b border-violet-200/80 bg-gradient-to-b from-violet-50 via-white to-slate-50 py-14 sm:py-20">
@@ -57,6 +77,9 @@
                             </a>
                         @endif
                     </div>
+                    <div class="mt-6">
+                        <x-token-policy-note />
+                    </div>
                     <p class="mt-6 text-sm text-slate-600">
                         <a href="{{ route('career-trail.index') }}" class="font-medium text-indigo-600 hover:text-indigo-800 hover:underline">Ver o mapa da trilha</a>
                         <span class="text-slate-400"> — ou explore as etapas abaixo.</span>
@@ -85,6 +108,9 @@
                            class="inline-block px-8 py-3 rounded-full border border-white/30 text-white font-semibold hover:bg-white/10 transition">
                             Entrar
                         </a>
+                    </div>
+                    <div class="mt-6 max-w-2xl">
+                        <x-token-policy-note class="bg-white/10 text-white border-white/20 ring-white/10" />
                     </div>
                 </div>
                 <div class="md:w-1/3 flex justify-center">

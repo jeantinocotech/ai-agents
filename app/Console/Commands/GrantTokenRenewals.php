@@ -15,7 +15,7 @@ class GrantTokenRenewals extends Command
 
     public function handle(TokenWalletService $wallet): int
     {
-        $amount = $wallet->renewalAmount();
+        $target = $wallet->welcomeAmount();
 
         $query = User::query()
             ->where(function ($q) {
@@ -29,8 +29,13 @@ class GrantTokenRenewals extends Command
                 continue;
             }
 
-            if ($amount > 0) {
-                $wallet->credit($user, $amount, TokenTransaction::TYPE_RENEWAL, ['source' => 'scheduled']);
+            // Opt-out permanente: quem já comprou tokens não recebe renovação gratuita.
+            $hasPurchase = TokenTransaction::query()
+                ->where('user_id', $user->id)
+                ->where('type', TokenTransaction::TYPE_PURCHASE)
+                ->exists();
+            if (! $hasPurchase) {
+                $wallet->resetBalanceToWelcome($user, ['source' => 'scheduled', 'target' => $target]);
             }
 
             $wallet->scheduleNextRenewal($user->fresh());
