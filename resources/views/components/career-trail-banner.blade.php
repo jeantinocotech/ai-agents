@@ -15,7 +15,7 @@
     $atsAllowsCheckBanner = (bool) ($context['atsAllowsCheck'] ?? false);
 @endphp
 
-<div class="sticky top-16 z-40 border-b border-violet-200/80 bg-gradient-to-r from-violet-50/95 via-white/95 to-indigo-50/95 shadow-sm backdrop-blur-sm">
+<div class="hidden sm:block sm:sticky sm:top-16 z-40 border-b border-violet-200/80 bg-gradient-to-r from-violet-50/95 via-white/95 to-indigo-50/95 shadow-sm backdrop-blur-sm">
     <div class="mx-auto max-w-7xl px-4 py-1.5 sm:px-6 lg:px-8">
         <div class="-mx-1 flex flex-wrap items-center gap-x-2 gap-y-1.5 pb-1.5 sm:gap-x-3 sm:pb-0">
             <div class="flex min-w-0 shrink-0 items-center gap-1 px-1 sm:gap-1.5">
