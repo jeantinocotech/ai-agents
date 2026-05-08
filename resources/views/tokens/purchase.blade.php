@@ -31,17 +31,25 @@
                 <form id="token-checkout-form" class="space-y-4" data-url="{{ route('tokens.purchase.process') }}">
                     @csrf
 
-                    <div>
-                        <label for="token-pack-quantity" class="block text-sm font-medium text-gray-700 mb-1">Quantidade de pacotes</label>
-                        <select id="token-pack-quantity" name="quantity"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md">
-                            @for ($i = 1; $i <= 10; $i++)
-                                <option value="{{ $i }}" @selected(old('quantity', 1) == $i)>{{ $i }}x</option>
-                            @endfor
-                        </select>
-                        <p class="mt-1 text-xs text-gray-500">
-                            Cada pacote tem {{ number_format($tokensAmount, 0, ',', '.') }} tokens.
-                        </p>
+                    <div class="rounded-lg border border-slate-200 bg-slate-50/60 p-2.5">
+                        <div class="grid grid-cols-3 gap-2">
+                            <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-600">Pacotes</p>
+                            <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-600">Tokens</p>
+                            <p class="text-[11px] font-semibold uppercase tracking-wide text-slate-600">Total</p>
+
+                            <div>
+                                <input id="token-pack-quantity" name="quantity"
+                                       type="number" inputmode="numeric" min="1" max="100" step="1"
+                                       value="{{ (int) old('quantity', 1) }}"
+                                       class="w-20 bg-transparent p-0 text-sm font-semibold tabular-nums text-slate-900 focus:outline-none" />
+                            </div>
+                            <p class="self-center text-sm font-semibold tabular-nums text-slate-900">
+                                <span id="token-pack-total-tokens-inline">{{ number_format($tokensAmount, 0, ',', '.') }}</span>
+                            </p>
+                            <p class="self-center text-sm font-semibold tabular-nums text-slate-900">
+                                R$ <span id="token-pack-total-price-inline">{{ number_format($price, 2, ',', '.') }}</span>
+                            </p>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -166,15 +174,11 @@
 
             <div class="bg-white rounded-lg shadow-sm border p-6">
                 <h2 class="text-xl font-semibold text-gray-900 mb-6">Resumo</h2>
-                <p class="text-gray-700 mb-2">Pacote atual</p>
                 <p class="text-2xl font-bold text-green-600 mb-2">
                     <span id="token-pack-total-amount">{{ number_format($tokensAmount, 0, ',', '.') }}</span> tokens
                 </p>
                 <p class="text-lg text-gray-800">
                     R$ <span id="token-pack-total-price">{{ number_format($price, 2, ',', '.') }}</span>
-                </p>
-                <p class="mt-1 text-xs text-gray-500">
-                    ({{ number_format($tokensAmount, 0, ',', '.') }} tokens por pacote · R$ {{ number_format($price, 2, ',', '.') }} cada)
                 </p>
                 <p class="text-sm text-gray-500 mt-4">Saldo atual: <strong>{{ number_format(auth()->user()->token_balance, 0, ',', '.') }}</strong> tokens</p>
                 <p class="text-sm mt-3">
@@ -308,19 +312,53 @@
             const qtySel = document.getElementById('token-pack-quantity');
             const totalAmountEl = document.getElementById('token-pack-total-amount');
             const totalPriceEl = document.getElementById('token-pack-total-price');
+            const totalTokensInlineEl = document.getElementById('token-pack-total-tokens-inline');
+            const totalPriceInlineEl = document.getElementById('token-pack-total-price-inline');
             const baseTokens = {{ (int) $tokensAmount }};
             const basePrice = {{ json_encode((float) $price) }};
             const fmtTokens = new Intl.NumberFormat('pt-BR');
             const fmtMoney = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+            function clampQty(raw) {
+                const v = parseInt(String(raw || '1'), 10);
+                if (Number.isNaN(v)) return 1;
+                const c = Math.max(1, Math.min(100, v));
+                if (c <= 10) {
+                    return c;
+                }
+                // Para exibição/calculo: 11–14 conta como 15 (primeiro valor válido após 10).
+                if (c < 15) {
+                    return 15;
+                }
+                const snapped = Math.round(c / 5) * 5;
+                return Math.max(15, Math.min(100, snapped));
+            }
+
+            function stepUpQty(current) {
+                const c = clampQty(current);
+                if (c < 10) return c + 1;
+                if (c === 10) return 15;
+                return Math.min(100, c + 5);
+            }
+
+            function stepDownQty(current) {
+                const c = clampQty(current);
+                if (c > 15) return c - 5;
+                if (c === 15) return 10;
+                return Math.max(1, c - 1);
+            }
+
             function syncPackTotals() {
-                if (!qtySel || !totalAmountEl || !totalPriceEl) return;
-                const q = Math.max(1, parseInt(qtySel.value || '1', 10) || 1);
-                totalAmountEl.textContent = fmtTokens.format(baseTokens * q);
-                totalPriceEl.textContent = fmtMoney.format(basePrice * q);
+                if (!qtySel) return;
+                const q = clampQty(qtySel.value);
+                if (totalAmountEl) totalAmountEl.textContent = fmtTokens.format(baseTokens * q);
+                if (totalPriceEl) totalPriceEl.textContent = fmtMoney.format(basePrice * q);
+                if (totalTokensInlineEl) totalTokensInlineEl.textContent = fmtTokens.format(baseTokens * q);
+                if (totalPriceInlineEl) totalPriceInlineEl.textContent = fmtMoney.format(basePrice * q);
             }
             if (qtySel) {
                 qtySel.addEventListener('change', syncPackTotals);
+                qtySel.addEventListener('input', syncPackTotals);
                 syncPackTotals();
             }
 

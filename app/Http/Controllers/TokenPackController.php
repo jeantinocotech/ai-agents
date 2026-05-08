@@ -55,7 +55,24 @@ class TokenPackController extends Controller
             'number' => ['required', 'string', 'max:10'],
             'city' => ['required', 'string', 'max:60'],
             'state' => ['required', 'string', 'size:2', 'regex:/^[A-Za-z]{2}$/'],
-            'quantity' => ['nullable', 'integer', 'min:1', 'max:10'],
+            'quantity' => [
+                'nullable',
+                'integer',
+                'min:1',
+                'max:100',
+                function (string $attribute, mixed $value, \Closure $fail) {
+                    $q = (int) $value;
+                    if ($q <= 0) {
+                        return;
+                    }
+                    if ($q <= 10) {
+                        return;
+                    }
+                    if ($q % 5 !== 0) {
+                        $fail('A quantidade deve ser 1–10 ou múltiplos de 5 até 100.');
+                    }
+                },
+            ],
             'payment_method' => ['required', 'in:credit_card,pix,boleto'],
             'card_number' => ['required_if:payment_method,credit_card', 'nullable', 'string'],
             'card_expiry' => ['required_if:payment_method,credit_card', 'nullable', 'string'],
@@ -69,7 +86,11 @@ class TokenPackController extends Controller
             return response()->json(['success' => false, 'error' => 'Pacote de tokens não configurado.'], 400);
         }
 
-        $qty = max(1, min(10, (int) ($request->input('quantity') ?? 1)));
+        $qty = max(1, min(100, (int) ($request->input('quantity') ?? 1)));
+        if ($qty > 10) {
+            $qty = (int) (round($qty / 5) * 5);
+            $qty = max(15, min(100, $qty));
+        }
         $tokensAmount = $tokensPerPack * $qty;
         $price = round($pricePerPack * $qty, 2);
 
