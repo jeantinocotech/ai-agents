@@ -79,7 +79,9 @@
                         @endif
                     </div>
                     <div class="mt-6">
-                        <x-token-policy-note />
+                        @if (! session('info'))
+                            <x-token-policy-note />
+                        @endif
                     </div>
                     <p class="mt-6 text-sm text-slate-600">
                         <a href="{{ route('career-trail.index') }}" class="font-medium text-indigo-600 hover:text-indigo-800 hover:underline">Ver o mapa da trilha</a>
@@ -111,7 +113,9 @@
                         </a>
                     </div>
                     <div class="mt-6 max-w-2xl">
-                        <x-token-policy-note />
+                        @if (! session('info'))
+                            <x-token-policy-note />
+                        @endif
                     </div>
                 </div>
                 <div class="md:w-1/3 flex justify-center">
