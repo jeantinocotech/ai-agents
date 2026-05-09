@@ -122,6 +122,23 @@
 
     <!-- Mobile Menu -->
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden bg-[#23272a]">
+        @auth
+            <div class="px-4 pt-4">
+                <div class="flex items-center justify-between rounded-xl border border-white/10 bg-black/20 px-3 py-3">
+                    <div class="min-w-0">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-gray-400">Tokens</p>
+                        <p class="mt-0.5 text-sm text-gray-100">
+                            Saldo:
+                            <strong class="tabular-nums">{{ number_format((int) Auth::user()->token_balance, 0, ',', '.') }}</strong>
+                        </p>
+                    </div>
+                    <a href="{{ route('tokens.purchase') }}"
+                       class="shrink-0 inline-flex items-center rounded-lg bg-teal-500 px-3 py-2 text-sm font-semibold text-black hover:bg-teal-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#23272a]">
+                        Comprar
+                    </a>
+                </div>
+            </div>
+        @endauth
         <div class="pt-2 pb-3 space-y-1">
             @guest
                 <x-responsive-nav-link :href="url('/#trilha-teaser')" :active="false">
