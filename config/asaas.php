@@ -56,8 +56,10 @@ return [
 
     // API URLs
     'api_url' => [
-        'production' => 'https://api.asaas.com',
-        'sandbox' => 'https://sandbox.asaas.com',
+        // Base URL da API (v3). Em produção o domínio é api.asaas.com e o path é /v3
+        // Sandbox usa api-sandbox.asaas.com (não sandbox.asaas.com).
+        'production' => 'https://api.asaas.com/v3',
+        'sandbox' => 'https://api-sandbox.asaas.com/v3',
     ],
 
     // URL a configurar no painel Asaas (POST) — coincide com routes/api.php

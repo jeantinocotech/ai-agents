@@ -218,8 +218,8 @@ class AsaasService
                 // Ensure endpoint doesn't start with /
                 $endpoint = ltrim($endpoint, '/');
                 
-                // Build the full URL
-                $url = "{$this->apiUrl}/api/v3/{$endpoint}";
+                // Build the full URL (config('asaas.api_url.*') já inclui /v3)
+                $url = rtrim((string) $this->apiUrl, '/')."/{$endpoint}";
 
                 Log::info("🔁 Request to Asaas", [
                     'method' => $method,
