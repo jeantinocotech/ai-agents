@@ -12,8 +12,9 @@
                 </div>
             @endif
             @if (session('info'))
-                <div class="mb-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-950" role="status">
-                    {{ session('info') }}
+                {{-- Mesmo estilo visual da regra de tokens (x-token-policy-note), para consistência após logout e em avisos «info». --}}
+                <div class="mb-4 rounded-2xl border border-teal-300 bg-teal-100 p-4 text-sm shadow-sm ring-1 ring-teal-200" role="status">
+                    <p class="font-semibold text-indigo-800 whitespace-pre-line">{{ session('info') }}</p>
                 </div>
             @endif
         </div>
@@ -110,7 +111,7 @@
                         </a>
                     </div>
                     <div class="mt-6 max-w-2xl">
-                        <x-token-policy-note class="bg-white/10 text-white border-white/20 ring-white/10" />
+                        <x-token-policy-note />
                     </div>
                 </div>
                 <div class="md:w-1/3 flex justify-center">
