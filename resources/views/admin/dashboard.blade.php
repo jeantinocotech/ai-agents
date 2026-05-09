@@ -1,234 +1,290 @@
-
 <x-app-layout>
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg">
-                <div class="p-6 lg:p-8 bg-white border-b border-gray-200">
-                    <h1 class="text-3xl font-bold text-gray-900 mb-8">Painel de Administração</h1>
+    <div class="py-10 bg-slate-50 min-h-[calc(100vh-8rem)]">
+        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-8">
 
-                    @if(session('success'))
-                        <div class="mb-4 p-4 bg-green-200 text-green-800 rounded">
-                            {{ session('success') }}
-                        </div>
-                    @endif
+            {{-- Cabeçalho + período --}}
+            <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">Administração</p>
+                    <h1 class="mt-1 text-3xl font-bold tracking-tight text-slate-900">Visão geral</h1>
+                    <p class="mt-2 text-sm text-slate-600 max-w-xl">
+                        Utilização da plataforma, fluxo de tokens, novos utilizadores e gamificação.
+                        Comparativo no período selecionado.
+                    </p>
+                </div>
+                <div class="rounded-2xl border border-slate-200 bg-white p-1 shadow-sm inline-flex flex-wrap gap-1 self-start">
+                    @foreach ($periodOptions as $pKey => $pLabel)
+                        <a href="{{ route('admin.dashboard', ['period' => $pKey]) }}"
+                           class="whitespace-nowrap rounded-xl px-4 py-2 text-sm font-semibold transition {{ $period['key'] === $pKey
+                               ? 'bg-indigo-600 text-white shadow'
+                               : 'text-slate-700 hover:bg-slate-50' }}">
+                            {{ $pLabel }}
+                        </a>
+                    @endforeach
+                </div>
+            </div>
 
-                    
-                    <!-- Cards de Estatísticas Gerais -->
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                        <div class="bg-blue-50 overflow-hidden shadow rounded-lg">
-                            <div class="p-5">
-                                <div class="flex items-center">
-                                    <div class="flex-shrink-0">
-                                        <svg class="h-6 w-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                                        </svg>
-                                    </div>
-                                    <div class="ml-5 w-0 flex-1">
-                                        <dl>
-                                            <dt class="text-sm font-medium text-gray-500 truncate">Total de Agentes</dt>
-                                            <dd class="text-lg font-medium text-gray-900">{{ $totalAgents }}</dd>
-                                        </dl>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+            @if(session('success'))
+                <div class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                    {{ session('success') }}
+                </div>
+            @endif
 
-                        <div class="bg-green-50 overflow-hidden shadow rounded-lg">
-                            <div class="p-5">
-                                <div class="flex items-center">
-                                    <div class="flex-shrink-0">
-                                        <svg class="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
-                                        </svg>
-                                    </div>
-                                    <div class="ml-5 w-0 flex-1">
-                                        <dl>
-                                            <dt class="text-sm font-medium text-gray-500 truncate">Total de Usuários</dt>
-                                            <dd class="text-lg font-medium text-gray-900">{{ $totalUsers }}</dd>
-                                        </dl>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+            {{-- KPIs --}}
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                <div class="rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 to-white p-5 shadow-sm">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-violet-700">Novos utilizadores</p>
+                    <p class="mt-3 text-3xl font-bold tabular-nums text-slate-900">{{ number_format($kpis['new_users'], 0, ',', '.') }}</p>
+                    <p class="mt-1 text-xs text-slate-600">Total registado na plataforma: <strong class="tabular-nums">{{ number_format($kpis['registered_users_total'], 0, ',', '.') }}</strong></p>
+                </div>
+                <div class="rounded-2xl border border-sky-100 bg-white p-5 shadow-sm">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-sky-700">Utilizadores ativos</p>
+                    <p class="mt-3 text-3xl font-bold tabular-nums text-slate-900">{{ number_format($kpis['distinct_active_users'], 0, ',', '.') }}</p>
+                    <p class="mt-1 text-xs text-slate-600">Com sessão, movimento de tokens ou evento de gamificação no período.</p>
+                </div>
+                <div class="rounded-2xl border border-amber-100 bg-white p-5 shadow-sm">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-amber-800">Sessões de chat</p>
+                    <p class="mt-3 text-3xl font-bold tabular-nums text-slate-900">{{ number_format($kpis['chat_sessions'], 0, ',', '.') }}</p>
+                    <p class="mt-1 text-xs text-slate-600">Novas sessões criadas no período.</p>
+                </div>
+                <div class="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-emerald-800">Tokens</p>
+                    <p class="mt-2 text-sm text-slate-600">Consumo <span class="font-semibold text-slate-900 tabular-nums">{{ number_format($kpis['tokens_consumed_total'], 0, ',', '.') }}</span></p>
+                    <p class="text-sm text-slate-600">Créditos <span class="font-semibold text-slate-900 tabular-nums">{{ number_format($kpis['tokens_credit_total'], 0, ',', '.') }}</span></p>
+                </div>
+            </div>
 
-                        <div class="bg-yellow-50 overflow-hidden shadow rounded-lg">
-                            <div class="p-5">
-                                <div class="flex items-center">
-                                    <div class="flex-shrink-0">
-                                        <svg class="h-6 w-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                                        </svg>
-                                    </div>
-                                    <div class="ml-5 w-0 flex-1">
-                                        <dl>
-                                            <dt class="text-sm font-medium text-gray-500 truncate">Sessões de Chat</dt>
-                                            <dd class="text-lg font-medium text-gray-900">{{ $totalSessions }}</dd>
-                                        </dl>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="bg-purple-50 overflow-hidden shadow rounded-lg">
-                            <div class="p-5">
-                                <div class="flex items-center">
-                                    <div class="flex-shrink-0">
-                                        <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
-                                        </svg>
-                                    </div>
-                                    <div class="ml-5 w-0 flex-1">
-                                        <dl>
-                                            <dt class="text-sm font-medium text-gray-500 truncate">Avaliações</dt>
-                                            <dd class="text-lg font-medium text-gray-900">{{ $agentStats->sum(function($agent) { return $agent->ratings->count(); }) }}</dd>
-                                        </dl>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Compras de pacotes</p>
+                    <p class="mt-3 text-2xl font-bold tabular-nums text-slate-900">{{ number_format($kpis['purchases_count'], 0, ',', '.') }}</p>
+                    <p class="mt-2 text-xs text-slate-600 space-y-0.5">
+                        <span class="block">Volume de tokens vendidos: <strong class="tabular-nums">{{ number_format($kpis['purchases_tokens_volume'], 0, ',', '.') }}</strong></span>
+                        <span class="block">Receita (BRL): <strong class="tabular-nums">{{ number_format($kpis['purchases_revenue_brl'], 2, ',', '.') }}</strong></span>
+                    </p>
+                </div>
+                <div class="rounded-2xl border border-indigo-100 bg-indigo-50/40 p-5 shadow-sm">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-indigo-800">Gamificação</p>
+                    <p class="mt-3 text-2xl font-bold tabular-nums text-slate-900">{{ number_format($kpis['gamification_event_count'], 0, ',', '.') }}</p>
+                    <p class="mt-1 text-xs text-slate-600">Eventos registados · Pontos estimados (definições atuais): <strong class="tabular-nums">{{ number_format($kpis['gamification_points_estimate'], 0, ',', '.') }}</strong></p>
+                </div>
+                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm flex flex-col justify-center">
+                    <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Atalhos</p>
+                    <div class="mt-3 flex flex-wrap gap-2">
+                        <a href="{{ route('admin.agents.index') }}" class="inline-flex items-center rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white hover:bg-slate-800">Agentes</a>
+                        <a href="{{ route('admin.settings.tokens.edit') }}" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50">Tokens</a>
+                        <a href="{{ route('admin.gamification.index') }}" class="inline-flex items-center rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-900 hover:bg-indigo-100">Gamificação</a>
+                        <a href="{{ route('admin.testimonials.index') }}" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50">Depoimentos</a>
+                        <a href="{{ route('admin.career-trail-steps.index') }}" class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-800 hover:bg-slate-50">Trilha</a>
                     </div>
+                </div>
+            </div>
 
-                    <!-- Gráfico de Uso -->
-                    <div class="bg-white overflow-hidden shadow rounded-lg mb-8">
-                        <div class="px-4 py-5 sm:p-6">
-                            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Uso nos Últimos 30 Dias</h3>
-                            <canvas id="usageChart" width="400" height="100"></canvas>
-                        </div>
+            {{-- Gráficos --}}
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <div class="mb-4">
+                        <h2 class="text-lg font-semibold text-slate-900">Utilização</h2>
+                        <p class="text-xs text-slate-500">{{ $period['label'] }} · sessões de chat vs. novos utilizadores por {{ $period['bucket'] === 'month' ? 'mês' : 'dia' }}.</p>
                     </div>
-
-                    <!-- Estatísticas por Agente -->
-                    <div class="bg-white overflow-hidden shadow rounded-lg mb-8">
-                        <div class="px-4 py-5 sm:p-6">
-                            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Performance dos Agentes</h3>
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full divide-y divide-gray-200">
-                                    <thead class="bg-gray-50">
-                                        <tr>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Agente</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Usuários</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sessões</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avaliação Média</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="bg-white divide-y divide-gray-200">
-                                        @foreach($agentStats as $agent)
-                                        <tr>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="flex items-center">
-                                                    @if($agent->image_path)
-                                                        <img class="h-10 w-10 rounded-full mr-3" src="{{ asset('storage/' . $agent->image_path) }}" alt="{{ $agent->name }}">
-                                                    @endif
-                                                    <div>
-                                                        <div class="text-sm font-medium text-gray-900">{{ $agent->name }}</div>
-                                                        <div class="text-sm text-gray-500">{{ Str::limit($agent->description, 50) }}</div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $agent->users_count }}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $agent->sessions_count }}</td>
-                                            <td class="px-6 py-4 whitespace-nowrap">
-                                                <div class="flex items-center">
-                                                    <div class="flex text-yellow-400">
-                                                        @for($i = 1; $i <= 5; $i++)
-                                                            @if($i <= round($agent->average_rating))
-                                                                <svg class="h-4 w-4 fill-current" viewBox="0 0 20 20">
-                                                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                                                                </svg>
-                                                            @else
-                                                                <svg class="h-4 w-4 text-gray-300 fill-current" viewBox="0 0 20 20">
-                                                                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                                                                </svg>
-                                                            @endif
-                                                        @endfor
-                                                    </div>
-                                                    <span class="ml-2 text-sm text-gray-900">{{ number_format($agent->average_rating, 1) }}</span>
-                                                </div>
-                                            </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <a href="{{ route('admin.agents.stats', $agent->id) }}" class="text-indigo-600 hover:text-indigo-900">Ver Detalhes</a>
-                                            </td>
-                                        </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                    <canvas id="chartUsage" class="max-h-[280px] w-full" height="220"></canvas>
+                </div>
+                <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <div class="mb-4">
+                        <h2 class="text-lg font-semibold text-slate-900">Tokens</h2>
+                        <p class="text-xs text-slate-500">Consumo vs. créditos por {{ $period['bucket'] === 'month' ? 'mês' : 'dia' }}.</p>
                     </div>
+                    <canvas id="chartTokens" class="max-h-[280px] w-full" height="220"></canvas>
+                </div>
+            </div>
 
-                    <!-- Últimas Avaliações -->
-                    <div class="bg-white overflow-hidden shadow rounded-lg">
-                        <div class="px-4 py-5 sm:p-6">
-                            <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Últimas Avaliações</h3>
-                            <div class="space-y-4">
-                                @forelse($latestRatings as $rating)
-                                <div class="border-l-4 border-blue-400 bg-blue-50 p-4">
-                                    <div class="flex items-start">
-                                        <div class="flex-1">
-                                            <div class="flex items-center mb-2">
-                                                <h4 class="text-sm font-medium text-gray-900">{{ $rating->user->name }}</h4>
-                                                <span class="mx-2 text-gray-300">•</span>
-                                                <span class="text-sm text-gray-500">{{ $rating->agent->name }}</span>
-                                                <div class="ml-2 flex text-yellow-400">
-                                                    @for($i = 1; $i <= $rating->rating; $i++)
-                                                        <svg class="h-4 w-4 fill-current" viewBox="0 0 20 20">
-                                                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
-                                                        </svg>
-                                                    @endfor
-                                                </div>
-                                            </div>
-                                            <p class="text-sm text-gray-700">{{ $rating->comment }}</p>
-                                            <p class="text-xs text-gray-500 mt-1">{{ $rating->created_at->format('d/m/Y H:i') }}</p>
-                                        </div>
-                                    </div>
-                                </div>
+            <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div class="mb-4">
+                    <h2 class="text-lg font-semibold text-slate-900">Eventos de gamificação</h2>
+                    <p class="text-xs text-slate-500">Volume temporal no período selecionado.</p>
+                </div>
+                <canvas id="chartGame" class="max-h-[240px] w-full" height="180"></canvas>
+            </div>
+
+            {{-- Tabelas gamificação --}}
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+                    <div class="border-b border-slate-100 px-6 py-4">
+                        <h2 class="text-base font-semibold text-slate-900">Distribuição por tipo de evento</h2>
+                        <p class="text-xs text-slate-500">Até 20 categorias mais frequentes neste período.</p>
+                    </div>
+                    <div class="overflow-x-auto max-h-[400px] overflow-y-auto">
+                        <table class="min-w-full text-sm">
+                            <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                                <tr>
+                                    <th class="px-4 py-3 text-left">Evento</th>
+                                    <th class="px-4 py-3 text-right">Ocorrências</th>
+                                    <th class="px-4 py-3 text-right">Pts /evt</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                @forelse ($gamification_breakdown as $row)
+                                    <tr class="hover:bg-slate-50/80">
+                                        <td class="px-4 py-3">
+                                            <span class="font-medium text-slate-900">{{ $row->label }}</span>
+                                            <span class="block text-[11px] text-slate-400 font-mono">{{ $row->event_key }}</span>
+                                        </td>
+                                        <td class="px-4 py-3 text-right tabular-nums">{{ number_format($row->event_count, 0, ',', '.') }}</td>
+                                        <td class="px-4 py-3 text-right tabular-nums text-slate-600">{{ $row->points_per_event !== null ? number_format((int) $row->points_per_event, 0, ',', '.') : '—' }}</td>
+                                    </tr>
                                 @empty
-                                <p class="text-gray-500">Nenhuma avaliação com comentário encontrada.</p>
+                                    <tr>
+                                        <td colspan="3" class="px-4 py-8 text-center text-slate-500">Sem eventos no período.</td>
+                                    </tr>
                                 @endforelse
-                            </div>
-                        </div>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+                    <div class="border-b border-slate-100 px-6 py-4">
+                        <h2 class="text-base font-semibold text-slate-900">Atividade recente</h2>
+                        <p class="text-xs text-slate-500">Últimos 25 eventos no período.</p>
+                    </div>
+                    <div class="overflow-x-auto max-h-[400px] overflow-y-auto">
+                        <table class="min-w-full text-sm">
+                            <thead class="bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                                <tr>
+                                    <th class="px-4 py-3 text-left">Quando</th>
+                                    <th class="px-4 py-3 text-left">Utilizador</th>
+                                    <th class="px-4 py-3 text-left">Evento</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                @forelse ($recent_gamification_events as $ev)
+                                    <tr class="hover:bg-slate-50/80">
+                                        <td class="px-4 py-3 whitespace-nowrap text-slate-600">{{ $ev->occurred_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') }}</td>
+                                        <td class="px-4 py-3">
+                                            <span class="text-slate-900">{{ Str::limit($ev->user?->name ?? '—', 32) }}</span>
+                                            @if ($ev->user?->email)
+                                                <span class="block text-[11px] text-slate-400">{{ Str::limit($ev->user->email, 36) }}</span>
+                                            @endif
+                                        </td>
+                                        <td class="px-4 py-3 font-mono text-xs text-slate-700">{{ $ev->event_key }}</td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="3" class="px-4 py-8 text-center text-slate-500">Sem eventos recentes.</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
 </x-app-layout>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-    // Gráfico de uso
-    const ctx = document.getElementById('usageChart').getContext('2d');
-    const usageChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: {!! json_encode($chartData['labels']) !!},
-            datasets: [{
-                label: 'Sessões de Chat',
-                data: {!! json_encode($chartData['sessions']) !!},
-                borderColor: 'rgb(59, 130, 246)',
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                tension: 0.4,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    display: false
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        stepSize: 1
-                    }
-                }
-            }
-        }
-    });
-</script>
+    (function () {
+        var labels = @json($charts['activity']['labels']);
+        var sess = @json($charts['activity']['sessions']);
+        var users = @json($charts['activity']['new_users']);
 
+        var tLabels = @json($charts['tokens']['labels']);
+        var tCons = @json($charts['tokens']['consumption']);
+        var tIn = @json($charts['tokens']['incoming']);
+
+        var gLabels = @json($charts['gamification']['labels']);
+        var gEv = @json($charts['gamification']['events']);
+
+        function baseOpts() {
+            return {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' } }
+            };
+        }
+
+        var uCtx = document.getElementById('chartUsage');
+        if (uCtx) {
+            new Chart(uCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Sessões de chat',
+                            data: sess,
+                            borderColor: 'rgb(14, 165, 233)',
+                            backgroundColor: 'rgba(14, 165, 233, 0.12)',
+                            fill: true,
+                            tension: 0.35
+                        },
+                        {
+                            label: 'Novos utilizadores',
+                            data: users,
+                            borderColor: 'rgb(124, 58, 237)',
+                            backgroundColor: 'rgba(124, 58, 237, 0.06)',
+                            fill: true,
+                            tension: 0.35
+                        }
+                    ]
+                },
+                options: Object.assign(baseOpts(), {
+                    scales: {
+                        y: { beginAtZero: true, ticks: { precision: 0 } }
+                    }
+                })
+            });
+        }
+
+        var tokCtx = document.getElementById('chartTokens');
+        if (tokCtx) {
+            new Chart(tokCtx, {
+                type: 'bar',
+                data: {
+                    labels: tLabels,
+                    datasets: [
+                        {
+                            label: 'Consumo',
+                            data: tCons,
+                            backgroundColor: 'rgba(239, 68, 68, 0.65)'
+                        },
+                        {
+                            label: 'Créditos',
+                            data: tIn,
+                            backgroundColor: 'rgba(16, 185, 129, 0.65)'
+                        }
+                    ]
+                },
+                options: Object.assign(baseOpts(), {
+                    scales: {
+                        x: { stacked: false },
+                        y: { beginAtZero: true, ticks: { precision: 0 } }
+                    }
+                })
+            });
+        }
+
+        var gCtx = document.getElementById('chartGame');
+        if (gCtx) {
+            new Chart(gCtx, {
+                type: 'bar',
+                data: {
+                    labels: gLabels,
+                    datasets: [{
+                        label: 'Eventos de gamificação',
+                        data: gEv,
+                        backgroundColor: 'rgba(99, 102, 241, 0.55)'
+                    }]
+                },
+                options: Object.assign(baseOpts(), {
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { precision: 0 } }
+                    }
+                })
+            });
+        }
+    })();
+</script>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\DefaultAuthRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -11,7 +12,7 @@ class LegalConsentController extends Controller
     public function show(Request $request): View|RedirectResponse
     {
         if ($request->user()?->hasAcceptedCurrentLegalDocuments()) {
-            return redirect()->route('dashboard');
+            return redirect()->to(DefaultAuthRedirect::url());
         }
 
         return view('legal.consent', [
@@ -42,6 +43,6 @@ class LegalConsentController extends Controller
         $user->terms_accepted_version = config('legal.terms_version');
         $user->save();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->intended(DefaultAuthRedirect::url());
     }
 }

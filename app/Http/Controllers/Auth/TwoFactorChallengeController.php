@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\TwoFactorAuthService;
+use App\Support\DefaultAuthRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -71,6 +72,6 @@ class TwoFactorChallengeController extends Controller
             return redirect()->route('legal.consent.show');
         }
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        return redirect()->intended(DefaultAuthRedirect::url());
     }
 }

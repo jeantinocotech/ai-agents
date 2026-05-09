@@ -16,11 +16,11 @@
                 @endguest
 
                 @auth
-                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                        Dashboard
-                    </x-nav-link>
                     <x-nav-link :href="route('career-trail.index')" :active="request()->routeIs('career-trail.*')">
                         Trilha
+                    </x-nav-link>
+                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                        Dashboard
                     </x-nav-link>
                 @endauth
 
@@ -81,6 +81,9 @@
                             <div class="border-b border-gray-100 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
                                 Área pessoal
                             </div>
+                            <x-dropdown-link :href="route('career-trail.index')">
+                                Trilha
+                            </x-dropdown-link>
                             <x-dropdown-link :href="route('dashboard')">
                                 Dashboard
                             </x-dropdown-link>
@@ -178,11 +181,11 @@
                 </x-responsive-nav-link>
             @endguest
             @auth
-                <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                    Dashboard
-                </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('career-trail.index')" :active="request()->routeIs('career-trail.*')">
                     Trilha
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                    Dashboard
                 </x-responsive-nav-link>
                 @if(Auth::user()->isAdmin())
                     <x-responsive-nav-link :href="route('admin.dashboard')" :active="request()->routeIs('admin.dashboard')">
@@ -213,9 +216,6 @@
                 </div>
                 <div class="mt-3 space-y-1">
                     <p class="px-4 text-xs font-semibold uppercase tracking-wide text-gray-500">Área pessoal</p>
-                    <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
-                        Dashboard
-                    </x-responsive-nav-link>
                     <x-responsive-nav-link :href="route('tokens.purchase')" :active="request()->routeIs('tokens.purchase')">
                         Comprar tokens
                     </x-responsive-nav-link>
