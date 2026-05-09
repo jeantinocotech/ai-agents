@@ -33,6 +33,9 @@ RUN echo '<Directory "/app/public">' >> /etc/apache2/apache2.conf \
     && echo '    Require all granted' >> /etc/apache2/apache2.conf \
     && echo '</Directory>' >> /etc/apache2/apache2.conf
 
+# Passar variáveis do contentor ao mod_php (útil com secrets do Coolify/Docker)
+RUN printf '\nPassEnv ASAAS_API_KEY ASAAS_WEBHOOK_TOKEN ASAAS_SANDBOX\n' >> /etc/apache2/apache2.conf
+
 WORKDIR /app
 
 # Copia tudo do frontend (Laravel + build Vite)

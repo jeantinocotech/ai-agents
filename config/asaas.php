@@ -2,6 +2,35 @@
 
 $sandboxRaw = env('ASAAS_SANDBOX', false);
 
+/**
+ * Preferir o primeiro valor não vazio entre fontes típicas de PaaS (Coolify/Docker env).
+ *
+ * Um ficheiro .env gerido pelo painel com `ASAAS_API_KEY=` sem valor pode regista-se vazio
+ * no Laravel e esconder a variável injectada no contentor; isto cobre também Apache/mod_php.
+ */
+$pickAsaasSecret = static function (string $key): ?string {
+    $candidates = [
+        $_SERVER[$key] ?? null,
+        $_ENV[$key] ?? null,
+    ];
+    $fromGetenv = getenv($key);
+    if ($fromGetenv !== false) {
+        $candidates[] = $fromGetenv;
+    }
+    $candidates[] = env($key);
+
+    foreach ($candidates as $value) {
+        if (is_string($value)) {
+            $trimmed = trim($value);
+            if ($trimmed !== '') {
+                return $trimmed;
+            }
+        }
+    }
+
+    return null;
+};
+
 return [
     /*
     |--------------------------------------------------------------------------
@@ -14,16 +43,16 @@ return [
     */
 
     // API Key for authentication with Asaas
-    'api_key' => env('ASAAS_API_KEY'),
+    'api_key' => $pickAsaasSecret('ASAAS_API_KEY'),
 
     // Webhook token for validating incoming webhook requests
-    'webhook_token' => env('ASAAS_WEBHOOK_TOKEN'),
+    'webhook_token' => $pickAsaasSecret('ASAAS_WEBHOOK_TOKEN'),
 
     // Somente desenvolvimento: regista payloads completos (PII — nunca activar em produção)
     'log_webhook_debug' => env('ASAAS_LOG_WEBHOOK_DEBUG', false),
 
-    // Whether to use the sandbox environment
-    'sandbox' => env('ASAAS_SANDBOX', false),
+    // Whether to use the sandbox environment (.env em string; evitar "false" interpretado como activo)
+    'sandbox' => filter_var($sandboxRaw, FILTER_VALIDATE_BOOLEAN),
 
     // API URLs
     'api_url' => [
