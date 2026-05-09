@@ -1,5 +1,7 @@
 <?php
 
+$sandboxRaw = env('ASAAS_SANDBOX', false);
+
 return [
     /*
     |--------------------------------------------------------------------------
@@ -29,8 +31,8 @@ return [
         'sandbox' => 'https://sandbox.asaas.com',
     ],
 
-    // Webhook notification URL (where Asaas will send notifications)
-    'webhook_url' => env('APP_URL').'/webhook/asaas',
+    // URL a configurar no painel Asaas (POST) — coincide com routes/api.php
+    'webhook_url' => rtrim((string) env('APP_URL', ''), '/').'/api/cart/asaas/webhook',
 
     // Timeout configurations (in seconds)
     'timeout' => [

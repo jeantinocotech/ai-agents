@@ -13,9 +13,18 @@ class AsaasTestConnection extends Command
     public function handle()
     {
         $asaas = app(AsaasService::class);
-        
+
         $this->info('Testing connection to Asaas API...');
-        $this->info('Environment: ' . ($asaas->isSandbox() ? 'Sandbox' : 'Production'));
+        $this->info('Environment: '.($asaas->isSandbox() ? 'Sandbox' : 'Production'));
+        $this->line('Webhook URL (configurar no painel Asaas): '.config('asaas.webhook_url'));
+        $apiKey = (string) config('asaas.api_key');
+        $this->line('API key: '.($apiKey !== '' ? 'definida ('.strlen($apiKey).' chars)' : 'em falta'));
+        $whToken = (string) config('asaas.webhook_token');
+        if (app()->environment('production') && $whToken === '') {
+            $this->warn('ASAAS_WEBHOOK_TOKEN em falta — webhooks serão rejeitados em produção.');
+        }
+
+        $this->newLine();
         
         // Try to make a simple API call to test the connection
         try {
