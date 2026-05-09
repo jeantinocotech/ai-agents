@@ -35,19 +35,26 @@ class AsaasService
             ? config('asaas.api_url.sandbox') 
             : config('asaas.api_url.production');
         
-        // Get API key from config
+        // Get API key from config (vem de ASAAS_API_KEY; vazio ⇒ config em cache sem a variável ou nome errado no painel)
         $this->apiKey = config('asaas.api_key');
 
-          // Ou timeouts diferentes para sandbox vs production
-          $this->timeout = $this->isSandbox() 
-          ? config('asaas.timeout.sandbox', 60) 
+        // Ou timeouts diferentes para sandbox vs production
+        $this->timeout = $this->isSandbox()
+          ? config('asaas.timeout.sandbox', 60)
           : config('asaas.timeout.production', 30);
 
-          Log::info('Asaas Service initialized', [
+        Log::info('Asaas Service initialized', [
             'environment' => $this->isSandbox() ? 'sandbox' : 'production',
             'timeout' => $this->timeout,
-            'api_url' => $this->apiUrl
+            'api_url' => $this->apiUrl,
+            'api_key_configured' => $this->apiKey !== null && $this->apiKey !== '',
         ]);
+
+        if ($this->apiKey === null || $this->apiKey === '') {
+            Log::warning('Asaas: chave API em falta (config asaas.api_key vazia). Confirme ASAAS_API_KEY no Coolify e regenere cache de config se aplicável.', [
+                'config_cached' => app()->configurationIsCached(),
+            ]);
+        }
         
       
     }
