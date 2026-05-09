@@ -12,6 +12,18 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
+        @auth
+        <script>
+            window.GratoGamificationLive = {
+                unreadUrl: @json(route('notifications.gamification.unread')),
+                recentUrl: @json(route('notifications.gamification.recent')),
+                readAllUrl: @json(route('notifications.gamification.read-all')),
+                dashboardUrl: @json(route('dashboard')),
+                pollMs: 25000,
+            };
+        </script>
+        @endauth
+
         <title>{{ config('app.name', 'Laravel') }}</title>
         @include('partials.favicon')
 

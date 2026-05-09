@@ -105,6 +105,18 @@ final class InterviewProcessOutcomeService
         $process->outcome = InterviewApplicationOutcome::Approved;
         $process->save();
 
+        $user = User::query()->find($userId);
+        if ($user) {
+            app(GamificationService::class)->recordEvent(
+                $user,
+                'process_approved',
+                InterviewProcess::class,
+                (int) $process->id,
+                ['jd_document_id' => (int) $jdDocumentId]
+            );
+            app(GamificationService::class)->ensureFreshSnapshot($user);
+        }
+
         self::syncOfferTrailUnlock(User::query()->find($userId));
 
         return $process->fresh();
@@ -126,6 +138,18 @@ final class InterviewProcessOutcomeService
 
         $process->outcome = InterviewApplicationOutcome::Ongoing;
         $process->save();
+
+        $user = User::query()->find($userId);
+        if ($user) {
+            app(GamificationService::class)->recordEvent(
+                $user,
+                'process_approved_reverted',
+                InterviewProcess::class,
+                (int) $process->id,
+                ['jd_document_id' => (int) $jdDocumentId]
+            );
+            app(GamificationService::class)->ensureFreshSnapshot($user);
+        }
 
         return self::refreshOutcomeFromRounds($userId, $jdDocumentId);
     }

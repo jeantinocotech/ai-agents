@@ -15,12 +15,12 @@ test('guest can view privacy policy and terms pages', function () {
 test('legal pages expose return link when opened from registration', function () {
     $this->get(route('privacidade').'?from=register')
         ->assertOk()
-        ->assertSee('Continuar o registo', false)
-        ->assertSee('voltar ao registo', false);
+        ->assertSee('Continuar o cadastro', false)
+        ->assertSee('voltar ao cadastro', false);
 
     $this->get(route('termos-uso').'?from=register')
         ->assertOk()
-        ->assertSee('Continuar o registo', false);
+        ->assertSee('Continuar o cadastro', false);
 });
 
 test('authenticated user pending legal consent can view policy and terms pages', function () {

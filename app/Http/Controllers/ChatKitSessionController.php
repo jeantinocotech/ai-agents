@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Agent;
 use App\Models\Setting;
 use App\Services\CareerTrailAgentAccess;
+use App\Services\GamificationService;
 use App\Services\TokenWalletService;
 use App\Support\ChatKitUserRef;
 use Illuminate\Http\JsonResponse;
@@ -15,7 +16,8 @@ use Illuminate\Support\Facades\Log;
 class ChatKitSessionController extends Controller
 {
     public function __construct(
-        private TokenWalletService $tokenWallet
+        private TokenWalletService $tokenWallet,
+        private GamificationService $gamification
     ) {}
 
     public function store(Request $request): JsonResponse
@@ -205,6 +207,24 @@ class ChatKitSessionController extends Controller
         );
 
         $user->refresh();
+
+        if ($debited > 0) {
+            $eventKey = $billing === 'chatkit_cv_assistant_turn'
+                ? 'chatkit_cv_turn'
+                : 'chatkit_ats_consultation';
+            $this->gamification->recordEvent(
+                $user,
+                $eventKey,
+                Agent::class,
+                (int) $agent->id,
+                [
+                    'billing' => $billing,
+                    'agent_id' => (int) $agent->id,
+                    'tokens_debited' => (int) $debited,
+                ]
+            );
+            $this->gamification->ensureFreshSnapshot($user);
+        }
 
         return response()->json([
             'token_balance' => (int) $user->token_balance,

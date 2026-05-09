@@ -9,6 +9,7 @@ use App\Models\CareerTrailStep;
 use App\Models\User;
 use App\Models\UserCv;
 use App\Services\CareerTrailAgentAccess;
+use App\Services\GamificationService;
 use App\Services\ProfileCvAgentLibrary;
 use App\Services\ProfileDefaultCvAtsSync;
 use App\Support\AgentDocumentLimits;
@@ -23,6 +24,10 @@ use Illuminate\View\View;
 
 class CareerTrailCvController extends Controller
 {
+    public function __construct(
+        private GamificationService $gamification
+    ) {}
+
     public function show(Request $request): View
     {
         $user = $request->user();
@@ -199,6 +204,14 @@ class CareerTrailCvController extends Controller
             'is_default' => false,
             'source' => UserCv::SOURCE_MANUAL,
         ]);
+
+        $this->gamification->recordEvent(
+            $user,
+            'cv_created',
+            UserCv::class,
+            (int) $new->id
+        );
+        $this->gamification->ensureFreshSnapshot($user);
 
         if ($makeDefault) {
             $this->setUserCvAsOnlyDefault($user, $new);

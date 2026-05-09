@@ -344,6 +344,8 @@ function initChatKitLibrarySendButtons(chatKitEl) {
     var jdSendAllowed = false;
     var waitAssistantEndAfterCv = false;
     var pendingAtsDebit = false;
+    /** Assistente de CV só com biblioteca: um débito por «Enviar CV» quando o assistente termina a resposta. */
+    var pendingCvTurnDebits = 0;
     var sessionTokensUsedAccum = 0;
 
     function bumpSessionTokensUsed(amount) {
@@ -374,7 +376,11 @@ function initChatKitLibrarySendButtons(chatKitEl) {
         }
     }
 
-    function postChatkitConsultationDebit() {
+    function postChatkitConsultationDebit(extra) {
+        var payload = { agent_id: agentId };
+        if (extra && extra.context === 'cv_turn') {
+            payload.context = 'cv_turn';
+        }
         return fetch(chatkitDebitUrl, {
             method: 'POST',
             headers: {
@@ -383,12 +389,40 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 Accept: 'application/json',
             },
             credentials: 'same-origin',
-            body: JSON.stringify({ agent_id: agentId }),
+            body: JSON.stringify(payload),
         }).then(function (res) {
             return res.json().then(function (data) {
                 return { res: res, data: data };
             });
         });
+    }
+
+    function handleChatkitDebitResult(o, opts) {
+        opts = opts || {};
+        var insufficientMsg = opts.insufficientMsg || 'Saldo insuficiente para registar esta interação.';
+        var successLabel = opts.successLabel || 'Tokens';
+        if (!o.res.ok) {
+            if (o.res.status === 402 && o.data && o.data.error === 'insufficient_tokens') {
+                if (window.chatApp && window.chatApp.showErrorMessage) {
+                    window.chatApp.showErrorMessage(o.data.message || insufficientMsg);
+                }
+            } else if (window.chatApp && window.chatApp.showErrorMessage) {
+                window.chatApp.showErrorMessage(
+                    (o.data && o.data.message) || 'Não foi possível atualizar o saldo de tokens.'
+                );
+            }
+            return;
+        }
+        updateTokenPillFromJson(o.data);
+        bumpSessionTokensUsed(o.data && o.data.tokens_debited);
+        if (o.data && o.data.tokens_debited > 0 && window.chatApp && window.chatApp.showSuccessMessage) {
+            window.chatApp.showSuccessMessage(
+                successLabel +
+                    ': ' +
+                    o.data.tokens_debited.toLocaleString('pt-BR') +
+                    ' token(s) debitados.'
+            );
+        }
     }
 
     function contentUrl(documentId) {
@@ -435,29 +469,10 @@ function initChatKitLibrarySendButtons(chatKitEl) {
             pendingAtsDebit = false;
             postChatkitConsultationDebit()
                 .then(function (o) {
-                    if (!o.res.ok) {
-                        if (o.res.status === 402 && o.data && o.data.error === 'insufficient_tokens') {
-                            if (window.chatApp && window.chatApp.showErrorMessage) {
-                                window.chatApp.showErrorMessage(
-                                    o.data.message || 'Saldo insuficiente para esta consulta ATS.'
-                                );
-                            }
-                        } else if (window.chatApp && window.chatApp.showErrorMessage) {
-                            window.chatApp.showErrorMessage(
-                                (o.data && o.data.message) || 'Não foi possível atualizar o saldo de tokens.'
-                            );
-                        }
-                        return;
-                    }
-                    updateTokenPillFromJson(o.data);
-                    bumpSessionTokensUsed(o.data && o.data.tokens_debited);
-                    if (o.data && o.data.tokens_debited > 0 && window.chatApp && window.chatApp.showSuccessMessage) {
-                        window.chatApp.showSuccessMessage(
-                            'Consulta ATS: ' +
-                                o.data.tokens_debited.toLocaleString('pt-BR') +
-                                ' token(s) debitados.'
-                        );
-                    }
+                    handleChatkitDebitResult(o, {
+                        insufficientMsg: 'Saldo insuficiente para esta consulta ATS.',
+                        successLabel: 'Consulta ATS',
+                    });
                 })
                 .catch(function () {
                     if (window.chatApp && window.chatApp.showErrorMessage) {
@@ -465,6 +480,23 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                     }
                 });
         }
+
+        if (chatKitLibraryCvOnly && chatkitConsultationCost > 0 && pendingCvTurnDebits > 0) {
+            pendingCvTurnDebits -= 1;
+            postChatkitConsultationDebit({ context: 'cv_turn' })
+                .then(function (o) {
+                    handleChatkitDebitResult(o, {
+                        insufficientMsg: 'Saldo insuficiente para esta revisão de CV.',
+                        successLabel: 'Revisão de CV',
+                    });
+                })
+                .catch(function () {
+                    if (window.chatApp && window.chatApp.showErrorMessage) {
+                        window.chatApp.showErrorMessage('Erro de rede ao registrar tokens da revisão de CV.');
+                    }
+                });
+        }
+
         syncJdButton();
     });
 
@@ -475,6 +507,20 @@ function initChatKitLibrarySendButtons(chatKitEl) {
             setStatus('Escolha um CV na lista.');
             if (window.chatApp && window.chatApp.showErrorMessage) {
                 window.chatApp.showErrorMessage('Escolha um CV na lista.');
+            }
+            return;
+        }
+        if (
+            chatKitLibraryCvOnly &&
+            chatkitConsultationCost > 0 &&
+            parseTokenBalanceFromPill() < chatkitConsultationCost
+        ) {
+            var needCv = 'Precisa de pelo menos ' +
+                chatkitConsultationCost.toLocaleString('pt-BR') +
+                ' tokens para cada envio do CV ao assistente.';
+            setStatus(needCv);
+            if (window.chatApp && window.chatApp.showErrorMessage) {
+                window.chatApp.showErrorMessage(needCv);
             }
             return;
         }
@@ -510,6 +556,9 @@ function initChatKitLibrarySendButtons(chatKitEl) {
             })
             .then(function () {
                 if (chatKitLibraryCvOnly) {
+                    if (chatkitConsultationCost > 0) {
+                        pendingCvTurnDebits += 1;
+                    }
                     setStatus('CV enviado para revisão. Aguarde o assistente.');
                     if (window.chatApp && window.chatApp.showSuccessMessage) {
                         window.chatApp.showSuccessMessage('CV enviado — pode continuar a conversa no chat.');

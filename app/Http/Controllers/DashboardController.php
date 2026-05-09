@@ -2,21 +2,43 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\RedirectResponse;
+use App\Enums\InterviewApplicationOutcome;
+use App\Models\InterviewProcess;
+use App\Services\CareerTrailProgressService;
+use App\Services\GamificationService;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
-    /**
-     * Sem CV de perfil guardado, o ponto de entrada é a página inicial (orientação da Graça).
-     * Com pelo menos um CV, segue-se directamente para a trilha.
-     */
-    public function index(): RedirectResponse
+    public function index(Request $request, GamificationService $gamification): View
     {
-        $user = auth()->user();
-        if ($user !== null && ! $user->userCvs()->exists()) {
-            return redirect()->route('home');
-        }
+        $user = $request->user();
+        $bundle = CareerTrailProgressService::ensureProgress($user);
+        abort_if($bundle === null, 503, 'Trilha não configurada.');
 
-        return redirect()->route('career-trail.index');
+        $snapshot = $gamification->ensureFreshSnapshot($user);
+        $tokenStats = $gamification->tokenUsageStats($user);
+
+        $approved = InterviewProcess::query()
+            ->where('user_id', $user->id)
+            ->where('outcome', InterviewApplicationOutcome::Approved)
+            ->with(['jdDocument'])
+            ->orderByDesc('updated_at')
+            ->limit(3)
+            ->get();
+
+        $approvedTotal = InterviewProcess::query()
+            ->where('user_id', $user->id)
+            ->where('outcome', InterviewApplicationOutcome::Approved)
+            ->count();
+
+        return view('dashboard.executive', [
+            'bundle' => $bundle,
+            'snapshot' => $snapshot,
+            'tokenStats' => $tokenStats,
+            'approvedTotal' => (int) $approvedTotal,
+            'approvedLatest' => $approved,
+        ]);
     }
 }

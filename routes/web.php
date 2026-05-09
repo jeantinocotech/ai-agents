@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\AgentController as AdminAgentController;
 use App\Http\Controllers\Admin\CareerTrailGracaMessageAdminController;
 use App\Http\Controllers\Admin\CareerTrailStepAdminController;
+use App\Http\Controllers\Admin\GamificationController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Admin\TestimonialAdminController;
 use App\Http\Controllers\AgentController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\ChatKitSessionController;
 use App\Http\Controllers\CvAnalysisController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\GamificationNotificationController;
 use App\Http\Controllers\InterviewPreparationController;
 use App\Http\Controllers\InterviewProcessOutcomeController;
 use App\Http\Controllers\LandingController;
@@ -51,6 +53,15 @@ Route::get('/api/agents/{agent}/rating-stats', [RatingController::class, 'getAge
 // Área da conta (e-mail obrigatoriamente verificado antes de usar a plataforma)
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    Route::prefix('notifications/gamification')->name('notifications.gamification.')->group(function () {
+        Route::get('/', [GamificationNotificationController::class, 'recent'])->name('recent');
+        Route::get('/unread', [GamificationNotificationController::class, 'unread'])->name('unread');
+        Route::post('/read-all', [GamificationNotificationController::class, 'markAllRead'])->name('read-all');
+        Route::post('/{notification}/read', [GamificationNotificationController::class, 'markRead'])
+            ->whereUuid('notification')
+            ->name('read');
+    });
 
     Route::get('/trilha', [CareerTrailController::class, 'index'])->name('career-trail.index');
     Route::get('/trilha/cv', [CareerTrailCvController::class, 'show'])->name('career-trail.cv');
@@ -206,6 +217,10 @@ Route::post('/agentes/{id}/adicionar-carrinho', [AgentsPublicController::class, 
 Route::middleware(['auth', 'verified', AdminMiddleware::class])->prefix('admin')->name('admin.')->group(function () {
 
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('dashboard');
+
+    Route::get('/gamification', [GamificationController::class, 'index'])->name('gamification.index');
+    Route::put('/gamification/badges', [GamificationController::class, 'updateBadges'])->name('gamification.badges.update');
+    Route::put('/gamification/score', [GamificationController::class, 'updateScore'])->name('gamification.score.update');
 
     Route::resource('agents', AdminAgentController::class);
     Route::get('agents/{agent}/ratings', [AdminAgentController::class, 'ratings'])->name('agents.ratings');

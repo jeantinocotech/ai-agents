@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\GamificationService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -67,6 +68,29 @@ class AgentDocument extends Model
                             'user_cv_id' => 'O CV associado é inválido.',
                         ]);
                     }
+                }
+            }
+        });
+
+        static::saved(function (AgentDocument $doc) {
+            // Pareamento ATS: quando um JD passa a ter user_cv_id, conta como vaga pareada.
+            if ($doc->type !== self::TYPE_JD) {
+                return;
+            }
+
+            $was = $doc->getOriginal('user_cv_id');
+            $now = $doc->user_cv_id;
+            if ($was === null && $now !== null) {
+                $user = User::query()->find((int) $doc->user_id);
+                if ($user) {
+                    app(GamificationService::class)->recordEvent(
+                        $user,
+                        'ats_pair_created',
+                        self::class,
+                        (int) $doc->id,
+                        ['agent_id' => (int) $doc->agent_id, 'user_cv_id' => (int) $now]
+                    );
+                    app(GamificationService::class)->ensureFreshSnapshot($user);
                 }
             }
         });

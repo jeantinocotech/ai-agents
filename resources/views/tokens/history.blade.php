@@ -3,7 +3,7 @@
         <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-8">
             <div>
                 <h1 class="text-2xl font-bold text-gray-900">Histórico de compras de tokens</h1>
-                <p class="text-gray-600 mt-1 text-sm">Pacotes adquiridos pelo Asaas (sandbox ou produção).</p>
+                <p class="text-gray-600 mt-1 text-sm">Pacotes adquiridos pelo sisteAsaas</p>
             </div>
             <a href="{{ route('tokens.purchase') }}"
                class="inline-flex justify-center rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700">
@@ -64,7 +64,7 @@
 
         <p class="mt-6 text-xs text-gray-500">
             O saldo creditado também aparece como transação do tipo compra no modelo interno de tokens.
-            Boleto pode demorar a compensar; quando o Asaas marcar a cobrança como recebida, o crédito deve ocorrer pelo webhook ou quando esta página estiver a verificar o pagamento (polling).
+            Boleto pode demorar a compensar; quando o Asaas marcar a cobrança como recebida, o crédito deve ocorrer automaticamente.
         </p>
     </div>
 </x-app-layout>

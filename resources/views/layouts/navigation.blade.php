@@ -16,7 +16,10 @@
                 @endguest
 
                 @auth
-                    <x-nav-link :href="route('career-trail.index')" :active="request()->routeIs('dashboard') || request()->routeIs('career-trail.index') || request()->routeIs('career-trail.advance') || request()->routeIs('career-trail.back')">
+                    <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                        Dashboard
+                    </x-nav-link>
+                    <x-nav-link :href="route('career-trail.index')" :active="request()->routeIs('career-trail.*')">
                         Trilha
                     </x-nav-link>
                 @endauth
@@ -46,6 +49,9 @@
                                 <x-dropdown-link :href="route('admin.settings.tokens.edit')">
                                     ⚙️ Parâmetros de tokens
                                 </x-dropdown-link>
+                                <x-dropdown-link :href="route('admin.gamification.index')">
+                                    🏅 Parâmetros de gamificação
+                                </x-dropdown-link>
                                 <x-dropdown-link :href="route('admin.career-trail-steps.index')">
                                     🪶 Trilha — passos
                                 </x-dropdown-link>
@@ -59,8 +65,9 @@
             </div>
 
             <!-- User Dropdown -->
-            <div class="hidden sm:flex sm:items-center">
+            <div class="hidden sm:flex sm:items-center sm:gap-x-2">
                 @auth
+                    <x-gamification-bell />
                     <x-dropdown align="right" width="48">
                         <x-slot name="trigger">
                             <button type="button" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-300 bg-[#23272a] hover:text-white focus:outline-none transition">
@@ -74,6 +81,28 @@
                             <div class="border-b border-gray-100 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
                                 Área pessoal
                             </div>
+                            <x-dropdown-link :href="route('dashboard')">
+                                Dashboard
+                            </x-dropdown-link>
+                            @php
+                                $snap = \App\Models\UserGamificationSnapshot::query()
+                                    ->with('rank')
+                                    ->where('user_id', Auth::id())
+                                    ->first();
+                            @endphp
+                            @if ($snap)
+                                <div class="px-4 py-2 text-sm text-slate-700">
+                                    <span class="text-slate-500">Rank:</span>
+                                    @if (! empty($snap->rank?->icon_key))
+                                        <span class="me-0.5" aria-hidden="true">{{ $snap->rank->icon_key }}</span>
+                                    @endif
+                                    <strong>{{ $snap->rank?->title ?? '—' }}</strong>
+                                    <span class="text-slate-400">·</span>
+                                    <strong class="tabular-nums">{{ number_format((int) $snap->score_total, 0, ',', '.') }}</strong>
+                                    <span class="text-slate-500">pts</span>
+                                </div>
+                                <div class="my-1 border-t border-gray-100"></div>
+                            @endif
                             <x-dropdown-link :href="route('tokens.purchase')">
                                 Comprar tokens
                             </x-dropdown-link>
@@ -138,6 +167,9 @@
                     </a>
                 </div>
             </div>
+            <div class="sm:hidden px-4 pt-3">
+                <x-gamification-bell :compact="true" />
+            </div>
         @endauth
         <div class="pt-2 pb-3 space-y-1">
             @guest
@@ -146,7 +178,10 @@
                 </x-responsive-nav-link>
             @endguest
             @auth
-                <x-responsive-nav-link :href="route('career-trail.index')" :active="request()->routeIs('dashboard') || request()->routeIs('career-trail.index') || request()->routeIs('career-trail.advance') || request()->routeIs('career-trail.back')">
+                <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                    Dashboard
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('career-trail.index')" :active="request()->routeIs('career-trail.*')">
                     Trilha
                 </x-responsive-nav-link>
                 @if(Auth::user()->isAdmin())
@@ -155,6 +190,9 @@
                     </x-responsive-nav-link>
                     <x-responsive-nav-link :href="route('admin.agents.index')" :active="request()->routeIs('admin.agents.*')">
                         🤖 Gerenciar Agentes
+                    </x-responsive-nav-link>
+                    <x-responsive-nav-link :href="route('admin.gamification.index')" :active="request()->routeIs('admin.gamification.*')">
+                        🏅 Parâmetros de gamificação
                     </x-responsive-nav-link>
                     <x-responsive-nav-link :href="route('admin.career-trail-steps.index')" :active="request()->routeIs('admin.career-trail-steps.*')">
                         🪶 Trilha — passos
@@ -175,6 +213,9 @@
                 </div>
                 <div class="mt-3 space-y-1">
                     <p class="px-4 text-xs font-semibold uppercase tracking-wide text-gray-500">Área pessoal</p>
+                    <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
+                        Dashboard
+                    </x-responsive-nav-link>
                     <x-responsive-nav-link :href="route('tokens.purchase')" :active="request()->routeIs('tokens.purchase')">
                         Comprar tokens
                     </x-responsive-nav-link>

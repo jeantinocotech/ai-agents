@@ -355,11 +355,12 @@
 
                         <div>
                             <label for="cv_body" class="block text-sm font-medium text-slate-700">Conteúdo do CV</label>
-                            <textarea name="body" id="cv_body" rows="14" maxlength="{{ $maxCvBodyChars }}"
+                            {{-- Sem maxlength no HTML: ao colar texto extraído por JS o navegador cortava o conteúdo sem aviso. --}}
+                            <textarea name="body" id="cv_body" rows="14" data-max-cv-body-chars="{{ $maxCvBodyChars }}"
                                       class="mt-1 w-full rounded-lg border-slate-300 font-mono text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                       placeholder="Cole ou escreva o conteúdo completo do CV.">{{ old('body', $formCv?->body) }}</textarea>
                             <div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-                                <p class="text-slate-500">Limite máximo {{ number_format($maxCvBodyChars, 0, ',', '.') }} caracteres (Unicode).</p>
+                                <p class="text-slate-500">Limite ao salvar {{ number_format($maxCvBodyChars, 0, ',', '.') }} caracteres (servidor; contagem Unicode).</p>
                                 <p id="cv-char-hint" class="font-medium text-slate-600" aria-live="polite">
                                     <span id="cv-char-count">0</span> caracteres
                                     · mínimo trilha (CV padrão): <span class="text-indigo-700">{{ number_format($minProfileCvChars, 0, ',', '.') }}</span>
@@ -421,10 +422,19 @@
                 var statusEl = document.getElementById('cv_extract_status');
                 var extractUrl = @json(route('career-trail.cv.extract-file'));
                 var tokenEl = document.querySelector('meta[name="csrf-token"]');
+                var maxCvBodyChars = {{ (int) $maxCvBodyChars }};
+
+                function cvBodyCharCount(s) {
+                    try {
+                        return Array.from(s).length;
+                    } catch (_) {
+                        return String(s).length;
+                    }
+                }
 
                 function updateCount() {
                     if (!ta || !countEl) return;
-                    var n = Array.from(ta.value).length;
+                    var n = cvBodyCharCount(ta.value);
                     countEl.textContent = n;
                     if (hintEl) {
                         hintEl.classList.toggle('text-emerald-700', n >= minTrail);
@@ -436,6 +446,20 @@
                 if (ta) {
                     ta.addEventListener('input', updateCount);
                     updateCount();
+                    var profileForm = ta.form;
+                    if (profileForm && maxCvBodyChars > 0) {
+                        profileForm.addEventListener('submit', function (ev) {
+                            var n = cvBodyCharCount(ta.value);
+                            if (n <= maxCvBodyChars) {
+                                return;
+                            }
+                            ev.preventDefault();
+                            window.alert('O texto do CV tem ' + n.toLocaleString('pt-BR') +
+                                ' caracteres. O máximo permitido ao salvar é ' +
+                                maxCvBodyChars.toLocaleString('pt-BR') +
+                                '. Encurte o texto antes de continuar (ou peça para aumentar AGENT_DOCUMENT_MAX_CV_CHARS).');
+                        });
+                    }
                 }
 
                 function syncCvExtractFilename() {
@@ -488,19 +512,31 @@
                                     statusEl.classList.add('text-red-700');
                                     return;
                                 }
+                                var overExtractLimit = false;
                                 if (ta) {
                                     ta.value = res.json.body || '';
                                     updateCount();
                                     ta.focus();
+                                    overExtractLimit = maxCvBodyChars > 0 && cvBodyCharCount(ta.value) > maxCvBodyChars;
                                 }
                                 if (titleEl && res.json.suggested_title) {
                                     if ((titleEl.value || '').trim() === '') {
                                         titleEl.value = res.json.suggested_title;
                                     }
                                 }
-                                statusEl.textContent = 'Texto colado em Texto do CV. Revise e clique em Salvar quando estiver pronto.';
-                                statusEl.classList.remove('hidden', 'text-slate-700', 'text-red-700');
-                                statusEl.classList.add('text-emerald-800');
+                                if (overExtractLimit) {
+                                    statusEl.textContent = 'Atenção: o texto extraído tem ' +
+                                        cvBodyCharCount(ta.value).toLocaleString('pt-BR') +
+                                        ' caracteres; o limite ao salvar é ' +
+                                        maxCvBodyChars.toLocaleString('pt-BR') +
+                                        '. Enxugue o conteúdo na caixa de texto antes de salvar.';
+                                    statusEl.classList.remove('hidden', 'text-slate-700', 'text-emerald-800', 'text-red-700');
+                                    statusEl.classList.add('text-amber-900');
+                                } else {
+                                    statusEl.textContent = 'Texto colado em Texto do CV. Revise e clique em Salvar quando estiver pronto.';
+                                    statusEl.classList.remove('hidden', 'text-slate-700', 'text-red-700', 'text-amber-900');
+                                    statusEl.classList.add('text-emerald-800');
+                                }
                                 fileEl.value = '';
                                 syncCvExtractFilename();
                             })

@@ -10,6 +10,7 @@ use App\Models\InterviewPreparation;
 use App\Models\InterviewProcess;
 use App\Services\CareerTrailAgentAccess;
 use App\Services\ChatKitDocumentLibraryService;
+use App\Services\GamificationService;
 use App\Services\InterviewProcessOutcomeService;
 use App\Support\CareerTrailAtsJdValidator;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,6 +25,10 @@ use Illuminate\View\View;
 
 class InterviewPreparationController extends Controller
 {
+    public function __construct(
+        private GamificationService $gamification
+    ) {}
+
     public function index(Request $request, Agent $agent): View
     {
         $this->authorizeInterviewStepAgent($agent);
@@ -426,6 +431,11 @@ class InterviewPreparationController extends Controller
             ->exists();
         abort_if($exists, 422, 'Já existe uma entrevista com esta sequência para este processo (vaga).');
 
+        $hadProcess = InterviewProcess::query()
+            ->where('user_id', (int) $request->user()->id)
+            ->where('jd_document_id', (int) $jd->id)
+            ->exists();
+
         InterviewPreparation::query()->create([
             'user_id' => (int) $request->user()->id,
             'jd_document_id' => (int) $jd->id,
@@ -435,6 +445,30 @@ class InterviewPreparationController extends Controller
             'chat_prep_messages' => $validated['chat_prep_messages'] ?? null,
             'learnings' => $validated['learnings'] ?? null,
         ]);
+
+        $process = InterviewProcess::query()
+            ->where('user_id', (int) $request->user()->id)
+            ->where('jd_document_id', (int) $jd->id)
+            ->first();
+
+        if (! $hadProcess) {
+            $this->gamification->recordEvent(
+                $request->user(),
+                'interview_process_created',
+                InterviewProcess::class,
+                $process?->id,
+                ['jd_document_id' => (int) $jd->id]
+            );
+        } else {
+            $this->gamification->recordEvent(
+                $request->user(),
+                'interview_round_created',
+                InterviewProcess::class,
+                $process?->id,
+                ['jd_document_id' => (int) $jd->id, 'sequence' => (int) $sequence]
+            );
+        }
+        $this->gamification->ensureFreshSnapshot($request->user());
 
         return redirect()
             ->route('agents.interview-preparations.index', $agent)

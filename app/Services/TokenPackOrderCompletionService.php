@@ -86,6 +86,18 @@ class TokenPackOrderCompletionService
 
         Log::info('Token pack order credited from Asaas payment payload', ['order_id' => $order->id]);
 
+        $user = User::query()->find($order->user_id);
+        if ($user) {
+            app(GamificationService::class)->recordEvent(
+                $user,
+                'token_pack_purchased',
+                TokenPackOrder::class,
+                (int) $order->id,
+                ['tokens_amount' => (int) $order->tokens_amount, 'amount_brl' => (float) $order->amount_brl]
+            );
+            app(GamificationService::class)->ensureFreshSnapshot($user);
+        }
+
         return response()->json(['status' => 'token pack credited']);
     }
 }

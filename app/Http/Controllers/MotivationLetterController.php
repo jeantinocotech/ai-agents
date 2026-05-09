@@ -6,6 +6,7 @@ use App\Models\Agent;
 use App\Models\MotivationLetter;
 use App\Services\CareerTrailAgentAccess;
 use App\Services\ChatKitDocumentLibraryService;
+use App\Services\GamificationService;
 use App\Support\CareerTrailAtsJdValidator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,6 +16,10 @@ use Illuminate\View\View;
 
 class MotivationLetterController extends Controller
 {
+    public function __construct(
+        private GamificationService $gamification
+    ) {}
+
     public function index(Request $request, Agent $agent): View
     {
         $this->authorizeCoverLetterAgent($agent);
@@ -98,7 +103,12 @@ class MotivationLetterController extends Controller
 
         $jd = CareerTrailAtsJdValidator::validatedJdForUser((int) $validated['jd_document_id'], $request->user());
 
-        MotivationLetter::query()->updateOrCreate(
+        $existing = MotivationLetter::query()
+            ->where('user_id', (int) $request->user()->id)
+            ->where('jd_document_id', (int) $jd->id)
+            ->first();
+
+        $row = MotivationLetter::query()->updateOrCreate(
             [
                 'user_id' => (int) $request->user()->id,
                 'jd_document_id' => (int) $jd->id,
@@ -109,6 +119,17 @@ class MotivationLetterController extends Controller
                 'source' => $validated['source'] ?? MotivationLetter::SOURCE_MANUAL,
             ]
         );
+
+        if (! $existing) {
+            $this->gamification->recordEvent(
+                $request->user(),
+                'motivation_letter_created',
+                MotivationLetter::class,
+                (int) $row->id,
+                ['jd_document_id' => (int) $jd->id]
+            );
+            $this->gamification->ensureFreshSnapshot($request->user());
+        }
 
         return redirect()
             ->route('agents.motivation-letters.index', $agent)
