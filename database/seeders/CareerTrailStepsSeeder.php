@@ -13,7 +13,7 @@ class CareerTrailStepsSeeder extends Seeder
             [
                 'slug' => 'cv',
                 'sort_order' => 1,
-                'title' => 'Criar um CV',
+                'title' => 'Curriculum',
                 'short_description' => 'Estruture e refine o seu currículo para destacar competências e resultados alinhados às vagas que deseja.',
                 'graca_guidance' => 'Comece por um rascunho honesto: experiências, formação e o que gosta de fazer. Pode usar o assistente de chat na página do CV ou colar texto — o importante é ter material para refinar.',
             ],

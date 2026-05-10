@@ -100,13 +100,15 @@ test('destroy unknown profile cv returns not found', function () {
 test('user can save profile cv from text', function () {
     $user = User::factory()->create();
 
-    $this->actingAs($user)
+    $response = $this->actingAs($user)
         ->post(route('career-trail.cv.store'), [
             'title' => 'O meu CV',
             'body' => str_repeat('a', 400),
             'linkedin_url' => 'https://www.linkedin.com/in/example',
-        ])
-        ->assertRedirect(route('career-trail.cv'));
+        ]);
+    $cv = UserCv::query()->where('user_id', $user->id)->first();
+    expect($cv)->not->toBeNull();
+    $response->assertRedirect(route('career-trail.cv', ['edit' => $cv->id]).'#sec-cv-form');
 
     $cv = UserCv::defaultForUserId((int) $user->id);
     expect($cv)->not->toBeNull();
@@ -127,12 +129,14 @@ test('second profile cv stays non default unless requested', function () {
         'source' => UserCv::SOURCE_MANUAL,
     ]);
 
-    $this->actingAs($user)
+    $resp = $this->actingAs($user)
         ->post(route('career-trail.cv.store'), [
             'title' => 'B',
             'body' => str_repeat('y', 400),
-        ])
-        ->assertRedirect(route('career-trail.cv'));
+        ]);
+    $newB = UserCv::query()->where('user_id', $user->id)->where('title', 'B')->first();
+    expect($newB)->not->toBeNull();
+    $resp->assertRedirect(route('career-trail.cv', ['edit' => $newB->id]).'#sec-cv-form');
 
     $first->refresh();
     expect($first->is_default)->toBeTrue();
@@ -222,6 +226,25 @@ test('profile cv content endpoint returns json for owner', function () {
         ->assertJsonPath('body', 'Corpo do CV para teste.');
 });
 
+test('user can duplicate profile cv', function () {
+    $user = User::factory()->create();
+    $cv = UserCv::query()->create([
+        'user_id' => $user->id,
+        'title' => 'Original',
+        'body' => str_repeat('o', 400),
+        'is_default' => true,
+        'source' => UserCv::SOURCE_MANUAL,
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('career-trail.cv.duplicate', $cv));
+
+    $copy = UserCv::query()->where('user_id', $user->id)->where('title', 'like', 'Cópia de%')->first();
+    expect($copy)->not->toBeNull();
+    expect($copy->is_default)->toBeFalse();
+    expect((string) $copy->body)->toBe(str_repeat('o', 400));
+});
+
 test('career trail cv page shows embedded assistant when user has no cv and agent is configured', function () {
     $user = User::factory()->create();
     $agent = makeCareerTrailChatKitAgent();
@@ -253,7 +276,7 @@ test('career trail cv page still shows assistant when user already has default c
         ->get(route('career-trail.cv'))
         ->assertOk()
         ->assertSee('btn-open-cv-assistant', false)
-        ->assertSee('Abrir assistente de CV', false);
+        ->assertSee('Ajustar / Criar CV', false);
 });
 
 test('default profile cv is upserted to ats agent library when saved as predefinido', function () {
@@ -262,10 +285,12 @@ test('default profile cv is upserted to ats agent library when saved as predefin
 
     $user = User::factory()->create();
 
-    $this->actingAs($user)->post(route('career-trail.cv.store'), [
+    $r = $this->actingAs($user)->post(route('career-trail.cv.store'), [
         'title' => 'CV perfil',
         'body' => str_repeat('t', 400),
-    ])->assertRedirect(route('career-trail.cv'));
+    ]);
+    $cvSaved = UserCv::query()->where('user_id', $user->id)->where('title', 'CV perfil')->first();
+    $r->assertRedirect(route('career-trail.cv', ['edit' => $cvSaved->id]).'#sec-cv-form');
 
     $defaults = AgentDocumentDefault::query()
         ->where('user_id', $user->id)
@@ -278,10 +303,12 @@ test('default profile cv is upserted to ats agent library when saved as predefin
     expect($doc->type)->toBe(AgentDocument::TYPE_CV)
         ->and($doc->body)->toBe(str_repeat('t', 400));
 
-    $this->actingAs($user)->post(route('career-trail.cv.store'), [
+    $r2 = $this->actingAs($user)->post(route('career-trail.cv.store'), [
         'title' => 'Outro',
         'body' => str_repeat('u', 400),
-    ])->assertRedirect(route('career-trail.cv'));
+    ]);
+    $other = UserCv::query()->where('user_id', $user->id)->where('title', 'Outro')->first();
+    $r2->assertRedirect(route('career-trail.cv', ['edit' => $other->id]).'#sec-cv-form');
 
     $doc->refresh();
     expect($doc->body)->toBe(str_repeat('t', 400));

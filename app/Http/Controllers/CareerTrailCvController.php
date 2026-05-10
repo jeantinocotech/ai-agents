@@ -36,6 +36,7 @@ class CareerTrailCvController extends Controller
             ->where('user_id', $user->id)
             ->orderByDesc('is_default')
             ->orderByDesc('updated_at')
+            ->orderByDesc('id')
             ->get();
 
         $defaultCv = UserCv::defaultForUserId((int) $user->id);
@@ -59,20 +60,13 @@ class CareerTrailCvController extends Controller
             ->values()
             ->all();
 
-        $agentLibraryCvs = collect();
-        if ($accessibleAgentIds !== []) {
-            $agentLibraryCvs = AgentDocument::query()
-                ->where('user_id', $user->id)
-                ->where('type', AgentDocument::TYPE_CV)
-                ->whereIn('agent_id', $accessibleAgentIds)
-                ->with(['agent:id,name'])
-                ->orderByDesc('updated_at')
-                ->get();
-        }
-
         $cvAssistantChatUrl = CareerTrailStep::cvEmbeddedCreatorChatUrl();
         $cvAssistantChatIframeUrl = $cvAssistantChatUrl !== null
             ? CareerTrailStep::cvEmbeddedCreatorChatUrl(forIframe: true)
+            : null;
+
+        $cvAnalyzeChatUrl = ($editingCv !== null && $cvAssistantChatUrl !== null)
+            ? CareerTrailStep::cvAnalyzeChatUrlForUserCv((int) $editingCv->id)
             : null;
 
         $cvTrailStep = CareerTrailStep::query()
@@ -88,16 +82,29 @@ class CareerTrailCvController extends Controller
             ? CareerTrailStepCompletion::checklist($user, $cvTrailStep)
             : [];
 
+        $editingCvAssociatedJds = collect();
+        if ($editingCv !== null && $accessibleAgentIds !== []) {
+            $editingCvAssociatedJds = AgentDocument::query()
+                ->where('user_id', $user->id)
+                ->where('type', AgentDocument::TYPE_JD)
+                ->where('user_cv_id', $editingCv->id)
+                ->whereIn('agent_id', $accessibleAgentIds)
+                ->with(['agent:id,name'])
+                ->orderByDesc('updated_at')
+                ->get();
+        }
+
         return view('career-trail.cv', [
             'profileCvs' => $profileCvs,
             'defaultCv' => $defaultCv,
             'editingCv' => $editingCv,
-            'agentLibraryCvs' => $agentLibraryCvs,
+            'editingCvAssociatedJds' => $editingCvAssociatedJds,
             'maxCvBodyChars' => AgentDocumentLimits::maxCharsForType(AgentDocument::TYPE_CV),
             'minProfileCvChars' => max(1, (int) config('career_trail.min_profile_cv_chars', 400)),
             'linkedinUrl' => $user->linkedin_url,
             'cvAssistantChatUrl' => $cvAssistantChatUrl,
             'cvAssistantChatIframeUrl' => $cvAssistantChatIframeUrl,
+            'cvAnalyzeChatUrl' => $cvAnalyzeChatUrl,
             'cvStepReadiness' => $cvStepReadiness,
             'cvStepChecklist' => $cvStepChecklist,
             'cvTrailStep' => $cvTrailStep,
@@ -222,8 +229,9 @@ class CareerTrailCvController extends Controller
             : 'Novo CV salvo na conta.';
 
         return redirect()
-            ->route('career-trail.cv')
-            ->with('status', $msg);
+            ->to(route('career-trail.cv', ['edit' => $new->id]).'#sec-cv-form')
+            ->with('status', $msg)
+            ->with('show_analisar', true);
     }
 
     public function update(Request $request, UserCv $userCv): RedirectResponse
@@ -288,8 +296,9 @@ class CareerTrailCvController extends Controller
         }
 
         return redirect()
-            ->route('career-trail.cv')
-            ->with('status', 'CV atualizado.');
+            ->to(route('career-trail.cv', ['edit' => $userCv->id]).'#sec-cv-form')
+            ->with('status', 'CV atualizado.')
+            ->with('show_analisar', true);
     }
 
     public function setDefault(Request $request, UserCv $userCv): RedirectResponse
@@ -434,6 +443,30 @@ class CareerTrailCvController extends Controller
         return redirect()
             ->route('agents.documents.index', $agent)
             ->with('status', 'CV padrão copiado para a biblioteca deste agente.');
+    }
+
+    public function duplicateProfileCv(Request $request, UserCv $userCv): RedirectResponse
+    {
+        $user = $request->user();
+        $this->abortUnlessOwnCv($user, $userCv);
+
+        $base = trim((string) ($userCv->title ?: 'CV'));
+        $newTitle = 'Cópia de '.$base;
+        if (mb_strlen($newTitle) > 255) {
+            $newTitle = mb_substr($newTitle, 0, 252).'...';
+        }
+
+        $copy = UserCv::query()->create([
+            'user_id' => $user->id,
+            'title' => $newTitle,
+            'body' => $userCv->body,
+            'is_default' => false,
+            'source' => UserCv::SOURCE_MANUAL,
+        ]);
+
+        return redirect()
+            ->to(route('career-trail.cv', ['edit' => $copy->id]).'#sec-cv-form')
+            ->with('status', 'CV duplicado — edite o texto e salve quando estiver pronto.');
     }
 
     private function abortUnlessOwnCv(User $user, UserCv $userCv): void

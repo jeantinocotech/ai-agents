@@ -73,6 +73,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/trilha/cv/{userCv}', [CareerTrailCvController::class, 'update'])->name('career-trail.cv.update');
     Route::post('/trilha/cv/{userCv}/padrao', [CareerTrailCvController::class, 'setDefault'])->name('career-trail.cv.default');
     Route::delete('/trilha/cv/{userCv}', [CareerTrailCvController::class, 'destroyProfileCv'])->name('career-trail.cv.destroy');
+    Route::post('/trilha/cv/{userCv}/duplicar', [CareerTrailCvController::class, 'duplicateProfileCv'])->name('career-trail.cv.duplicate');
     Route::post('/trilha/cv/sync/{agent}', [CareerTrailCvController::class, 'syncToAgent'])->name('career-trail.cv.sync');
     Route::post('/trilha/avancar', [CareerTrailController::class, 'advance'])->name('career-trail.advance');
     Route::post('/trilha/voltar', [CareerTrailController::class, 'back'])->name('career-trail.back');

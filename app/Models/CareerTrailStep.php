@@ -70,7 +70,7 @@ class CareerTrailStep extends Model
     public function trailBarLinkLabel(): string
     {
         return match ($this->slug) {
-            'cv' => 'CV',
+            'cv' => (string) ($this->title ?: 'Curriculum'),
             'ats' => 'ATS',
             'interviews' => 'Entrevista',
             default => $this->title ?? '',
@@ -116,6 +116,24 @@ class CareerTrailStep extends Model
         $url = route('agents.chat', $assistant);
 
         return $forIframe ? $url.'?embedded=1' : $url;
+    }
+
+    /**
+     * Chat do assistente de CV (página completa) com envio automático do CV de perfil (query user_cv_id + auto_send).
+     */
+    public static function cvAnalyzeChatUrlForUserCv(int $userCvId): ?string
+    {
+        $url = static::cvEmbeddedCreatorChatUrl(forIframe: false);
+        if ($url === null) {
+            return null;
+        }
+
+        $sep = str_contains($url, '?') ? '&' : '?';
+
+        return $url.$sep.http_build_query([
+            'user_cv_id' => $userCvId,
+            'auto_send' => '1',
+        ]);
     }
 
     /**

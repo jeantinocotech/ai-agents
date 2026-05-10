@@ -29,7 +29,18 @@
                 $trailMapUser = auth()->user();
             @endphp
 
-            @if (count($currentStepChecklist ?? []) > 0)
+            @if ($currentStep->slug === 'cv' && count($currentStepChecklist ?? []) > 0)
+                <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50/80 px-5 py-4 shadow-sm">
+                    <h3 class="text-sm font-semibold text-amber-950">Curriculum</h3>
+                    <p class="mt-2 text-sm text-amber-950/90">Trabalhe o conteúdo do seu CV na página dedicada — o checklist completo está lá.</p>
+                    <a href="{{ route('career-trail.cv') }}" class="mt-4 inline-flex items-center rounded-lg bg-amber-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-950">
+                        Abrir página Curriculum
+                    </a>
+                    @if (! ($currentStepReadiness['ready'] ?? false) && ! empty($currentStepReadiness['blocked_message']))
+                        <p class="mt-3 text-xs text-amber-950/90">{{ $currentStepReadiness['blocked_message'] }}</p>
+                    @endif
+                </div>
+            @elseif (count($currentStepChecklist ?? []) > 0)
                 <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50/80 px-5 py-4 shadow-sm">
                     <h3 class="text-sm font-semibold text-amber-950">Para concluir esta etapa e avançar</h3>
                     <ul class="mt-3 space-y-2 text-sm">

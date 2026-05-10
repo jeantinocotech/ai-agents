@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Passo 1 — O seu CV
+            Passo 1 — {{ $cvTrailStep?->title ?? 'Curriculum' }}
         </h2>
     </x-slot>
 
@@ -9,23 +9,11 @@
         $formCv = $editingCv ?? null;
         $profileCount = $profileCvs->count();
         $firstCvSuggestion = ! $formCv && $profileCount === 0;
-        $defaultLen = $defaultCv ? mb_strlen(trim((string) $defaultCv->body)) : 0;
-        $defaultMeetsTrail = $defaultLen >= (int) $minProfileCvChars;
-        $cvSourceLabels = [
-            'manual' => 'Escrito na conta',
-            'upload' => 'Carregado',
-            'agent_import' => 'Da biblioteca de um agente',
-        ];
+        $canAnalyzeCvNow = $formCv !== null && ! empty($cvAnalyzeChatUrl);
     @endphp
 
-    <div class="py-10">
+    <div class="py-6">
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
-            <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
-                <a href="{{ route('career-trail.index') }}" class="text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline">
-                    &larr; Voltar à trilha
-                </a>
-                <span class="rounded-full bg-violet-100 px-3 py-1 text-xs font-semibold text-violet-900">Etapa atual na trilha · Criar CV</span>
-            </div>
 
             @if (session('status'))
                 <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900" role="status">
@@ -39,15 +27,20 @@
             @endif
 
             {{-- Orientação da Graça + objetivo do passo 1 (texto em BD: slot cv_page_intro) --}}
-            <div class="mb-6 overflow-hidden rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white shadow-sm">
-                <div class="flex flex-col gap-4 p-5 sm:flex-row sm:items-start">
+            <details class="mb-4 overflow-hidden rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white shadow-sm" open>
+                <summary class="cursor-pointer list-none px-4 py-2.5 text-sm font-semibold text-violet-950 marker:content-none [&::-webkit-details-marker]:hidden">
+                    <span class="flex items-center justify-between gap-2">
+                        <span>Orientação — {{ config('career_trail.mentor_label', 'Sra. Graça') }}</span>
+                        <span class="text-xs font-normal text-violet-700">Mostrar / ocultar</span>
+                    </span>
+                </summary>
+                <div class="flex flex-col gap-3 border-t border-violet-100/80 px-4 py-3 pt-3 sm:flex-row sm:items-start">
                     <div class="shrink-0 rounded-2xl bg-white p-1 shadow ring-1 ring-violet-100">
                         <img src="{{ asset(config('career_trail.mentor_avatar', 'img/graca-avatar.png')) }}"
                              alt="{{ config('career_trail.mentor_label', 'Sra. Graça') }}"
                              class="h-16 w-16 rounded-xl object-cover" />
                     </div>
                     <div class="min-w-0 flex-1 text-sm leading-relaxed text-slate-700">
-                        <p class="font-semibold text-violet-950">{{ config('career_trail.mentor_label', 'Sra. Graça') }}</p>
                         <x-graca-slot
                             :placement="\App\Support\CareerTrailGracaSlots::CV_PAGE_INTRO"
                             :step="$cvTrailStep"
@@ -56,276 +49,90 @@
                         />
                     </div>
                 </div>
-            </div>
-
-            {{-- Passo 2: duas opções claras (antes do checklist) --}}
-            <div class="mb-6">
-                <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">2 · Escolha</p>
-                <div class="grid gap-4 sm:grid-cols-2">
-                    <div class="flex flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                        <h3 class="text-sm font-semibold text-slate-900">Adicionar CV na conta</h3>
-                        <p class="mt-2 flex-1 text-sm text-slate-600">
-                            Carregue TXT, PDF ou Word, ou cole o texto no formulário — é o caminho direto para cumprir o passo&nbsp;1 da trilha.
-                        </p>
-                        <a href="#sec-cv-form"
-                           class="mt-4 inline-flex w-fit items-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800">
-                            Ir para o formulário
-                        </a>
-                    </div>
-                    <div class="flex flex-col rounded-xl border border-indigo-200 bg-indigo-50/60 p-5 shadow-sm">
-                        @if ($cvAssistantChatUrl)
-                            <h3 class="text-sm font-semibold text-indigo-950">Assistente de CV</h3>
-                            <p class="mt-2 flex-1 text-sm text-indigo-900/90">
-                                @if ($profileCvs->isEmpty())
-                                    Converse no chat e depois <strong>cole o resultado no formulário</strong> (secção abaixo) e guarde como novo CV.
-                                @else
-                                    Reabra para afinar secções; copie o texto para o formulário ao criar ou editar um CV.
-                                @endif
-                            </p>
-                            <button type="button" id="btn-open-cv-assistant"
-                                    class="mt-4 inline-flex w-fit items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700">
-                                Abrir assistente de CV
-                            </button>
-                        @else
-                            <h3 class="text-sm font-semibold text-slate-800">Assistente de CV</h3>
-                            <p class="mt-2 text-xs text-slate-600">
-                                Ainda não está disponível: na administração, associe um agente ChatKit ativo ao passo <strong>Criar um CV</strong> da trilha (campo Passo da trilha ao criar ou editar o agente).
-                            </p>
-                        @endif
-                    </div>
-                </div>
-            </div>
-
-            {{-- Passo 3: checklist / progresso na trilha --}}
-            @if ($defaultCv)
-                <div @class([
-                    'mb-6 rounded-2xl border px-5 py-4 shadow-sm ring-1',
-                    'border-emerald-300 bg-emerald-50 ring-emerald-200/60' => $defaultMeetsTrail,
-                    'border-amber-300 bg-amber-50 ring-amber-200/60' => ! $defaultMeetsTrail,
-                ])>
-                    <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-600/80">3 · Progresso</p>
-                    <h3 @class([
-                        'text-sm font-semibold',
-                        'text-emerald-950' => $defaultMeetsTrail,
-                        'text-amber-950' => ! $defaultMeetsTrail,
-                    ])>
-                        Checklist — Passo 1
-                    </h3>
-
-                    <p @class([
-                        'mt-2 text-sm',
-                        'text-emerald-900/90' => $defaultMeetsTrail,
-                        'text-amber-950/80' => ! $defaultMeetsTrail,
-                    ])>
-                        O seu CV padrão é <strong>{{ $defaultCv->title ?: 'Sem título' }}</strong> e tem
-                        <strong>{{ number_format($defaultLen, 0, ',', '.') }}</strong> caracteres
-                        (mínimo: <strong>{{ number_format((int) $minProfileCvChars, 0, ',', '.') }}</strong>).
-                    </p>
-
-                    @if (count($cvStepChecklist ?? []) > 0)
-                        <ul class="mt-3 space-y-1.5 text-sm">
-                            @foreach ($cvStepChecklist as $item)
-                                <li @class([
-                                    'flex gap-2',
-                                    'text-emerald-800' => $item['done'],
-                                    'text-slate-700' => ! $item['done'],
-                                ])>
-                                    <span class="shrink-0 font-bold" aria-hidden="true">{{ $item['done'] ? '✓' : '○' }}</span>
-                                    <span>{{ $item['label'] }}</span>
-                                </li>
-                            @endforeach
-                        </ul>
-                    @endif
-
-                    @if (! ($cvStepReadiness['ready'] ?? false) && ! empty($cvStepReadiness['blocked_message']))
-                        <p class="mt-3 rounded-lg bg-amber-100/60 px-3 py-2 text-xs text-amber-950">{{ $cvStepReadiness['blocked_message'] }}</p>
-                    @endif
-
-                    @if ($defaultMeetsTrail)
-                        <div class="mt-4 flex flex-wrap gap-3">
-                            <a href="{{ route('career-trail.index') }}"
-                               class="inline-flex items-center rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800">
-                                Ir à trilha (ATS liberado)
-                            </a>
-                            <span class="self-center text-xs text-emerald-900/80">A trilha avança automaticamente para o passo ATS assim que este requisito é cumprido.</span>
-                        </div>
-                    @else
-                        <p class="mt-3 text-xs text-amber-950/70">
-                            Dica: se já tiver outro CV mais completo, marque-o como <strong>padrão</strong> na lista Meus CVs mais abaixo.
-                        </p>
-                    @endif
-                </div>
-            @elseif (count($cvStepChecklist ?? []) > 0)
-                <div class="mb-6 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-                    <p class="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">3 · Progresso</p>
-                    <h3 class="text-sm font-semibold text-slate-900">Checklist — Passo 1</h3>
-                    <ul class="mt-3 space-y-2 text-sm">
-                        @foreach ($cvStepChecklist as $item)
-                            <li @class([
-                                'flex gap-2',
-                                'text-emerald-800' => $item['done'],
-                                'text-slate-600' => ! $item['done'],
-                            ])>
-                                <span class="shrink-0 font-bold" aria-hidden="true">{{ $item['done'] ? '✓' : '○' }}</span>
-                                <span>{{ $item['label'] }}</span>
-                            </li>
-                        @endforeach
-                    </ul>
-                    @if (! ($cvStepReadiness['ready'] ?? false) && ! empty($cvStepReadiness['blocked_message']))
-                        <p class="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-950">{{ $cvStepReadiness['blocked_message'] }}</p>
-                    @endif
-                </div>
-            @endif
+            </details>
 
             <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div class="border-b border-slate-100 bg-slate-50/80 px-6 py-5">
+                <div class="border-b border-slate-100 bg-slate-50/80 px-4 py-3 sm:px-5">
                     <h1 class="text-xl font-bold text-slate-900">Meus CVs</h1>
                 </div>
 
-                <div class="px-6 py-6 space-y-8">
+                <div class="space-y-5 px-4 py-4 sm:px-5 sm:py-5">
                     @if ($profileCvs->isNotEmpty())
-                        <div>
-                            <h2 class="text-sm font-semibold text-slate-900">Meus CVs</h2>
-                            <ul class="mt-3 divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white">
-                                @foreach ($profileCvs as $cv)
-                                    <li class="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between">
-                                        <div class="min-w-0">
-                                            <div class="flex flex-wrap items-center gap-2">
-                                                <span class="font-medium text-slate-900">{{ $cv->title ?: 'Sem título' }}</span>
-                                                @if ($cv->is_default)
-                                                    <span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-900">Padrão</span>
-                                                @endif
-                                                <span class="text-xs text-slate-500">{{ $cvSourceLabels[(string) $cv->source] ?? $cv->source }}</span>
-                                            </div>
-                                            <p class="mt-1 text-xs text-slate-600">
-                                                {{ number_format(mb_strlen((string) $cv->body), 0, ',', '.') }} caracteres
-                                                · atualizado {{ $cv->updated_at->diffForHumans() }}
-                                            </p>
-                                        </div>
-                                        <div class="flex flex-wrap items-center gap-2 shrink-0">
-                                            <a href="{{ route('career-trail.cv', ['edit' => $cv->id]) }}"
-                                               class="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50">
-                                                Editar
-                                            </a>
-                                            @if (! $cv->is_default)
-                                                <form method="post" action="{{ route('career-trail.cv.default', $cv) }}" class="inline">
-                                                    @csrf
-                                                    <button type="submit" class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-900 hover:bg-indigo-100">
-                                                        Usar como padrão
-                                                    </button>
-                                                </form>
-                                            @endif
-                                            <form method="post" action="{{ route('career-trail.cv.destroy', $cv) }}" class="inline"
-                                                  onsubmit="return confirm('Eliminar este CV da conta? Esta ação não pode ser anulada.');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="rounded-lg px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50">
-                                                    Eliminar
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </li>
-                                @endforeach
-                            </ul>
+                        <div class="max-h-56 overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 bg-white">
+                            <table class="min-w-full text-left text-sm">
+                                <thead class="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                                    <tr>
+                                        <th class="px-3 py-2">CV</th>
+                                        <th class="whitespace-nowrap px-3 py-2">Atualizado</th>
+                                        <th class="whitespace-nowrap px-3 py-2 text-right">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    @foreach ($profileCvs as $cv)
+                                        <tr @class([
+                                            'bg-violet-50/80' => $formCv && (int) $formCv->id === (int) $cv->id,
+                                        ])>
+                                            <td class="align-top px-3 py-2">
+                                                <a href="{{ route('career-trail.cv', ['edit' => $cv->id]) }}#sec-cv-form"
+                                                   class="group block min-w-0 text-slate-900 hover:text-indigo-700">
+                                                    <span class="font-medium group-hover:underline">{{ $cv->title ?: 'Sem título' }}</span>
+                                                    @if ($cv->is_default)
+                                                        <span class="ml-1.5 align-middle rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-900">Padrão</span>
+                                                    @endif
+                                                </a>
+                                            </td>
+                                            <td class="whitespace-nowrap px-3 py-2 align-middle text-slate-600">
+                                                {{ $cv->updated_at->format('d/m/Y H:i') }}
+                                            </td>
+                                            <td class="px-3 py-2 align-middle text-right">
+                                                <div class="inline-flex flex-wrap items-center justify-end gap-2">
+                                                    <form method="post" action="{{ route('career-trail.cv.duplicate', $cv) }}" class="inline">
+                                                        @csrf
+                                                        <button type="submit" class="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50">
+                                                            Duplicar
+                                                        </button>
+                                                    </form>
+                                                    <form method="post" action="{{ route('career-trail.cv.destroy', $cv) }}" class="inline"
+                                                          onsubmit="return confirm('Eliminar este CV da conta? Esta ação não pode ser anulada.');">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="rounded-lg px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-50">
+                                                            Eliminar
+                                                        </button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
                         </div>
+                    @else
+                        <p class="text-sm text-slate-600">Ainda não tem CVs na conta. Use o formulário abaixo ou faça upload.</p>
                     @endif
 
-                    @if ($agentLibraryCvs->isNotEmpty())
-                        <div>
-                            <h2 class="text-sm font-semibold text-slate-900">CVs nas bibliotecas dos agentes (ATS / ChatKit)</h2>
-                            <p class="mt-1 text-xs text-slate-600">São os documentos que criou por etapa; pode copiar para a conta, abrir na biblioteca do agente ou remover (vagas emparelhadas podem perder o CV associado).</p>
-                            <ul class="mt-3 divide-y divide-slate-100 rounded-xl border border-slate-200 bg-slate-50/40">
-                                @foreach ($agentLibraryCvs as $doc)
-                                    <li class="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between">
-                                        <div class="min-w-0">
-                                            <p class="font-medium text-slate-900">{{ $doc->title ?: ('CV #'.$doc->id) }}</p>
-                                            <p class="mt-0.5 text-xs text-slate-600">
-                                                Agente: <strong>{{ $doc->agent->name ?? '—' }}</strong>
-                                                · {{ number_format(mb_strlen((string) $doc->body), 0, ',', '.') }} caracteres
-                                                · {{ $doc->updated_at->diffForHumans() }}
-                                            </p>
-                                        </div>
-                                        <div class="flex flex-wrap gap-2 shrink-0">
-                                            <a href="{{ $doc->agent ? \App\Services\CareerTrailAgentAccess::documentsHubUrl($doc->agent) : route('agents.documents.index', $doc->agent_id) }}"
-                                               class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-50">
-                                                Abrir biblioteca
-                                            </a>
-                                            <form method="post" action="{{ route('career-trail.cv.import-agent') }}" class="inline">
-                                                @csrf
-                                                <input type="hidden" name="agent_document_id" value="{{ $doc->id }}">
-                                                @if ($profileCount === 0)
-                                                    <input type="hidden" name="make_default" value="1">
-                                                @endif
-                                                <button type="submit" class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-900 hover:bg-indigo-100">
-                                                    Copiar para a conta
-                                                </button>
-                                            </form>
-                                            @if ($profileCount > 0)
-                                                <form method="post" action="{{ route('career-trail.cv.import-agent') }}" class="inline">
-                                                    @csrf
-                                                    <input type="hidden" name="agent_document_id" value="{{ $doc->id }}">
-                                                    <input type="hidden" name="make_default" value="1">
-                                                    <button type="submit" class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-900 hover:bg-emerald-100">
-                                                        Copiar e tornar padrão
-                                                    </button>
-                                                </form>
-                                            @endif
-                                            <form method="post" action="{{ route('career-trail.cv.agent-document.destroy', [$doc->agent_id, $doc->id]) }}" class="inline"
-                                                  onsubmit="return confirm('Remover este CV da biblioteca deste agente?');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="rounded-lg px-3 py-1.5 text-xs font-semibold text-red-700 hover:bg-red-50">
-                                                    Eliminar no agente
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
 
+                    <div class="flex flex-wrap items-center justify-end gap-2 rounded-xl border border-slate-200 bg-slate-50/50 p-2.5">
+                        <label class="inline-flex cursor-pointer items-center rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-slate-800">
+                            <span>Upload CV</span>
+                            <input type="file" id="cv_extract_file_top" accept=".txt,.pdf,.doc,.docx" class="sr-only" aria-label="Ficheiro para extrair texto">
+                        </label>
+                        @if ($cvAssistantChatUrl)
+                            <button type="button" id="btn-open-cv-assistant"
+                                    class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700">
+                                Ajustar / Criar CV
+                            </button>
+                        @endif
+                    </div>
                     <div id="sec-cv-form" class="scroll-mt-24">
                     @if ($formCv)
-                        <form method="post" action="{{ route('career-trail.cv.update', $formCv) }}" class="space-y-6 rounded-xl border border-indigo-200 bg-indigo-50/30 px-4 py-5 sm:px-5">
+                        <form method="post" action="{{ route('career-trail.cv.update', $formCv) }}" class="space-y-4 rounded-xl border border-indigo-200 bg-indigo-50/30 px-3 py-4 sm:px-4">
                             @csrf
                             @method('PATCH')
                     @else
-                        <form method="post" action="{{ route('career-trail.cv.store') }}" class="space-y-6 rounded-xl border border-transparent px-1">
+                        <form method="post" action="{{ route('career-trail.cv.store') }}" class="space-y-4 rounded-xl border border-transparent px-1">
                             @csrf
                     @endif
-
-                        @if ($formCv)
-                            <div class="flex justify-end">
-                                <a href="{{ route('career-trail.cv') }}" class="text-xs font-semibold text-indigo-700 hover:underline">Cancelar edição</a>
-                            </div>
-                        @endif
-
-                        @if ($firstCvSuggestion)
-                            <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
-                                É o seu <strong>primeiro CV</strong> na conta — ao salvar, será definido automaticamente como <strong>padrão</strong> (você pode alterar depois na lista de CVs).
-                            </div>
-                        @endif
-
-                        @if (! $firstCvSuggestion && ! $formCv)
-                            <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 px-4 py-3">
-                                <input type="checkbox" name="make_default" value="1" class="mt-1 rounded border-slate-300 text-indigo-600" @checked(old('make_default'))>
-                                <span class="text-sm text-slate-700"><strong>Definir como CV padrão</strong> da conta ao salvar (substitui o padrão atual).</span>
-                            </label>
-                        @endif
-
-                        @if ($formCv)
-                            @if ($formCv->is_default)
-                                <p class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
-                                    Este CV é o <strong>padrão</strong> na conta. Para usar outro como principal, escolha Usar como padrão na lista ou marque a opção em outro CV ao salvar.
-                                </p>
-                            @else
-                                <label class="flex cursor-pointer items-start gap-3 rounded-lg border border-slate-200 px-4 py-3">
-                                    <input type="checkbox" name="make_default" value="1" class="mt-1 rounded border-slate-300 text-indigo-600" @checked(old('make_default'))>
-                                    <span class="text-sm text-slate-700"><strong>Tornar este o CV padrão</strong> ao salvar.</span>
-                                </label>
-                            @endif
-                        @endif
 
                         <div>
                             <label for="cv_title" class="block text-sm font-medium text-slate-700">Título</label>
@@ -356,17 +163,32 @@
                         <div>
                             <label for="cv_body" class="block text-sm font-medium text-slate-700">Conteúdo do CV</label>
                             {{-- Sem maxlength no HTML: ao colar texto extraído por JS o navegador cortava o conteúdo sem aviso. --}}
-                            <textarea name="body" id="cv_body" rows="14" data-max-cv-body-chars="{{ $maxCvBodyChars }}"
+                            <textarea name="body" id="cv_body" rows="12" data-max-cv-body-chars="{{ $maxCvBodyChars }}"
                                       class="mt-1 w-full rounded-lg border-slate-300 font-mono text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                       placeholder="Cole ou escreva o conteúdo completo do CV.">{{ old('body', $formCv?->body) }}</textarea>
-                            <div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-                                <p class="text-slate-500">Limite ao salvar {{ number_format($maxCvBodyChars, 0, ',', '.') }} caracteres (servidor; contagem Unicode).</p>
-                                <p id="cv-char-hint" class="font-medium text-slate-600" aria-live="polite">
-                                    <span id="cv-char-count">0</span> caracteres
-                                    · mínimo trilha (CV padrão): <span class="text-indigo-700">{{ number_format($minProfileCvChars, 0, ',', '.') }}</span>
-                                </p>
+                            <div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                                <p>Limite ao salvar {{ number_format($maxCvBodyChars, 0, ',', '.') }} caracteres.</p>
+                                <p id="cv-char-hint" class="font-medium text-slate-600 tabular-nums" aria-live="polite"><span id="cv-char-count">0</span> caracteres</p>
                             </div>
                             <x-input-error class="mt-2" :messages="$errors->get('body')" />
+                        </div>
+
+                        <div class="mt-3 rounded-lg border border-slate-100 bg-slate-50/90 px-3 py-2.5">
+                            @if ($firstCvSuggestion)
+                                <p class="text-xs text-slate-500">O primeiro CV na conta torna-se o padrão ao gravar.</p>
+                            @elseif (! $formCv)
+                                <label class="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                                    <input type="checkbox" name="make_default" value="1" class="rounded border-slate-300 text-indigo-600" @checked(old('make_default'))>
+                                    <span>Padrão</span>
+                                </label>
+                            @elseif (! $formCv->is_default)
+                                <label class="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700">
+                                    <input type="checkbox" name="make_default" value="1" class="rounded border-slate-300 text-indigo-600" @checked(old('make_default'))>
+                                    <span>Padrão</span>
+                                </label>
+                            @else
+                                <span class="text-xs font-medium text-emerald-800">CV padrão da conta</span>
+                            @endif
                         </div>
 
                         <details class="rounded-lg border border-slate-200 bg-slate-50/80 px-4 py-3">
@@ -381,13 +203,55 @@
                             <x-input-error class="mt-2" :messages="$errors->get('linkedin_url')" />
                         </details>
 
-                        <div class="flex flex-wrap gap-3">
+                        @if ($formCv)
+                            <div class="rounded-lg border border-slate-200 bg-white px-4 py-3">
+                                <h3 class="text-sm font-semibold text-slate-900">Vagas associadas com este CV</h3>
+                                @if (($editingCvAssociatedJds ?? collect())->isNotEmpty())
+                                    <ul class="mt-2 divide-y divide-slate-100 text-sm">
+                                        @foreach ($editingCvAssociatedJds as $jd)
+                                            <li class="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
+                                                <div class="min-w-0">
+                                                    <span class="font-medium text-slate-800">{{ $jd->title ?: ('Vaga #'.$jd->id) }}</span>
+                                                    <span class="mt-0.5 block text-xs text-slate-500">{{ $jd->agent->name ?? '—' }}</span>
+                                                </div>
+                                                @if ($jd->agent)
+                                                    <a href="{{ \App\Services\CareerTrailAgentAccess::documentsHubUrl($jd->agent) }}"
+                                                       class="shrink-0 text-xs font-semibold text-indigo-700 hover:underline">Biblioteca ATS</a>
+                                                @endif
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @else
+                                    <p class="mt-1 text-xs text-slate-500">Ainda não há descrições de vaga (JD) associadas a este CV.</p>
+                                @endif
+                            </div>
+                        @endif
+
+                        <div class="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200/80 pt-3">
                             <button type="submit" class="inline-flex items-center rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700">
                                 {{ $formCv ? 'Salvar alterações' : 'Salvar CV' }}
                             </button>
+                            @if (! empty($cvAnalyzeChatUrl))
+                                @if ($canAnalyzeCvNow)
+                                    <a id="btn-analisar-cv" href="{{ $cvAnalyzeChatUrl }}"
+                                       @class([
+                                           'inline-flex items-center rounded-xl border border-indigo-300 bg-white px-5 py-2.5 text-sm font-semibold text-indigo-800 shadow-sm hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2',
+                                           'ring-2 ring-indigo-400 ring-offset-2' => session('show_analisar'),
+                                       ])>
+                                        Analisar CV
+                                    </a>
+                                @else
+                                    <span class="inline-flex cursor-not-allowed items-center rounded-xl border border-slate-200 bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-400"
+                                          role="note"
+                                          title="Grave o CV primeiro; depois pode abrir a análise no assistente.">
+                                        Analisar CV
+                                    </span>
+                                @endif
+                            @endif
                         </div>
                     </form>
                     </div>
+
                 </div>
             </div>
         </div>
@@ -547,6 +411,20 @@
                             });
                     });
                 }
+                    var fileElTop = document.getElementById("cv_extract_file_top");
+                    if (fileElTop && fileEl && statusEl && extractUrl && tokenEl) {
+                        fileElTop.addEventListener("change", function () {
+                            if (!fileElTop.files || !fileElTop.files[0]) return;
+                            try {
+                                var dt = new DataTransfer();
+                                dt.items.add(fileElTop.files[0]);
+                                fileEl.files = dt.files;
+                            } catch (e) {
+                                return;
+                            }
+                            fileEl.dispatchEvent(new Event("change", { bubbles: true }));
+                        });
+                    }
             })();
         </script>
         @if ($cvAssistantChatUrl)

@@ -27,7 +27,7 @@ test('authenticated user sees career trail and progress is created', function ()
 
     $response->assertOk();
     $response->assertSee('Sra. Graça', false);
-    $response->assertSee('Criar um CV', false);
+    $response->assertSee('Curriculum', false);
     $response->assertSee('graca-avatar.png', false);
     $response->assertSee('Etapas e assistentes', false);
 
@@ -67,7 +67,7 @@ test('career trail banner is shown when steps exist', function () {
         ->get(route('career-trail.cv'))
         ->assertOk()
         ->assertSee('Passos da trilha', false)
-        ->assertSee('CV Formulário', false);
+        ->assertSee('Upload CV', false);
 
     expect(UserCareerTrailProgress::query()->where('user_id', $user->id)->exists())->toBeTrue();
 });

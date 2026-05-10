@@ -591,6 +591,42 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 syncJdButton();
             });
     });
+    (function autoCareerTrailCvSendFromQuery() {
+        try {
+            var params = new URLSearchParams(window.location.search);
+            if (params.get('auto_send') !== '1') {
+                return;
+            }
+            var uid = params.get('user_cv_id');
+            if (!uid) {
+                return;
+            }
+            var wanted = 'p' + String(uid).replace(/\D/g, '');
+            var ok = false;
+            for (var i = 0; i < cvSel.options.length; i++) {
+                if (cvSel.options[i].value === wanted) {
+                    ok = true;
+                    break;
+                }
+            }
+            if (!ok) {
+                setStatus('CV não encontrado na lista para envio automático.');
+                return;
+            }
+            cvSel.value = wanted;
+            cvSel.dispatchEvent(new Event('change', { bubbles: true }));
+            params.delete('auto_send');
+            params.delete('user_cv_id');
+            var q = params.toString();
+            window.history.replaceState({}, '', window.location.pathname + (q ? '?' + q : '') + window.location.hash);
+            setTimeout(function () {
+                cvBtn.click();
+            }, 0);
+        } catch (err) {
+            console.error(err);
+        }
+    })();
+
 
     if (!chatKitLibraryCvOnly && jdBtn) {
     jdBtn.addEventListener('click', function () {

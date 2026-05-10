@@ -67,13 +67,13 @@
                                 <div class="flex flex-col gap-1 sm:flex-row sm:flex-wrap">
                                     <a href="{{ route('career-trail.cv') }}"
                                        class="inline-flex flex-1 items-center justify-center rounded-md bg-emerald-600 px-2 py-1 text-center text-[10px] font-semibold leading-tight text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 sm:flex-initial">
-                                        CV Formulário
+                                        Upload CV
                                     </a>
                                     @if ($cvCreatorChatUrl)
                                         <a href="{{ $cvCreatorChatUrl }}"
                                            title="CV Creator"
                                            class="inline-flex flex-1 items-center justify-center rounded-md border border-emerald-700 bg-white px-2 py-1 text-center text-[10px] font-semibold leading-tight text-emerald-950 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 sm:flex-initial">
-                                            CV Assistente
+                                            Ajustar/Criar CV
                                         </a>
                                     @endif
                                 </div>
