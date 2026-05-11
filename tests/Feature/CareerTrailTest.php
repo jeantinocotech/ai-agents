@@ -82,12 +82,14 @@ test('career trail banner suggests advance when cv step is satisfied', function 
         'source' => UserCv::SOURCE_MANUAL,
     ]);
 
+    $atsTitle = (string) (CareerTrailStep::query()->where('slug', 'ats')->value('title') ?: 'ATS');
+
     $this->actingAs($user)->get(route('career-trail.index'));
 
     $this->actingAs($user)
         ->get(route('career-trail.cv'))
         ->assertOk()
-        ->assertSee('ATS', false);
+        ->assertSee($atsTitle, false);
 });
 
 test('cannot advance from cv step without saved profile cv', function () {

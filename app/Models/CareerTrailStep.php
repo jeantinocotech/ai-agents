@@ -71,8 +71,8 @@ class CareerTrailStep extends Model
     {
         return match ($this->slug) {
             'cv' => (string) ($this->title ?: 'Curriculum'),
-            'ats' => 'ATS',
-            'interviews' => 'Entrevista',
+            'ats' => (string) ($this->title ?: 'ATS'),
+            'interviews' => (string) ($this->title ?: 'Entrevista'),
             default => $this->title ?? '',
         };
     }
