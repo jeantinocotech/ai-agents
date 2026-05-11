@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -133,6 +134,36 @@ class CareerTrailStep extends Model
         return $url.$sep.http_build_query([
             'user_cv_id' => $userCvId,
             'auto_send' => '1',
+        ]);
+    }
+
+    /**
+     * Chat ATS (ChatKit) com envio automático do par CV de perfil + vaga (JD): query lida em chatkit-main-scripts.
+     */
+    public static function atsAnalyzeChatUrlForJd(Authenticatable $user, Agent $atsAgent, int $jdDocumentId): ?string
+    {
+        if (! $atsAgent->is_active || ! $atsAgent->isChatKitWorkflow()) {
+            return null;
+        }
+
+        $jd = AgentDocument::query()
+            ->whereKey($jdDocumentId)
+            ->where('user_id', (int) $user->getAuthIdentifier())
+            ->where('agent_id', (int) $atsAgent->getKey())
+            ->where('type', AgentDocument::TYPE_JD)
+            ->first();
+
+        if ($jd === null || ! $jd->user_cv_id) {
+            return null;
+        }
+
+        $url = route('agents.chat', $atsAgent);
+        $sep = str_contains($url, '?') ? '&' : '?';
+
+        return $url.$sep.http_build_query([
+            'jd_document_id' => $jdDocumentId,
+            'profile_cv_id' => (int) $jd->user_cv_id,
+            'auto_ats_pair' => '1',
         ]);
     }
 

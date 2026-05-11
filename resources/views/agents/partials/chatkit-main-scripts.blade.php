@@ -341,8 +341,10 @@ function initChatKitLibrarySendButtons(chatKitEl) {
     var limits = { cv: {{ (int) $ckMaxCv }}, jd: {{ (int) $ckMaxJd }} };
     var chatkitConsultationCost = {{ (int) ($ckConsultTokens ?? 0) }};
     var chatkitDebitUrl = @json(route('chat.chatkit.debit-consultation'));
+    var markApplicationSubmittedUrlTemplate = @json($markApplicationSubmittedUrlTemplate ?? null);
     var jdSendAllowed = false;
     var waitAssistantEndAfterCv = false;
+    var pendingAutoAtsJdAfterCv = false;
     var pendingAtsDebit = false;
     /** Assistente de CV só com biblioteca: um débito por «Enviar CV» quando o assistente termina a resposta. */
     var pendingCvTurnDebits = 0;
@@ -374,6 +376,28 @@ function initChatKitLibrarySendButtons(chatKitEl) {
         if (data && typeof data.token_balance === 'number' && typeof window.setDisplayedUserTokenBalance === 'function') {
             window.setDisplayedUserTokenBalance(data.token_balance);
         }
+    }
+
+    function postMarkApplicationSubmitted(jdNumericId) {
+        if (!markApplicationSubmittedUrlTemplate || !jdNumericId) {
+            return Promise.resolve();
+        }
+        var url = markApplicationSubmittedUrlTemplate.replace('__JD__', String(jdNumericId));
+        return fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({}),
+        }).then(function (res) {
+            return res.json().then(function (data) {
+                return { ok: res.ok, data: data };
+            });
+        });
     }
 
     function postChatkitConsultationDebit(extra) {
@@ -498,6 +522,12 @@ function initChatKitLibrarySendButtons(chatKitEl) {
         }
 
         syncJdButton();
+        if (pendingAutoAtsJdAfterCv && jdSendAllowed && jdBtn && !jdBtn.disabled && jdSel && jdSel.value) {
+            pendingAutoAtsJdAfterCv = false;
+            setTimeout(function () {
+                jdBtn.click();
+            }, 0);
+        }
     });
 
     cvBtn.addEventListener('click', function () {
@@ -585,6 +615,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 }
                 waitAssistantEndAfterCv = false;
                 jdSendAllowed = false;
+                pendingAutoAtsJdAfterCv = false;
             })
             .finally(function () {
                 cvBtn.disabled = false;
@@ -627,6 +658,57 @@ function initChatKitLibrarySendButtons(chatKitEl) {
         }
     })();
 
+    (function autoCareerTrailAtsPairFromQuery() {
+        try {
+            if (chatKitLibraryCvOnly || !jdSel || !cvSel || !cvBtn || !jdBtn) {
+                return;
+            }
+            var params = new URLSearchParams(window.location.search);
+            if (params.get('auto_ats_pair') !== '1') {
+                return;
+            }
+            var jdid = params.get('jd_document_id');
+            var pCv = params.get('profile_cv_id');
+            if (!jdid || !pCv) {
+                return;
+            }
+            var cvWanted = 'p' + String(pCv).replace(/\D/g, '');
+            var jdOk = false;
+            var cvOk = false;
+            var i;
+            for (i = 0; i < jdSel.options.length; i++) {
+                if (jdSel.options[i].value === String(jdid)) {
+                    jdOk = true;
+                    break;
+                }
+            }
+            for (i = 0; i < cvSel.options.length; i++) {
+                if (cvSel.options[i].value === cvWanted) {
+                    cvOk = true;
+                    break;
+                }
+            }
+            if (!jdOk || !cvOk) {
+                setStatus('Combinação CV/vaga não encontrada para envio automático.');
+                return;
+            }
+            jdSel.value = String(jdid);
+            cvSel.value = cvWanted;
+            jdSel.dispatchEvent(new Event('change', { bubbles: true }));
+            cvSel.dispatchEvent(new Event('change', { bubbles: true }));
+            params.delete('auto_ats_pair');
+            params.delete('jd_document_id');
+            params.delete('profile_cv_id');
+            var q = params.toString();
+            window.history.replaceState({}, '', window.location.pathname + (q ? '?' + q : '') + window.location.hash);
+            pendingAutoAtsJdAfterCv = true;
+            setTimeout(function () {
+                cvBtn.click();
+            }, 0);
+        } catch (err) {
+            console.error(err);
+        }
+    })();
 
     if (!chatKitLibraryCvOnly && jdBtn) {
     jdBtn.addEventListener('click', function () {
@@ -686,6 +768,12 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 }
                 if (chatkitConsultationCost > 0) {
                     pendingAtsDebit = true;
+                }
+                var jid = parseInt(String(id).replace(/\D/g, ''), 10);
+                if (jid > 0 && markApplicationSubmittedUrlTemplate) {
+                    postMarkApplicationSubmitted(jid).catch(function (e) {
+                        console.warn('[ATS] Registo de candidatura submetida:', e);
+                    });
                 }
             })
             .catch(function (err) {

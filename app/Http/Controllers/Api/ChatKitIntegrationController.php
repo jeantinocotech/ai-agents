@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Agent;
 use App\Models\AgentDocument;
 use App\Models\AgentDocumentDefault;
+use App\Services\AgentDocumentDefaultJdSync;
 use App\Support\AgentDocumentLimits;
 use App\Support\ChatKitUserRef;
 use Illuminate\Http\JsonResponse;
@@ -156,7 +157,7 @@ class ChatKitIntegrationController extends Controller
                     'body' => $t,
                     'paired_cv_document_id' => $defaultCvId,
                 ]);
-                $this->setDefaultJdId($uid, $aid, $doc->id);
+                AgentDocumentDefaultJdSync::sync($uid, $aid, (int) $doc->id);
             }
         }
 
@@ -220,8 +221,8 @@ class ChatKitIntegrationController extends Controller
         if ($validated['type'] === AgentDocument::TYPE_CV && $request->boolean('set_as_default')) {
             $this->setDefaultCvId($uid, $aid, $doc->id);
         }
-        if ($validated['type'] === AgentDocument::TYPE_JD && $request->boolean('set_as_default')) {
-            $this->setDefaultJdId($uid, $aid, $doc->id);
+        if ($validated['type'] === AgentDocument::TYPE_JD) {
+            AgentDocumentDefaultJdSync::sync($uid, $aid, (int) $doc->id);
         }
 
         return $this->show($request);
@@ -283,8 +284,8 @@ class ChatKitIntegrationController extends Controller
         if ($doc->type === AgentDocument::TYPE_CV && $request->boolean('set_as_default')) {
             $this->setDefaultCvId($uid, $aid, $doc->id);
         }
-        if ($doc->type === AgentDocument::TYPE_JD && $request->boolean('set_as_default')) {
-            $this->setDefaultJdId($uid, $aid, $doc->id);
+        if ($doc->type === AgentDocument::TYPE_JD) {
+            AgentDocumentDefaultJdSync::sync($uid, $aid, (int) $doc->id);
         }
 
         return $this->show($request);
@@ -307,6 +308,8 @@ class ChatKitIntegrationController extends Controller
             ->where('agent_id', $aid)
             ->firstOrFail();
 
+        $wasJd = $doc->type === AgentDocument::TYPE_JD;
+
         $defaults = AgentDocumentDefault::query()
             ->where('user_id', $uid)
             ->where('agent_id', $aid)
@@ -316,13 +319,14 @@ class ChatKitIntegrationController extends Controller
             if ((int) $defaults->default_cv_document_id === (int) $doc->id) {
                 $defaults->default_cv_document_id = null;
             }
-            if ((int) $defaults->default_jd_document_id === (int) $doc->id) {
-                $defaults->default_jd_document_id = null;
-            }
             $defaults->save();
         }
 
         $doc->delete();
+
+        if ($wasJd) {
+            AgentDocumentDefaultJdSync::sync($uid, $aid, null);
+        }
 
         return $this->show($request);
     }
@@ -375,11 +379,12 @@ class ChatKitIntegrationController extends Controller
         if (array_key_exists('default_cv_document_id', $validated)) {
             $defaults->default_cv_document_id = $validated['default_cv_document_id'];
         }
-        if (array_key_exists('default_jd_document_id', $validated)) {
-            $defaults->default_jd_document_id = $validated['default_jd_document_id'];
-        }
 
         $defaults->save();
+
+        if (array_key_exists('default_jd_document_id', $validated)) {
+            AgentDocumentDefaultJdSync::sync($uid, $aid, $validated['default_jd_document_id']);
+        }
 
         return $this->show($request);
     }
@@ -417,16 +422,6 @@ class ChatKitIntegrationController extends Controller
             []
         );
         $defaults->default_cv_document_id = $cvId;
-        $defaults->save();
-    }
-
-    private function setDefaultJdId(int $userId, int $agentId, int $jdId): void
-    {
-        $defaults = AgentDocumentDefault::query()->firstOrCreate(
-            ['user_id' => $userId, 'agent_id' => $agentId],
-            []
-        );
-        $defaults->default_jd_document_id = $jdId;
         $defaults->save();
     }
 }

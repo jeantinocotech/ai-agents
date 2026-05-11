@@ -5,9 +5,9 @@ return [
     'mentor_label' => 'Sra. Graça',
 
     /*
-    | Título curto no chat do ATS (página cheia), alinhado ao botão "ATS filtro" na trilha.
+    | Título curto no chat do ATS (página cheia) e botão na trilha (/trilha/ats).
     */
-    'ats_chat_heading' => 'ATS Filtro',
+    'ats_chat_heading' => 'Passar no filtro',
 
     /*
     | Texto por defeito na caixa da Graça no chat ATS (compacto), se não existir mensagem em BD (slot ats_chat_page_intro).

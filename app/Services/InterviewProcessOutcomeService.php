@@ -21,14 +21,30 @@ final class InterviewProcessOutcomeService
             ->exists();
 
         if (! $hasAnyPrep) {
-            InterviewProcess::query()
+            $process = InterviewProcess::query()
                 ->where('user_id', $userId)
                 ->where('jd_document_id', $jdDocumentId)
-                ->delete();
+                ->first();
+
+            if ($process !== null) {
+                $keepTerminal = in_array(
+                    $process->outcome,
+                    [
+                        InterviewApplicationOutcome::Approved,
+                        InterviewApplicationOutcome::DidNotProceed,
+                    ],
+                    true
+                );
+                if (! $keepTerminal) {
+                    $process->delete();
+                    $process = null;
+                }
+            }
 
             self::syncOfferTrailUnlock(User::query()->find($userId));
+            JobApplicationStatusSync::reconcileForJdId($userId, $jdDocumentId);
 
-            return null;
+            return $process;
         }
 
         return self::refreshOutcomeFromRounds($userId, $jdDocumentId);
@@ -76,6 +92,7 @@ final class InterviewProcessOutcomeService
         }
 
         self::syncOfferTrailUnlock(User::query()->find($userId));
+        JobApplicationStatusSync::reconcileForJdId($userId, $jdDocumentId);
 
         return $process->fresh() ?? $process;
     }
@@ -118,6 +135,7 @@ final class InterviewProcessOutcomeService
         }
 
         self::syncOfferTrailUnlock(User::query()->find($userId));
+        JobApplicationStatusSync::reconcileForJdId($userId, $jdDocumentId);
 
         return $process->fresh();
     }

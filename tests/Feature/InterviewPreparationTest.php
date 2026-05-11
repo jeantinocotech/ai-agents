@@ -64,6 +64,10 @@ test('interview preparations crud respects ats jd and enum fields', function () 
         'body' => str_repeat('w', 40),
         'user_cv_id' => $cv->id,
     ]);
+    $jd->forceFill([
+        'ats_submitted_at' => now(),
+        'cv_sent_to_employer_at' => now(),
+    ])->save();
 
     $this->actingAs($user)->post(route('agents.interview-preparations.store', $interviewAgent), [
         'jd_document_id' => $jd->id,

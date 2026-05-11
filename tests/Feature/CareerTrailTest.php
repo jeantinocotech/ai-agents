@@ -516,7 +516,10 @@ test('career trail ats page includes library forms when agent is active', functi
     $this->actingAs($user)
         ->get(route('career-trail.ats'))
         ->assertOk()
-        ->assertSee('Biblioteca ATS — CV do perfil')
+        ->assertSee('Vagas')
+        ->assertDontSee('Biblioteca ATS — CV do perfil')
+        ->assertDontSee('CV do perfil — criar ou editar')
+        ->assertDontSee('Preferências (JD padrão)')
         ->assertSee('Nova vaga (JD)', false);
 });
 
@@ -547,7 +550,7 @@ test('career trail ats shows ats check link only when jd has profile cv linked',
     $noPair->assertOk();
     $noPair->assertDontSee('/agents/'.$agent->id.'/chat', false);
 
-    AgentDocument::query()->create([
+    $jd = AgentDocument::query()->create([
         'user_id' => $user->id,
         'agent_id' => $agent->id,
         'type' => AgentDocument::TYPE_JD,
@@ -556,7 +559,8 @@ test('career trail ats shows ats check link only when jd has profile cv linked',
         'user_cv_id' => $cv->id,
     ]);
 
-    $withPair = $this->actingAs($user)->get(route('career-trail.ats'));
+    $withPair = $this->actingAs($user)->get(route('career-trail.ats', ['edit_jd' => $jd->id]));
     $withPair->assertOk();
     $withPair->assertSee('/agents/'.$agent->id.'/chat', false);
+    $withPair->assertSee('auto_ats_pair');
 });

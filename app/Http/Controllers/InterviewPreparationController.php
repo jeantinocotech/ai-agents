@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\InterviewApplicationOutcome;
 use App\Enums\InterviewPersona;
 use App\Enums\InterviewProcessStatus;
+use App\Enums\JobApplicationStatus;
 use App\Models\Agent;
 use App\Models\InterviewPreparation;
 use App\Models\InterviewProcess;
@@ -414,6 +415,16 @@ class InterviewPreparationController extends Controller
         ]);
 
         $jd = CareerTrailAtsJdValidator::validatedJdForUser((int) $validated['jd_document_id'], $request->user());
+
+        $hasExistingPrep = InterviewPreparation::query()
+            ->where('user_id', $request->user()->id)
+            ->where('jd_document_id', $jd->id)
+            ->exists();
+        abort_unless(
+            $hasExistingPrep || $jd->application_status === JobApplicationStatus::CvSent,
+            422,
+            'Indique primeiro o envio do CV à empresa (botão «CV enviado à empresa» na lista de vagas da trilha ATS).'
+        );
 
         $processDidNotProceed = InterviewProcess::query()
             ->where('user_id', $request->user()->id)

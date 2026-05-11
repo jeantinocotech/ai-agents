@@ -158,12 +158,12 @@
                                                     <div class="flex flex-wrap gap-2">
                                                         <a href="{{ $stepTrailUrl }}"
                                                            class="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700">
-                                                            CV completo
+                                                            Upload CV
                                                         </a>
                                                         @if ($cvCreatorChatUrl ?? null)
                                                             <a href="{{ $cvCreatorChatUrl }}"
                                                                class="inline-flex items-center rounded-lg border border-emerald-700 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-950 shadow-sm hover:bg-emerald-50">
-                                                                CV Creator
+                                                                Ajustar/Criar CV
                                                             </a>
                                                         @endif
                                                     </div>
@@ -175,12 +175,12 @@
                                                     <div class="flex flex-wrap gap-2">
                                                         <a href="{{ route('career-trail.ats') }}"
                                                            class="inline-flex items-center rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-emerald-700">
-                                                            Biblioteca ATS
+                                                            CV+Vagas
                                                         </a>
                                                         @if ($atsInline && $atsInline->is_active && ($atsAllowsCheck ?? false))
                                                             <a href="{{ route('agents.chat', $atsInline) }}"
                                                                class="inline-flex items-center rounded-lg border border-emerald-700 bg-white px-3 py-1.5 text-xs font-semibold text-emerald-950 shadow-sm hover:bg-emerald-50">
-                                                                ATS Filtro
+                                                                Passar no Filtro
                                                             </a>
                                                         @elseif ($atsInline && ! $atsInline->is_active)
                                                             <span class="text-xs text-amber-800">Assistente ATS inativo.</span>

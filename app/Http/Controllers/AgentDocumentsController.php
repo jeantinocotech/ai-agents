@@ -2,11 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\InterviewApplicationOutcome;
+use App\Enums\JobApplicationStatus;
 use App\Models\Agent;
 use App\Models\AgentDocument;
 use App\Models\AgentDocumentDefault;
+use App\Models\InterviewPreparation;
+use App\Models\InterviewProcess;
 use App\Models\UserCv;
+use App\Services\AgentDocumentDefaultJdSync;
 use App\Services\CareerTrailAgentAccess;
+use App\Services\InterviewProcessOutcomeService;
 use App\Support\AgentDocumentLimits;
 use App\Support\AgentsDocumentLibraryViewData;
 use Illuminate\Http\JsonResponse;
@@ -128,7 +134,6 @@ class AgentDocumentsController extends Controller
             'title' => 'nullable|string|max:255',
             'body' => 'required|string',
             'user_cv_id' => 'nullable|integer|exists:user_cvs,id',
-            'set_as_default' => 'sometimes|boolean',
         ]);
 
         AgentDocumentLimits::assertBodyWithinLimit($validated['type'], $validated['body']);
@@ -150,13 +155,15 @@ class AgentDocumentsController extends Controller
             'user_cv_id' => $validated['type'] === AgentDocument::TYPE_JD ? $userCvId : null,
         ]);
 
-        if ($validated['type'] === AgentDocument::TYPE_JD && $request->boolean('set_as_default')) {
-            $this->setDefaultJd($user->id, $agent->id, $doc->id);
-        }
+        AgentDocumentDefaultJdSync::sync($user->id, $agent->id, (int) $doc->id);
 
         $label = 'Vaga (JD)';
 
-        return $this->documentsHubRedirect($request, $agent)
+        $trailEditJd = ($request->input('trail_return') === 'career_trail_ats' && $validated['type'] === AgentDocument::TYPE_JD)
+            ? (int) $doc->id
+            : null;
+
+        return $this->documentsHubRedirect($request, $agent, $trailEditJd)
             ->with('status', "{$label} adicionado.");
     }
 
@@ -170,7 +177,6 @@ class AgentDocumentsController extends Controller
             'title' => 'nullable|string|max:255',
             'body' => 'required|string',
             'user_cv_id' => 'nullable|integer|exists:user_cvs,id',
-            'set_as_default' => 'sometimes|boolean',
         ]);
 
         AgentDocumentLimits::assertBodyWithinLimit($document->type, $validated['body']);
@@ -190,13 +196,17 @@ class AgentDocumentsController extends Controller
         $document->body = $validated['body'];
         $document->save();
 
-        if ($document->type === AgentDocument::TYPE_JD && $request->boolean('set_as_default')) {
-            $this->setDefaultJd($user->id, $agent->id, $document->id);
+        if ($document->type === AgentDocument::TYPE_JD) {
+            AgentDocumentDefaultJdSync::sync($user->id, $agent->id, (int) $document->id);
         }
 
         $label = 'Vaga';
 
-        return $this->documentsHubRedirect($request, $agent)
+        $trailEditJd = ($request->input('trail_return') === 'career_trail_ats' && $document->type === AgentDocument::TYPE_JD)
+            ? (int) $document->id
+            : null;
+
+        return $this->documentsHubRedirect($request, $agent, $trailEditJd)
             ->with('status', "{$label} atualizado.");
     }
 
@@ -205,6 +215,8 @@ class AgentDocumentsController extends Controller
         CareerTrailAgentAccess::abortUnlessCanAccess($request->user(), $agent);
 
         $this->authorizeOwnedDocument($document, $request->user(), $agent);
+
+        $wasJd = $document->type === AgentDocument::TYPE_JD;
 
         $defaults = AgentDocumentDefault::query()
             ->where('user_id', $request->user()->id)
@@ -215,23 +227,158 @@ class AgentDocumentsController extends Controller
             if ((int) $defaults->default_cv_document_id === (int) $document->id) {
                 $defaults->default_cv_document_id = null;
             }
-            if ((int) $defaults->default_jd_document_id === (int) $document->id) {
-                $defaults->default_jd_document_id = null;
-            }
             $defaults->save();
         }
 
         $document->delete();
 
+        if ($wasJd) {
+            AgentDocumentDefaultJdSync::sync((int) $request->user()->id, (int) $agent->id, null);
+        }
+
         return $this->documentsHubRedirect($request, $agent)
             ->with('status', 'Documento removido.');
+    }
+
+    public function markApplicationSubmitted(Request $request, Agent $agent, AgentDocument $document): JsonResponse|RedirectResponse
+    {
+        CareerTrailAgentAccess::abortUnlessCanAccess($request->user(), $agent);
+        $this->authorizeOwnedDocument($document, $request->user(), $agent);
+        abort_unless($document->type === AgentDocument::TYPE_JD, 404);
+        abort_if($document->user_cv_id === null, 422, 'Associe um CV do perfil à vaga antes de registar o envio ao ATS.');
+
+        $process = InterviewProcess::query()
+            ->where('user_id', $request->user()->id)
+            ->where('jd_document_id', $document->id)
+            ->first();
+        abort_if(
+            $process !== null && in_array($process->outcome, [
+                InterviewApplicationOutcome::DidNotProceed,
+                InterviewApplicationOutcome::Approved,
+            ], true),
+            422,
+            'Este processo já está encerrado ou aprovado; não é possível registar novo envio ATS.'
+        );
+
+        $document->ats_submitted_at = now();
+        $document->save();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'application_status' => $document->application_status?->value,
+            ]);
+        }
+
+        return $this->documentsHubRedirect($request, $agent)
+            ->with('status', 'Envio ATS registado para esta vaga.');
+    }
+
+    public function markCvSentToEmployer(Request $request, Agent $agent, AgentDocument $document): JsonResponse|RedirectResponse
+    {
+        CareerTrailAgentAccess::abortUnlessCanAccess($request->user(), $agent);
+        $this->authorizeOwnedDocument($document, $request->user(), $agent);
+        abort_unless($document->type === AgentDocument::TYPE_JD, 404);
+
+        abort_if($document->ats_submitted_at === null, 422, 'Registe primeiro o alinhamento ATS (envio ao assistente) antes de indicar o envio à empresa.');
+        abort_if($document->cv_sent_to_employer_at !== null, 422, 'O envio do CV à empresa já está registado para esta vaga.');
+
+        abort_if(
+            InterviewPreparation::query()
+                ->where('user_id', $request->user()->id)
+                ->where('jd_document_id', $document->id)
+                ->exists(),
+            422,
+            'Já existem rondas de entrevista; utilize o ecrã de entrevistas para actualizar o processo.'
+        );
+
+        $process = InterviewProcess::query()
+            ->where('user_id', $request->user()->id)
+            ->where('jd_document_id', $document->id)
+            ->first();
+        abort_if(
+            $process !== null && in_array($process->outcome, [
+                InterviewApplicationOutcome::DidNotProceed,
+                InterviewApplicationOutcome::Approved,
+            ], true),
+            422,
+            'Este processo já está encerrado na fase de entrevistas.'
+        );
+
+        abort_unless(
+            $document->application_status === null || $document->application_status === JobApplicationStatus::Submitted,
+            422,
+            'Só é possível registar o envio à empresa após o estado «Alinhamento ATS».'
+        );
+
+        $document->cv_sent_to_employer_at = now();
+        $document->save();
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'application_status' => $document->application_status?->value,
+            ]);
+        }
+
+        return $this->documentsHubRedirect($request, $agent)
+            ->with('status', 'Envio do CV à empresa registado. Pode aguardar retorno ou registar entrevistas.');
+    }
+
+    public function markApplicationDidNotProceed(Request $request, Agent $agent, AgentDocument $document): RedirectResponse
+    {
+        CareerTrailAgentAccess::abortUnlessCanAccess($request->user(), $agent);
+        $this->authorizeOwnedDocument($document, $request->user(), $agent);
+        abort_unless($document->type === AgentDocument::TYPE_JD, 404);
+
+        abort_if(
+            InterviewPreparation::query()
+                ->where('user_id', $request->user()->id)
+                ->where('jd_document_id', $document->id)
+                ->exists(),
+            422,
+            'Existem rondas de entrevista para esta vaga; actualize o estado nas entrevistas em vez de fechar aqui.'
+        );
+
+        $process = InterviewProcess::query()
+            ->where('user_id', $request->user()->id)
+            ->where('jd_document_id', $document->id)
+            ->first();
+        abort_if(
+            $process !== null && $process->outcome === InterviewApplicationOutcome::Approved,
+            422,
+            'Candidatura aprovada: utilize o ecrã de entrevistas para reabrir antes de mudar este estado.'
+        );
+
+        InterviewProcess::query()->updateOrCreate(
+            [
+                'user_id' => $request->user()->id,
+                'jd_document_id' => $document->id,
+            ],
+            [
+                'outcome' => InterviewApplicationOutcome::DidNotProceed,
+            ]
+        );
+
+        InterviewProcessOutcomeService::syncAfterPreparationMutation((int) $request->user()->id, (int) $document->id);
+
+        return $this->documentsHubRedirect($request, $agent)
+            ->with('status', 'Candidatura marcada como «não prosseguiu».');
     }
 
     public function updateDefaults(Request $request, Agent $agent): RedirectResponse|JsonResponse
     {
         CareerTrailAgentAccess::abortUnlessCanAccess($request->user(), $agent);
 
-        if ($request->has('default_cv_document_id') && ! $request->has('default_jd_document_id')) {
+        $validated = $request->validate([
+            'default_cv_document_id' => 'sometimes|nullable|integer|exists:agent_documents,id',
+            'default_jd_document_id' => 'sometimes|nullable|integer|exists:agent_documents,id',
+        ]);
+
+        $cvTouched = array_key_exists('default_cv_document_id', $validated);
+        $jdTouched = array_key_exists('default_jd_document_id', $validated);
+
+        if ($cvTouched && ! $jdTouched) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => true,
@@ -242,26 +389,7 @@ class AgentDocumentsController extends Controller
             return redirect()->back();
         }
 
-        $validated = $request->validate([
-            'default_jd_document_id' => 'sometimes|nullable|integer|exists:agent_documents,id',
-        ]);
-
-        if (! array_key_exists('default_jd_document_id', $validated)) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'message' => 'Indique a vaga (JD) padrão (ou desative "Salvar seleção" no CV).',
-                ], 422);
-            }
-
-            return $this->documentsHubRedirect($request, $agent)
-                ->withErrors(['defaults' => 'Indique a vaga (JD) que deseja salvar como padrão.']);
-        }
-
         $user = $request->user();
-
-        if (array_key_exists('default_jd_document_id', $validated) && $validated['default_jd_document_id'] !== null) {
-            $this->assertJdOwnedByUserAgent((int) $validated['default_jd_document_id'], $user->id, $agent->id);
-        }
 
         $defaults = AgentDocumentDefault::query()->firstOrCreate(
             [
@@ -271,11 +399,28 @@ class AgentDocumentsController extends Controller
             []
         );
 
-        if (array_key_exists('default_jd_document_id', $validated)) {
-            $defaults->default_jd_document_id = $validated['default_jd_document_id'];
+        if ($cvTouched) {
+            if ($validated['default_cv_document_id'] !== null) {
+                $ok = AgentDocument::query()
+                    ->whereKey($validated['default_cv_document_id'])
+                    ->where('user_id', $user->id)
+                    ->where('agent_id', $agent->id)
+                    ->where('type', AgentDocument::TYPE_CV)
+                    ->exists();
+                abort_unless($ok, 422);
+            }
+            $defaults->default_cv_document_id = $validated['default_cv_document_id'];
         }
 
         $defaults->save();
+
+        if ($jdTouched) {
+            if ($validated['default_jd_document_id'] !== null) {
+                $this->assertJdOwnedByUserAgent((int) $validated['default_jd_document_id'], $user->id, $agent->id);
+            }
+            AgentDocumentDefaultJdSync::sync($user->id, $agent->id, $validated['default_jd_document_id']);
+            $defaults->refresh();
+        }
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -291,11 +436,18 @@ class AgentDocumentsController extends Controller
             ->with('status', 'Preferências salvas.');
     }
 
-    private function documentsHubRedirect(Request $request, Agent $agent): RedirectResponse
+    private function documentsHubRedirect(Request $request, Agent $agent, ?int $trailEditJdId = null): RedirectResponse
     {
-        return $request->input('trail_return') === 'career_trail_ats'
-            ? redirect()->route('career-trail.ats')
-            : redirect()->route('agents.documents.index', $agent);
+        if ($request->input('trail_return') === 'career_trail_ats') {
+            $to = route('career-trail.ats');
+            if ($trailEditJdId !== null && $trailEditJdId > 0) {
+                $to .= '?edit_jd='.$trailEditJdId;
+            }
+
+            return redirect()->to($to);
+        }
+
+        return redirect()->route('agents.documents.index', $agent);
     }
 
     private function authorizeOwnedDocument(AgentDocument $document, $user, Agent $agent): void
@@ -316,15 +468,5 @@ class AgentDocumentsController extends Controller
             ->where('type', AgentDocument::TYPE_JD)
             ->exists();
         abort_unless($exists, 422);
-    }
-
-    private function setDefaultJd(int $userId, int $agentId, int $jdId): void
-    {
-        $defaults = AgentDocumentDefault::query()->firstOrCreate(
-            ['user_id' => $userId, 'agent_id' => $agentId],
-            []
-        );
-        $defaults->default_jd_document_id = $jdId;
-        $defaults->save();
     }
 }

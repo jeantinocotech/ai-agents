@@ -64,6 +64,10 @@ test('rejectround sets process outcome did not proceed', function () {
         'body' => str_repeat('w', 40),
         'user_cv_id' => $cv->id,
     ]);
+    $jd->forceFill([
+        'ats_submitted_at' => now(),
+        'cv_sent_to_employer_at' => now(),
+    ])->save();
 
     $prep = InterviewPreparation::query()->create([
         'user_id' => $user->id,
@@ -114,6 +118,10 @@ test('marking candidate approved unlocks offer step on career trail progress', f
         'body' => str_repeat('w', 40),
         'user_cv_id' => $cv->id,
     ]);
+    $jd->forceFill([
+        'ats_submitted_at' => now(),
+        'cv_sent_to_employer_at' => now(),
+    ])->save();
 
     InterviewPreparation::query()->create([
         'user_id' => $user->id,

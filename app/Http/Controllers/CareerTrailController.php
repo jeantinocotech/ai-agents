@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AgentDocument;
 use App\Models\CareerTrailStep;
 use App\Models\UserCareerTrailProgress;
 use App\Services\CareerTrailAgentAccess;
 use App\Services\CareerTrailProgressService;
+use App\Services\JobApplicationStatusSync;
 use App\Support\AgentsDocumentLibraryViewData;
 use App\Support\CareerTrailStepCompletion;
 use Illuminate\Http\RedirectResponse;
@@ -62,9 +64,36 @@ class CareerTrailController extends Controller
         $atsAllowsCheck = $agentActive && $agent !== null && $atsChatBackendReady && $atsCvJdPairOk;
 
         $libraryPayload = [];
+        $editingJd = null;
+        $atsAnalyzeChatUrl = null;
+        $interviewPrepAgent = $bundle['steps']->firstWhere('slug', 'interviews')?->resolvedAgent();
+        $canAccessInterviewPrep = $interviewPrepAgent !== null
+            && CareerTrailAgentAccess::userCanAccessTrailAgent($user, $interviewPrepAgent);
+
         if ($agentActive && $agent) {
             CareerTrailAgentAccess::abortUnlessCanAccess($user, $agent);
             $libraryPayload = AgentsDocumentLibraryViewData::payload($user, $agent);
+
+            $showFinalizedJds = $request->boolean('show_finalized_jds');
+            $allJds = $libraryPayload['jds'] ?? collect();
+            $libraryPayload['jds'] = JobApplicationStatusSync::filterJdsForVagasList($allJds, $showFinalizedJds);
+            $libraryPayload['jdListTotalCount'] = $allJds->count();
+            $libraryPayload['jdListVisibleCount'] = $libraryPayload['jds']->count();
+            $libraryPayload['showFinalizedJds'] = $showFinalizedJds;
+
+            $editJdId = (int) $request->query('edit_jd', 0);
+            if ($editJdId > 0) {
+                $editingJd = AgentDocument::query()
+                    ->whereKey($editJdId)
+                    ->where('user_id', $user->id)
+                    ->where('agent_id', $agent->id)
+                    ->where('type', AgentDocument::TYPE_JD)
+                    ->with('userCv:id,title,is_default')
+                    ->first();
+            }
+            if ($editingJd !== null && $atsAllowsCheck) {
+                $atsAnalyzeChatUrl = CareerTrailStep::atsAnalyzeChatUrlForJd($user, $agent, (int) $editingJd->id);
+            }
         }
 
         return view('career-trail.ats', [
@@ -73,9 +102,11 @@ class CareerTrailController extends Controller
             'atsAgentActive' => $agentActive,
             'atsAllowsCheck' => $atsAllowsCheck,
             'atsBackendMisconfigured' => $agentActive && $agent !== null && $atsCvJdPairOk && ! $atsChatBackendReady,
-            'readiness' => CareerTrailStepCompletion::readiness($user, $atsStep),
-            'checklist' => CareerTrailStepCompletion::checklist($user, $atsStep),
             'libraryPayload' => $libraryPayload,
+            'editingJd' => $editingJd,
+            'atsAnalyzeChatUrl' => $atsAnalyzeChatUrl,
+            'interviewPrepAgent' => $interviewPrepAgent,
+            'canAccessInterviewPrep' => $canAccessInterviewPrep,
         ]);
     }
 

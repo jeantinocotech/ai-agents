@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\JobApplicationStatus;
 use App\Services\GamificationService;
+use App\Services\JobApplicationStatusSync;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -22,7 +24,19 @@ class AgentDocument extends Model
         'body',
         'paired_cv_document_id',
         'user_cv_id',
+        'application_status',
+        'ats_submitted_at',
+        'cv_sent_to_employer_at',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'application_status' => JobApplicationStatus::class,
+            'ats_submitted_at' => 'datetime',
+            'cv_sent_to_employer_at' => 'datetime',
+        ];
+    }
 
     protected static function booted(): void
     {
@@ -69,6 +83,11 @@ class AgentDocument extends Model
                         ]);
                     }
                 }
+
+                if ($doc->isDirty('user_cv_id')) {
+                    $doc->ats_submitted_at = null;
+                    $doc->cv_sent_to_employer_at = null;
+                }
             }
         });
 
@@ -93,6 +112,8 @@ class AgentDocument extends Model
                     app(GamificationService::class)->ensureFreshSnapshot($user);
                 }
             }
+
+            JobApplicationStatusSync::reconcile($doc);
         });
     }
 

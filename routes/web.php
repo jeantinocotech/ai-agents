@@ -92,6 +92,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('agents.documents.update');
     Route::delete('/agents/{agent}/documentos/{document}', [AgentDocumentsController::class, 'destroy'])
         ->name('agents.documents.destroy');
+    Route::post('/agents/{agent}/documentos/{document}/candidatura/submetida', [AgentDocumentsController::class, 'markApplicationSubmitted'])
+        ->name('agents.documents.mark-application-submitted');
+    Route::post('/agents/{agent}/documentos/{document}/candidatura/cv-enviado-empresa', [AgentDocumentsController::class, 'markCvSentToEmployer'])
+        ->name('agents.documents.mark-cv-sent-to-employer');
+    Route::post('/agents/{agent}/documentos/{document}/candidatura/nao-prosseguiu', [AgentDocumentsController::class, 'markApplicationDidNotProceed'])
+        ->name('agents.documents.mark-application-not-proceeded');
     Route::post('/agents/{agent}/documentos/predefinidos', [AgentDocumentsController::class, 'updateDefaults'])
         ->name('agents.documents.defaults');
 

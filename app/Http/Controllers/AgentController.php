@@ -168,6 +168,14 @@ class AgentController extends Controller
             }
         }
 
+        $markApplicationSubmittedUrlTemplate = null;
+        if ($documentLibrary !== null && ($boundTrailStep?->slug ?? null) === 'ats') {
+            $markAgent = Agent::query()->find((int) ($documentLibrary['documents_hub_agent_id'] ?? $agent->id)) ?? $agent;
+            $markApplicationSubmittedUrlTemplate = url(
+                '/agents/'.$markAgent->getKey().'/documentos/__JD__/candidatura/submetida'
+            );
+        }
+
         $chatkitConsultationTokens = 0;
         if ($agent->isChatKitWorkflow()) {
             $chatkitConsultationTokens = max(0, (int) Setting::get('chatkit_tokens_per_session', '50'));
@@ -189,7 +197,8 @@ class AgentController extends Controller
                 'interviewPreparationsIndexUrl',
                 'compactTrailChatUi',
                 'compactTrailChatTitle',
-                'compactTrailStep'
+                'compactTrailStep',
+                'markApplicationSubmittedUrlTemplate'
             ));
         }
 
@@ -208,7 +217,8 @@ class AgentController extends Controller
             'interviewPreparationsIndexUrl',
             'compactTrailChatUi',
             'compactTrailChatTitle',
-            'compactTrailStep'
+            'compactTrailStep',
+            'markApplicationSubmittedUrlTemplate'
         ));
     }
 
