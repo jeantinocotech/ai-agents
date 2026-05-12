@@ -151,6 +151,7 @@ class CareerTrailStep extends Model
             ->where('user_id', (int) $user->getAuthIdentifier())
             ->where('agent_id', (int) $atsAgent->getKey())
             ->where('type', AgentDocument::TYPE_JD)
+            ->where('is_active', true)
             ->first();
 
         if ($jd === null || ! $jd->user_cv_id) {

@@ -7,7 +7,6 @@ use App\Enums\JobApplicationStatus;
 use App\Models\AgentDocument;
 use App\Models\InterviewPreparation;
 use App\Models\InterviewProcess;
-use Illuminate\Support\Collection;
 
 /**
  * Mantém `agent_documents.application_status` alinhado ao processo de entrevistas
@@ -86,24 +85,5 @@ final class JobApplicationStatusSync
         }
 
         return JobApplicationStatus::Draft;
-    }
-
-    /**
-     * Lista de vagas na trilha ATS: por defeito exclui candidaturas terminal (aceite / não prosseguiu).
-     *
-     * @param  Collection<int, AgentDocument>  $jds
-     * @return Collection<int, AgentDocument>
-     */
-    public static function filterJdsForVagasList(Collection $jds, bool $showFinalized): Collection
-    {
-        if ($showFinalized) {
-            return $jds;
-        }
-
-        return $jds->filter(function (AgentDocument $jd): bool {
-            $st = $jd->application_status;
-
-            return $st === null || ! $st->isTerminal();
-        })->values();
     }
 }

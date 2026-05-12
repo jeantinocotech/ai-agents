@@ -7,6 +7,7 @@ use App\Models\Agent;
 use App\Models\AgentDocument;
 use App\Models\AgentDocumentDefault;
 use App\Services\AgentDocumentDefaultJdSync;
+use App\Services\AgentDocumentJdLifecycle;
 use App\Support\AgentDocumentLimits;
 use App\Support\ChatKitUserRef;
 use Illuminate\Http\JsonResponse;
@@ -245,6 +246,10 @@ class ChatKitIntegrationController extends Controller
             ->where('agent_id', $aid)
             ->firstOrFail();
 
+        if ($doc->type === AgentDocument::TYPE_JD && ! $doc->is_active) {
+            return response()->json(['message' => 'Vaga arquivada; reative-a na biblioteca ATS para editar.'], 422);
+        }
+
         $validated = $request->validate([
             'title' => 'nullable|string|max:255',
             'body' => 'required|string',
@@ -310,6 +315,15 @@ class ChatKitIntegrationController extends Controller
 
         $wasJd = $doc->type === AgentDocument::TYPE_JD;
 
+        if ($wasJd) {
+            if (! $doc->is_active) {
+                return response()->json(['message' => 'Esta vaga já está arquivada.'], 422);
+            }
+            AgentDocumentJdLifecycle::deactivate($doc);
+
+            return $this->show($request);
+        }
+
         $defaults = AgentDocumentDefault::query()
             ->where('user_id', $uid)
             ->where('agent_id', $aid)
@@ -323,10 +337,6 @@ class ChatKitIntegrationController extends Controller
         }
 
         $doc->delete();
-
-        if ($wasJd) {
-            AgentDocumentDefaultJdSync::sync($uid, $aid, null);
-        }
 
         return $this->show($request);
     }
@@ -365,6 +375,7 @@ class ChatKitIntegrationController extends Controller
                 ->where('user_id', $uid)
                 ->where('agent_id', $aid)
                 ->where('type', AgentDocument::TYPE_JD)
+                ->where('is_active', true)
                 ->exists();
             if (! $ok) {
                 return response()->json(['message' => 'default_jd_document_id inválido.'], 422);

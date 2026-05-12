@@ -184,6 +184,7 @@ final class CareerTrailStepCompletion
             ->where('agent_documents.user_id', $uid)
             ->where('agent_documents.agent_id', $aid)
             ->where('agent_documents.type', AgentDocument::TYPE_JD)
+            ->where('agent_documents.is_active', true)
             ->where(function ($q) use ($uid, $aid) {
                 $q->whereNotNull('agent_documents.user_cv_id')
                     ->orWhereExists(function ($sub) use ($uid, $aid) {

@@ -10,7 +10,7 @@ final class AgentDocumentLimits
     public static function maxCharsForType(string $type): int
     {
         return match ($type) {
-            AgentDocument::TYPE_JD => max(1000, (int) config('agent_documents.max_jd_body_chars', 60000)),
+            AgentDocument::TYPE_JD => max(1000, (int) config('agent_documents.max_jd_body_chars', 30000)),
             default => max(1000, (int) config('agent_documents.max_cv_body_chars', 20000)),
         };
     }

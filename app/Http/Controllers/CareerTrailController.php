@@ -7,8 +7,8 @@ use App\Models\CareerTrailStep;
 use App\Models\UserCareerTrailProgress;
 use App\Services\CareerTrailAgentAccess;
 use App\Services\CareerTrailProgressService;
-use App\Services\JobApplicationStatusSync;
 use App\Support\AgentsDocumentLibraryViewData;
+use App\Support\AgentsDocumentTrailListFilter;
 use App\Support\CareerTrailStepCompletion;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -72,14 +72,23 @@ class CareerTrailController extends Controller
 
         if ($agentActive && $agent) {
             CareerTrailAgentAccess::abortUnlessCanAccess($user, $agent);
+            $jdListFilter = AgentsDocumentTrailListFilter::fromQuery($request->query('jd_list_filter'));
             $libraryPayload = AgentsDocumentLibraryViewData::payload($user, $agent);
 
-            $showFinalizedJds = $request->boolean('show_finalized_jds');
-            $allJds = $libraryPayload['jds'] ?? collect();
-            $libraryPayload['jds'] = JobApplicationStatusSync::filterJdsForVagasList($allJds, $showFinalizedJds);
-            $libraryPayload['jdListTotalCount'] = $allJds->count();
-            $libraryPayload['jdListVisibleCount'] = $libraryPayload['jds']->count();
-            $libraryPayload['showFinalizedJds'] = $showFinalizedJds;
+            if ($jdListFilter === AgentsDocumentTrailListFilter::INACTIVE) {
+                $visible = $libraryPayload['inactiveJds'] ?? collect();
+                $libraryPayload['jds'] = $visible;
+                $libraryPayload['jdListTotalCount'] = $visible->count();
+                $libraryPayload['jdListVisibleCount'] = $visible->count();
+            } else {
+                $active = $libraryPayload['activeJds'] ?? collect();
+                $filtered = AgentsDocumentTrailListFilter::filterActiveJds($active, $jdListFilter);
+                $libraryPayload['jds'] = $filtered;
+                $libraryPayload['jdListTotalCount'] = $active->count();
+                $libraryPayload['jdListVisibleCount'] = $filtered->count();
+            }
+
+            $libraryPayload['jdListFilter'] = $jdListFilter;
 
             $editJdId = (int) $request->query('edit_jd', 0);
             if ($editJdId > 0) {

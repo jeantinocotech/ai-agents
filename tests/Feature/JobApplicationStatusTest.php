@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Models\UserCareerTrailProgress;
 use App\Models\UserCv;
 use App\Services\JobApplicationStatusSync;
+use App\Support\AgentsDocumentTrailListFilter;
 use Database\Seeders\CareerTrailStepsSeeder;
 
 beforeEach(function () {
@@ -297,7 +298,7 @@ test('mark application did not proceed blocks new interview rounds', function ()
         ->post(route('agents.documents.mark-application-not-proceeded', [$ats, $jd]), [
             'trail_return' => 'career_trail_ats',
         ])
-        ->assertRedirect(route('career-trail.ats'));
+        ->assertRedirect(route('career-trail.ats').'#ats-biblioteca');
 
     $jd->refresh();
     expect($jd->application_status)->toBe(JobApplicationStatus::DidNotProceed);
@@ -425,8 +426,127 @@ test('career trail ats vagas list hides finalized by default', function () {
         ->assertDontSee('VagaFechadaFiltro', false);
 
     $this->actingAs($user)
-        ->get(route('career-trail.ats', ['show_finalized_jds' => 1]))
+        ->get(route('career-trail.ats', ['jd_list_filter' => AgentsDocumentTrailListFilter::ACTIVE_ALL]))
         ->assertOk()
         ->assertSee('VagaAbertaFiltro', false)
         ->assertSee('VagaFechadaFiltro', false);
+
+    $this->actingAs($user)
+        ->get(route('career-trail.ats', ['jd_list_filter' => AgentsDocumentTrailListFilter::CLOSED]))
+        ->assertOk()
+        ->assertDontSee('VagaAbertaFiltro', false)
+        ->assertSee('VagaFechadaFiltro', false);
+});
+
+test('jd destroy archives vacancy removes preparations and sets did not proceed', function () {
+    $ats = makeJobStatusChatKitAgent('ATS archive jd');
+    CareerTrailStep::query()->where('slug', 'ats')->update(['agent_id' => $ats->id]);
+
+    $user = User::factory()->create();
+    $atsStep = CareerTrailStep::query()->where('slug', 'ats')->firstOrFail();
+    UserCareerTrailProgress::query()->updateOrCreate(
+        ['user_id' => $user->id],
+        [
+            'current_step_id' => $atsStep->id,
+            'started_at' => now(),
+            'max_sort_order_reached' => (int) $atsStep->sort_order,
+        ]
+    );
+
+    $cv = UserCv::query()->create([
+        'user_id' => $user->id,
+        'title' => 'CV',
+        'body' => str_repeat('z', 400),
+        'is_default' => true,
+        'source' => UserCv::SOURCE_MANUAL,
+    ]);
+
+    $jd = AgentDocument::query()->create([
+        'user_id' => $user->id,
+        'agent_id' => $ats->id,
+        'type' => AgentDocument::TYPE_JD,
+        'title' => 'VagaArchivePrep',
+        'body' => str_repeat('w', 40),
+        'user_cv_id' => $cv->id,
+    ]);
+    $jd->forceFill([
+        'ats_submitted_at' => now(),
+        'cv_sent_to_employer_at' => now(),
+    ])->save();
+
+    InterviewPreparation::query()->create([
+        'user_id' => $user->id,
+        'jd_document_id' => $jd->id,
+        'sequence' => 1,
+        'persona' => InterviewPersona::Technical,
+        'status' => InterviewProcessStatus::InProcess,
+    ]);
+
+    $this->actingAs($user)
+        ->delete(route('agents.documents.destroy', [$ats, $jd]), [
+            'trail_return' => 'career_trail_ats',
+        ])
+        ->assertRedirect(route('career-trail.ats').'#ats-biblioteca');
+
+    expect(InterviewPreparation::query()->where('jd_document_id', $jd->id)->exists())->toBeFalse();
+
+    $jd->refresh();
+    expect($jd->is_active)->toBeFalse()
+        ->and($jd->application_status)->toBe(JobApplicationStatus::DidNotProceed);
+});
+
+test('career trail ats lists inactive jds only when jd_list_filter inactive', function () {
+    $ats = makeJobStatusChatKitAgent('ATS active filter');
+    CareerTrailStep::query()->where('slug', 'ats')->update(['agent_id' => $ats->id]);
+
+    $user = User::factory()->create();
+    $atsStep = CareerTrailStep::query()->where('slug', 'ats')->firstOrFail();
+    UserCareerTrailProgress::query()->updateOrCreate(
+        ['user_id' => $user->id],
+        [
+            'current_step_id' => $atsStep->id,
+            'started_at' => now(),
+            'max_sort_order_reached' => (int) $atsStep->sort_order,
+        ]
+    );
+
+    $cv = UserCv::query()->create([
+        'user_id' => $user->id,
+        'title' => 'CV',
+        'body' => str_repeat('z', 400),
+        'is_default' => true,
+        'source' => UserCv::SOURCE_MANUAL,
+    ]);
+
+    AgentDocument::query()->create([
+        'user_id' => $user->id,
+        'agent_id' => $ats->id,
+        'type' => AgentDocument::TYPE_JD,
+        'title' => 'VagaActivaLista',
+        'body' => str_repeat('w', 40),
+        'user_cv_id' => $cv->id,
+        'is_active' => true,
+    ]);
+
+    AgentDocument::query()->create([
+        'user_id' => $user->id,
+        'agent_id' => $ats->id,
+        'type' => AgentDocument::TYPE_JD,
+        'title' => 'VagaInactivaLista',
+        'body' => str_repeat('x', 40),
+        'user_cv_id' => $cv->id,
+        'is_active' => false,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('career-trail.ats'))
+        ->assertOk()
+        ->assertSee('VagaActivaLista', false)
+        ->assertDontSee('VagaInactivaLista', false);
+
+    $this->actingAs($user)
+        ->get(route('career-trail.ats', ['jd_list_filter' => AgentsDocumentTrailListFilter::INACTIVE]))
+        ->assertOk()
+        ->assertSee('VagaInactivaLista', false)
+        ->assertDontSee('VagaActivaLista', false);
 });

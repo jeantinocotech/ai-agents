@@ -20,6 +20,8 @@ final class CareerTrailAtsJdValidator
             ->where('type', AgentDocument::TYPE_JD)
             ->firstOrFail();
 
+        abort_unless($jd->is_active, 422, 'Esta vaga está arquivada; reative-a na biblioteca ATS antes de continuar.');
+
         $atsStep = CareerTrailStep::query()->where('slug', 'ats')->where('is_active', true)->first();
         $atsAgent = $atsStep?->resolvedAgent();
         abort_if($atsAgent === null || (int) $jd->agent_id !== (int) $atsAgent->id, 422, 'A vaga tem de pertencer à biblioteca ATS da trilha.');

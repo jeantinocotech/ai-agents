@@ -4,11 +4,15 @@
             <div class="overflow-hidden bg-white shadow-sm sm:rounded-lg">
                 @include('agents.documents.partials.library-forms', [
                     'agent' => $agent,
+                    'jdListFilter' => $jdListFilter,
                     'profileCvs' => $profileCvs,
                     'jds' => $jds,
                     'defaults' => $defaults,
                     'maxCvBodyChars' => $maxCvBodyChars,
                     'maxJdBodyChars' => $maxJdBodyChars,
+                    'inactiveJdCount' => $inactiveJdCount ?? 0,
+                    'interviewPrepAgent' => $interviewPrepAgent ?? null,
+                    'canAccessInterviewPrep' => ($canAccessInterviewPrep ?? false) === true,
                     'trailReturnCareerTrailAts' => false,
                     'suppressSessionFlash' => false,
                     'omitHeading' => false,

@@ -19,6 +19,7 @@ final class AgentDocumentDefaultJdSync
                 ->where('user_id', $userId)
                 ->where('agent_id', $agentId)
                 ->where('type', AgentDocument::TYPE_JD)
+                ->where('is_active', true)
                 ->exists();
             if ($exists) {
                 self::writeDefault($userId, $agentId, $preferredJdId);
@@ -31,6 +32,7 @@ final class AgentDocumentDefaultJdSync
             ->where('user_id', $userId)
             ->where('agent_id', $agentId)
             ->where('type', AgentDocument::TYPE_JD)
+            ->where('is_active', true)
             ->orderByDesc('updated_at')
             ->orderByDesc('id')
             ->first();

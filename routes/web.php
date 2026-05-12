@@ -92,6 +92,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('agents.documents.update');
     Route::delete('/agents/{agent}/documentos/{document}', [AgentDocumentsController::class, 'destroy'])
         ->name('agents.documents.destroy');
+    Route::post('/agents/{agent}/documentos/{document}/reactivar-jd', [AgentDocumentsController::class, 'reactivateJd'])
+        ->name('agents.documents.reactivate-jd');
+    Route::post('/agents/{agent}/documentos/{document}/trail-estado-lista', [AgentDocumentsController::class, 'applyTrailJdDesiredStatus'])
+        ->name('agents.documents.trail-desired-status');
     Route::post('/agents/{agent}/documentos/{document}/candidatura/submetida', [AgentDocumentsController::class, 'markApplicationSubmitted'])
         ->name('agents.documents.mark-application-submitted');
     Route::post('/agents/{agent}/documentos/{document}/candidatura/cv-enviado-empresa', [AgentDocumentsController::class, 'markCvSentToEmployer'])

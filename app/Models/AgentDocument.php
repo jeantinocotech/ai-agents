@@ -20,6 +20,7 @@ class AgentDocument extends Model
         'user_id',
         'agent_id',
         'type',
+        'is_active',
         'title',
         'body',
         'paired_cv_document_id',
@@ -32,6 +33,7 @@ class AgentDocument extends Model
     protected function casts(): array
     {
         return [
+            'is_active' => 'boolean',
             'application_status' => JobApplicationStatus::class,
             'ats_submitted_at' => 'datetime',
             'cv_sent_to_employer_at' => 'datetime',
@@ -140,5 +142,15 @@ class AgentDocument extends Model
     public function userCv(): BelongsTo
     {
         return $this->belongsTo(UserCv::class, 'user_cv_id');
+    }
+
+    public function interviewPreparations(): HasMany
+    {
+        return $this->hasMany(InterviewPreparation::class, 'jd_document_id');
+    }
+
+    public function interviewProcesses(): HasMany
+    {
+        return $this->hasMany(InterviewProcess::class, 'jd_document_id');
     }
 }

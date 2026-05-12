@@ -7,14 +7,18 @@ use App\Enums\JobApplicationStatus;
 use App\Models\Agent;
 use App\Models\AgentDocument;
 use App\Models\AgentDocumentDefault;
+use App\Models\CareerTrailStep;
 use App\Models\InterviewPreparation;
 use App\Models\InterviewProcess;
 use App\Models\UserCv;
 use App\Services\AgentDocumentDefaultJdSync;
+use App\Services\AgentDocumentJdLifecycle;
 use App\Services\CareerTrailAgentAccess;
 use App\Services\InterviewProcessOutcomeService;
+use App\Services\TrailJdDesiredStatusApplier;
 use App\Support\AgentDocumentLimits;
 use App\Support\AgentsDocumentLibraryViewData;
+use App\Support\AgentsDocumentTrailListFilter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,9 +31,27 @@ class AgentDocumentsController extends Controller
         $user = $request->user();
         CareerTrailAgentAccess::abortUnlessCanAccess($user, $agent);
 
+        $jdListFilter = AgentsDocumentTrailListFilter::fromQuery($request->query('jd_list_filter'));
+        $payload = AgentsDocumentLibraryViewData::payload($user, $agent);
+
+        if ($jdListFilter === AgentsDocumentTrailListFilter::INACTIVE) {
+            $payload['jds'] = $payload['inactiveJds'];
+        } else {
+            $payload['jds'] = AgentsDocumentTrailListFilter::filterActiveJds($payload['activeJds'], $jdListFilter);
+        }
+
+        $interviewPrepAgent = CareerTrailStep::query()->where('slug', 'interviews')->where('is_active', true)->first()?->resolvedAgent();
+        $canAccessInterviewPrep = $interviewPrepAgent !== null
+            && CareerTrailAgentAccess::userCanAccessTrailAgent($user, $interviewPrepAgent);
+
         return view('agents.documents.index', array_merge(
-            ['agent' => $agent],
-            AgentsDocumentLibraryViewData::payload($user, $agent),
+            [
+                'agent' => $agent,
+                'jdListFilter' => $jdListFilter,
+                'interviewPrepAgent' => $interviewPrepAgent,
+                'canAccessInterviewPrep' => $canAccessInterviewPrep,
+            ],
+            $payload,
         ));
     }
 
@@ -38,6 +60,11 @@ class AgentDocumentsController extends Controller
         CareerTrailAgentAccess::abortUnlessCanAccess($request->user(), $agent);
 
         $this->authorizeOwnedDocument($document, $request->user(), $agent);
+
+        abort_if(
+            $document->type === AgentDocument::TYPE_JD && ! $document->is_active,
+            404
+        );
 
         return response()->json([
             'id' => $document->id,
@@ -216,7 +243,13 @@ class AgentDocumentsController extends Controller
 
         $this->authorizeOwnedDocument($document, $request->user(), $agent);
 
-        $wasJd = $document->type === AgentDocument::TYPE_JD;
+        if ($document->type === AgentDocument::TYPE_JD) {
+            abort_unless($document->is_active, 404);
+            AgentDocumentJdLifecycle::deactivate($document);
+
+            return $this->documentsHubRedirect($request, $agent)
+                ->with('status', 'Vaga arquivada. As rondas de entrevista foram removidas e a candidatura ficou como «não prosseguiu».');
+        }
 
         $defaults = AgentDocumentDefault::query()
             ->where('user_id', $request->user()->id)
@@ -232,12 +265,69 @@ class AgentDocumentsController extends Controller
 
         $document->delete();
 
-        if ($wasJd) {
-            AgentDocumentDefaultJdSync::sync((int) $request->user()->id, (int) $agent->id, null);
-        }
-
         return $this->documentsHubRedirect($request, $agent)
             ->with('status', 'Documento removido.');
+    }
+
+    public function reactivateJd(Request $request, Agent $agent, AgentDocument $document): RedirectResponse
+    {
+        CareerTrailAgentAccess::abortUnlessCanAccess($request->user(), $agent);
+        $this->authorizeOwnedDocument($document, $request->user(), $agent);
+        abort_unless($document->type === AgentDocument::TYPE_JD, 404);
+
+        AgentDocumentJdLifecycle::reactivate($document);
+
+        $trailEditJdId = $request->input('trail_return') === 'career_trail_ats'
+            ? (int) $document->id
+            : null;
+
+        return $this->documentsHubRedirect($request, $agent, $trailEditJdId)
+            ->with('status', 'Vaga reactivada na biblioteca.');
+    }
+
+    public function applyTrailJdDesiredStatus(Request $request, Agent $agent, AgentDocument $document): RedirectResponse
+    {
+        CareerTrailAgentAccess::abortUnlessCanAccess($request->user(), $agent);
+        $this->authorizeOwnedDocument($document, $request->user(), $agent);
+        abort_unless($document->type === AgentDocument::TYPE_JD, 404);
+
+        $validated = $request->validate([
+            'desired_status' => ['required', 'string', 'max:32'],
+            'trail_return' => ['sometimes', 'string', 'max:64'],
+            'jd_list_filter' => ['sometimes', 'string', 'max:32'],
+            'interview_prep_agent_id' => ['sometimes', 'nullable', 'integer', 'exists:agents,id'],
+        ]);
+
+        $interviewPrepAgent = null;
+        $canAccessInterviewPrep = false;
+        if (! empty($validated['interview_prep_agent_id'])) {
+            $interviewPrepAgent = Agent::query()->findOrFail((int) $validated['interview_prep_agent_id']);
+            $step = CareerTrailAgentAccess::trailStepBoundToAgent($interviewPrepAgent);
+            abort_if($step === null || $step->slug !== 'interviews', 403);
+            CareerTrailAgentAccess::abortUnlessCanAccess($request->user(), $interviewPrepAgent);
+            $canAccessInterviewPrep = CareerTrailAgentAccess::userCanAccessTrailAgent($request->user(), $interviewPrepAgent);
+        }
+
+        if (isset($validated['jd_list_filter']) && $validated['jd_list_filter'] !== null && $validated['jd_list_filter'] !== '') {
+            $request->merge([
+                'jd_list_filter' => AgentsDocumentTrailListFilter::fromQuery($validated['jd_list_filter']),
+            ]);
+        }
+
+        $nextUrl = TrailJdDesiredStatusApplier::apply(
+            $validated['desired_status'],
+            $document,
+            $request->user(),
+            $interviewPrepAgent,
+            $canAccessInterviewPrep,
+        );
+
+        if ($nextUrl !== null) {
+            return redirect()->to($nextUrl);
+        }
+
+        return $this->documentsHubRedirect($request, $agent, (int) $document->id)
+            ->with('status', 'Estado da candidatura actualizado.');
     }
 
     public function markApplicationSubmitted(Request $request, Agent $agent, AgentDocument $document): JsonResponse|RedirectResponse
@@ -245,6 +335,7 @@ class AgentDocumentsController extends Controller
         CareerTrailAgentAccess::abortUnlessCanAccess($request->user(), $agent);
         $this->authorizeOwnedDocument($document, $request->user(), $agent);
         abort_unless($document->type === AgentDocument::TYPE_JD, 404);
+        abort_unless($document->is_active, 404);
         abort_if($document->user_cv_id === null, 422, 'Associe um CV do perfil à vaga antes de registar o envio ao ATS.');
 
         $process = InterviewProcess::query()
@@ -279,6 +370,7 @@ class AgentDocumentsController extends Controller
         CareerTrailAgentAccess::abortUnlessCanAccess($request->user(), $agent);
         $this->authorizeOwnedDocument($document, $request->user(), $agent);
         abort_unless($document->type === AgentDocument::TYPE_JD, 404);
+        abort_unless($document->is_active, 404);
 
         abort_if($document->ats_submitted_at === null, 422, 'Registe primeiro o alinhamento ATS (envio ao assistente) antes de indicar o envio à empresa.');
         abort_if($document->cv_sent_to_employer_at !== null, 422, 'O envio do CV à empresa já está registado para esta vaga.');
@@ -330,6 +422,7 @@ class AgentDocumentsController extends Controller
         CareerTrailAgentAccess::abortUnlessCanAccess($request->user(), $agent);
         $this->authorizeOwnedDocument($document, $request->user(), $agent);
         abort_unless($document->type === AgentDocument::TYPE_JD, 404);
+        abort_unless($document->is_active, 404);
 
         abort_if(
             InterviewPreparation::query()
@@ -438,16 +531,30 @@ class AgentDocumentsController extends Controller
 
     private function documentsHubRedirect(Request $request, Agent $agent, ?int $trailEditJdId = null): RedirectResponse
     {
+        $filter = AgentsDocumentTrailListFilter::fromQuery($request->input('jd_list_filter'));
+
         if ($request->input('trail_return') === 'career_trail_ats') {
+            $qs = [];
+            if ($filter !== AgentsDocumentTrailListFilter::OPEN) {
+                $qs['jd_list_filter'] = $filter;
+            }
             $to = route('career-trail.ats');
+            if ($qs !== []) {
+                $to .= '?'.http_build_query($qs);
+            }
             if ($trailEditJdId !== null && $trailEditJdId > 0) {
-                $to .= '?edit_jd='.$trailEditJdId;
+                $to .= (str_contains($to, '?') ? '&' : '?').'edit_jd='.$trailEditJdId;
             }
 
-            return redirect()->to($to);
+            return redirect()->to($to.'#ats-biblioteca');
         }
 
-        return redirect()->route('agents.documents.index', $agent);
+        $hub = route('agents.documents.index', $agent);
+        if ($filter !== AgentsDocumentTrailListFilter::OPEN) {
+            $hub .= (str_contains($hub, '?') ? '&' : '?').'jd_list_filter='.rawurlencode($filter);
+        }
+
+        return redirect()->to($hub);
     }
 
     private function authorizeOwnedDocument(AgentDocument $document, $user, Agent $agent): void
@@ -466,6 +573,7 @@ class AgentDocumentsController extends Controller
             ->where('user_id', $userId)
             ->where('agent_id', $agentId)
             ->where('type', AgentDocument::TYPE_JD)
+            ->where('is_active', true)
             ->exists();
         abort_unless($exists, 422);
     }

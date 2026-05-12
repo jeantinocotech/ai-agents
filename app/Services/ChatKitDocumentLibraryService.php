@@ -68,6 +68,7 @@ final class ChatKitDocumentLibraryService
             ->where('user_id', $userId)
             ->where('agent_id', $jdQueryAgentId)
             ->where('type', AgentDocument::TYPE_JD)
+            ->where('is_active', true)
             ->with(['userCv:id,title,is_default'])
             ->orderByDesc('updated_at')
             ->get(['id', 'title', 'user_cv_id']);
