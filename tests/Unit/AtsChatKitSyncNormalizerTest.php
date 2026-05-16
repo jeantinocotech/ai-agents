@@ -53,6 +53,40 @@ test('estimate score from items helper', function () {
     expect($score)->toBe(100.0);
 });
 
+test('parses ats percent estimado line before markdown table', function () {
+    $markdown = <<<'MD'
+ATS % estimado: 74%
+
+| Key word | Relevância | Include/Missing | Comments |
+| --- | --- | --- | --- |
+| Projetos financeiros / banking | Alta | Ausente | Sem experiência bancária. |
+| Scrum | Alta | Ausente | Não mencionado. |
+MD;
+
+    $normalized = AtsChatKitSyncNormalizer::normalize([
+        'jd_document_id' => 44,
+        'user_cv_id' => 11,
+        'raw_table_text' => $markdown,
+        'items' => [],
+    ]);
+
+    expect($normalized['ats_score'])->toBe(74.0);
+    expect($normalized['items'])->toHaveCount(2);
+});
+
+test('all missing rows without preamble score estimates zero', function () {
+    $normalized = AtsChatKitSyncNormalizer::normalize([
+        'jd_document_id' => 1,
+        'user_cv_id' => 2,
+        'items' => [
+            ['keyword' => 'A', 'relevance' => 'high', 'match_status' => 'missing'],
+            ['keyword' => 'B', 'relevance' => 'high', 'match_status' => 'ausente'],
+        ],
+    ]);
+
+    expect($normalized['ats_score'])->toBe(0.0);
+});
+
 test('parses markdown table text when items array is empty', function () {
     $markdown = <<<'MD'
 | Keyword | Prioridade | Status | Score |

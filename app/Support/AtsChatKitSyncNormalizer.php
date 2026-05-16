@@ -202,11 +202,43 @@ final class AtsChatKitSyncNormalizer
 
     public static function parseAtsScoreFromText(string $text): ?float
     {
-        if (preg_match('/ATS\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*%/iu', $text, $matches)) {
-            return self::parseAtsScore($matches[1]);
+        $preamble = self::scorePreambleFromAssistantText($text);
+
+        $patterns = [
+            '/ATS\s*%?\s*estimado\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*%/iu',
+            '/ATS\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*%/iu',
+            '/(\d+(?:[.,]\d+)?)\s*%\s*(?:de\s+)?(?:compatibilidade|estimado)/iu',
+            '/(?:compatibilidade|estimado)\s*(?:ATS)?\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*%/iu',
+            '/ATS\s*%?\s*(\d+(?:[.,]\d+)?)\s*%/iu',
+        ];
+
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $preamble, $matches)) {
+                $score = self::parseAtsScore($matches[1]);
+                if ($score !== null) {
+                    return $score;
+                }
+            }
         }
 
         return null;
+    }
+
+    /**
+     * Score global costuma aparecer antes da tabela markdown — evita confundir com % por linha.
+     */
+    private static function scorePreambleFromAssistantText(string $text): string
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return '';
+        }
+
+        if (preg_match('/\n\s*\|/m', $text, $match, PREG_OFFSET_CAPTURE)) {
+            return trim(substr($text, 0, $match[0][1]));
+        }
+
+        return $text;
     }
 
     /**
