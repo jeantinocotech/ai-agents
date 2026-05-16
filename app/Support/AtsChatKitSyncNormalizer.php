@@ -26,6 +26,10 @@ final class AtsChatKitSyncNormalizer
             }
         }
 
+        if ($items === [] && is_string($payload['raw_table_text'] ?? null)) {
+            $items = self::parseItemsFromTableText((string) $payload['raw_table_text']);
+        }
+
         $atsScore = self::parseAtsScore(
             $payload['ats_score']
             ?? $payload['ats_percent']
@@ -37,6 +41,10 @@ final class AtsChatKitSyncNormalizer
 
         if ($atsScore === null && $items !== []) {
             $atsScore = self::estimateScoreFromItems($items);
+        }
+
+        if ($atsScore === null && is_string($payload['raw_table_text'] ?? null)) {
+            $atsScore = self::parseAtsScoreFromText((string) $payload['raw_table_text']);
         }
 
         return [
@@ -164,6 +172,252 @@ final class AtsChatKitSyncNormalizer
             in_array($value, ['partial', 'parcial', 'partly'], true) => 'partial',
             in_array($value, ['missing', 'ausente', 'absent', 'no', 'nao', 'não'], true) => 'missing',
             default => $value !== '' ? $value : null,
+        };
+    }
+
+    /**
+     * Extrai linhas de tabela ATS a partir de texto copiado do ChatKit (markdown, TSV ou linhas com %).
+     *
+     * @return list<array{keyword: string, relevance: ?string, match_status: ?string, cv_snippet: ?string, suggestion: ?string}>
+     */
+    public static function parseItemsFromTableText(string $text): array
+    {
+        $text = trim($text);
+        if ($text === '') {
+            return [];
+        }
+
+        $fromMarkdown = self::parseMarkdownTableRows($text);
+        if ($fromMarkdown !== []) {
+            return $fromMarkdown;
+        }
+
+        $fromTsv = self::parseDelimitedTableRows($text, "\t");
+        if ($fromTsv !== []) {
+            return $fromTsv;
+        }
+
+        return self::parsePlainScoreLines($text);
+    }
+
+    public static function parseAtsScoreFromText(string $text): ?float
+    {
+        if (preg_match('/ATS\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*%/iu', $text, $matches)) {
+            return self::parseAtsScore($matches[1]);
+        }
+
+        return null;
+    }
+
+    /**
+     * @return list<array{keyword: string, relevance: ?string, match_status: ?string, cv_snippet: ?string, suggestion: ?string}>
+     */
+    private static function parseMarkdownTableRows(string $text): array
+    {
+        $lines = preg_split('/\r\n|\r|\n/', $text) ?: [];
+        $keys = [];
+        $items = [];
+
+        foreach ($lines as $line) {
+            $line = trim((string) $line);
+            if ($line === '' || ! str_contains($line, '|')) {
+                continue;
+            }
+
+            $cells = self::splitMarkdownCells($line);
+            if ($cells === [] || count($cells) < 2) {
+                continue;
+            }
+
+            if (self::cellsAreSeparator($cells)) {
+                continue;
+            }
+
+            if ($keys === []) {
+                $keys = array_map([self::class, 'mapHeaderKey'], $cells);
+                if ($keys[0] !== 'keyword') {
+                    $keys[0] = 'keyword';
+                }
+
+                continue;
+            }
+
+            $item = self::itemFromCells($cells, $keys);
+            if ($item !== null) {
+                $items[] = $item;
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * @return list<array{keyword: string, relevance: ?string, match_status: ?string, cv_snippet: ?string, suggestion: ?string}>
+     */
+    private static function parseDelimitedTableRows(string $text, string $delimiter): array
+    {
+        $lines = preg_split('/\r\n|\r|\n/', $text) ?: [];
+        $keys = [];
+        $items = [];
+
+        foreach ($lines as $line) {
+            $line = trim((string) $line);
+            if ($line === '' || ! str_contains($line, $delimiter)) {
+                continue;
+            }
+
+            $cells = array_map('trim', explode($delimiter, $line));
+            if (count($cells) < 2) {
+                continue;
+            }
+
+            if ($keys === []) {
+                $keys = array_map([self::class, 'mapHeaderKey'], $cells);
+
+                continue;
+            }
+
+            $item = self::itemFromCells($cells, $keys);
+            if ($item !== null) {
+                $items[] = $item;
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * Linhas copiadas como lista (keyword … 60%).
+     *
+     * @return list<array{keyword: string, relevance: ?string, match_status: ?string, cv_snippet: ?string, suggestion: ?string}>
+     */
+    private static function parsePlainScoreLines(string $text): array
+    {
+        $lines = preg_split('/\r\n|\r|\n/', $text) ?: [];
+        $items = [];
+
+        foreach ($lines as $line) {
+            $line = trim((string) $line);
+            if ($line === '' || mb_strlen($line) < 4) {
+                continue;
+            }
+            if (preg_match('/^ATS\s*[:=]?\s*\d+/iu', $line)) {
+                continue;
+            }
+            if (! preg_match('/(\d+(?:[.,]\d+)?)\s*%/', $line, $scoreMatch)) {
+                continue;
+            }
+
+            $keyword = trim(preg_replace('/\s*(\d+(?:[.,]\d+)?)\s*%.*$/u', '', $line) ?? $line);
+            if ($keyword === '' || mb_strlen($keyword) < 3) {
+                continue;
+            }
+
+            $items[] = [
+                'keyword' => mb_substr($keyword, 0, 255),
+                'relevance' => 'medium',
+                'match_status' => self::matchFromScore((float) str_replace(',', '.', $scoreMatch[1])),
+                'cv_snippet' => null,
+                'suggestion' => null,
+            ];
+        }
+
+        return $items;
+    }
+
+    /**
+     * @param  list<string>  $cells
+     * @param  list<string>  $keys
+     * @return array{keyword: string, relevance: ?string, match_status: ?string, cv_snippet: ?string, suggestion: ?string}|null
+     */
+    private static function itemFromCells(array $cells, array $keys): ?array
+    {
+        $row = [];
+        foreach ($cells as $index => $cell) {
+            $key = $keys[$index] ?? ('col'.$index);
+            $row[$key] = $cell;
+        }
+
+        $keyword = trim((string) ($row['keyword'] ?? $row['col0'] ?? $cells[0] ?? ''));
+        if ($keyword === '' || mb_strlen($keyword) < 2) {
+            return null;
+        }
+
+        $rowForNormalize = [
+            'keyword' => $keyword,
+            'relevance' => $row['relevance'] ?? $row['prioridade'] ?? ($cells[1] ?? null),
+            'match_status' => $row['match_status'] ?? $row['status'] ?? ($cells[2] ?? null),
+            'cv_snippet' => $row['cv_snippet'] ?? null,
+            'suggestion' => $row['suggestion'] ?? $row['comments'] ?? $row['explicacao'] ?? null,
+        ];
+
+        $scoreCell = $row['score'] ?? ($cells[count($cells) - 1] ?? null);
+        $item = self::normalizeItemRow($rowForNormalize);
+        if ($item === null) {
+            return null;
+        }
+
+        $score = self::parseAtsScore($scoreCell);
+        if ($score !== null && ($item['match_status'] === null || $item['match_status'] === 'missing')) {
+            $item['match_status'] = self::matchFromScore($score);
+        }
+
+        return $item;
+    }
+
+    /**
+     * @param  list<string>  $cells
+     * @return list<string>
+     */
+    private static function splitMarkdownCells(string $line): array
+    {
+        $trimmed = trim($line);
+        if (str_starts_with($trimmed, '|')) {
+            $trimmed = substr($trimmed, 1);
+        }
+        if (str_ends_with($trimmed, '|')) {
+            $trimmed = substr($trimmed, 0, -1);
+        }
+
+        return array_map('trim', explode('|', $trimmed));
+    }
+
+    /**
+     * @param  list<string>  $cells
+     */
+    private static function cellsAreSeparator(array $cells): bool
+    {
+        foreach ($cells as $cell) {
+            if (! preg_match('/^[\-\:\s]+$/u', $cell)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static function mapHeaderKey(string $label): string
+    {
+        $s = mb_strtolower(trim($label));
+        $s = str_replace(['á', 'à', 'â', 'ã', 'é', 'ê', 'í', 'ó', 'ô', 'õ', 'ú', 'ç'], ['a', 'a', 'a', 'a', 'e', 'e', 'i', 'o', 'o', 'o', 'u', 'c'], $s);
+
+        return match (true) {
+            str_contains($s, 'keyword') || str_contains($s, 'palavra') || str_contains($s, 'termo') || str_contains($s, 'skill') || str_contains($s, 'competenc') || str_contains($s, 'requisito') => 'keyword',
+            str_contains($s, 'prior') || str_contains($s, 'relev') => 'relevance',
+            str_contains($s, 'status') || str_contains($s, 'match') || str_contains($s, 'inclu') || str_contains($s, 'presen') || str_contains($s, 'ausen') => 'match_status',
+            str_contains($s, 'comment') || str_contains($s, 'explic') || str_contains($s, 'sugest') || str_contains($s, 'nota') => 'suggestion',
+            str_contains($s, 'snippet') || str_contains($s, 'trecho') || str_contains($s, 'cv') => 'cv_snippet',
+            str_contains($s, 'score') || str_contains($s, 'pontu') || str_contains($s, 'percent') || str_contains($s, '%') => 'score',
+            default => $s,
+        };
+    }
+
+    private static function matchFromScore(float $score): string
+    {
+        return match (true) {
+            $score >= 75 => 'full',
+            $score >= 35 => 'partial',
+            default => 'missing',
         };
     }
 

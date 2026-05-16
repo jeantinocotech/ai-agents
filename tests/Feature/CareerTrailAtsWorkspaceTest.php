@@ -810,6 +810,49 @@ test('workspace forbidden when application status is cv sent even with ats submi
     expect(CareerTrailStep::atsAnalyzeChatUrlForJd($user, $agent, (int) $jd->id))->toBeNull();
 });
 
+test('chatkit sync accepts raw_table_text without items array', function () {
+    $agent = Agent::query()->create([
+        'name' => 'ATS Paste',
+        'price' => 0,
+        'model_type' => 'gpt-4o-mini',
+        'integration' => Agent::INTEGRATION_CHATKIT_WORKFLOW,
+        'chatkit_workflow_id' => 'wf_paste',
+        'is_active' => true,
+    ]);
+    CareerTrailStep::query()->where('slug', 'ats')->update(['agent_id' => $agent->id]);
+
+    $user = User::factory()->create();
+    $cv = UserCv::query()->create([
+        'user_id' => $user->id,
+        'title' => 'CV',
+        'body' => 'body',
+        'is_default' => true,
+        'source' => UserCv::SOURCE_MANUAL,
+    ]);
+    $jd = AgentDocument::query()->create([
+        'user_id' => $user->id,
+        'agent_id' => $agent->id,
+        'type' => AgentDocument::TYPE_JD,
+        'title' => 'JD',
+        'body' => 'body',
+        'user_cv_id' => $cv->id,
+        'is_active' => true,
+    ]);
+
+    $markdown = "| Keyword | Status |\n| --- | --- |\n| Agile | Parcial |";
+
+    $this->actingAs($user)
+        ->postJson(route('chat.chatkit.ats-analysis-sync'), [
+            'jd_document_id' => $jd->id,
+            'user_cv_id' => $cv->id,
+            'raw_table_text' => $markdown,
+        ])
+        ->assertOk()
+        ->assertJsonPath('source', AtsAnalysis::SOURCE_CHATKIT_TOOL);
+
+    expect(AtsAnalysis::findForPair($user->id, $jd->id, $cv->id)?->items)->toHaveCount(1);
+});
+
 test('chatkit document defaults ignores legacy boolean cv id from client', function () {
     $agent = Agent::query()->create([
         'name' => 'ATS Defaults',

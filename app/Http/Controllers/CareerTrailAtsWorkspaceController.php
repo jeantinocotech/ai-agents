@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\AgentDocument;
 use App\Models\AtsAnalysis;
 use App\Models\AtsAnalysisItem;
 use App\Models\CareerTrailStep;
@@ -14,8 +13,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
-use Illuminate\View\View;
 use Illuminate\Validation\ValidationException;
+use Illuminate\View\View;
 
 class CareerTrailAtsWorkspaceController extends Controller
 {
@@ -193,6 +192,12 @@ class CareerTrailAtsWorkspaceController extends Controller
 
     public function syncFromChatKit(Request $request): JsonResponse
     {
+        $request->validate([
+            'jd_document_id' => ['required', 'integer', 'min:1'],
+            'user_cv_id' => ['required', 'integer', 'min:1'],
+            'raw_table_text' => ['nullable', 'string', 'max:50000'],
+        ]);
+
         $payload = $request->all();
         $normalized = AtsChatKitSyncNormalizer::normalize($payload);
         $scoreFromPayload = AtsChatKitSyncNormalizer::parseAtsScore(

@@ -52,3 +52,23 @@ test('estimate score from items helper', function () {
 
     expect($score)->toBe(100.0);
 });
+
+test('parses markdown table text when items array is empty', function () {
+    $markdown = <<<'MD'
+| Keyword | Prioridade | Status | Score |
+| --- | --- | --- | --- |
+| Scrum | Alta | Parcial | 60% |
+| Docker | Baixa | Ausente | 0% |
+MD;
+
+    $normalized = AtsChatKitSyncNormalizer::normalize([
+        'jd_document_id' => 44,
+        'user_cv_id' => 11,
+        'raw_table_text' => $markdown,
+        'items' => [],
+    ]);
+
+    expect($normalized['items'])->toHaveCount(2);
+    expect($normalized['items'][0]['keyword'])->toBe('Scrum');
+    expect($normalized['items'][0]['match_status'])->toBe('partial');
+});

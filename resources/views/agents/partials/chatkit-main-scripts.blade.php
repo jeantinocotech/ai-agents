@@ -684,13 +684,14 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 }
 
                 if (hasPending) {
+                    showAtsPastePanel(true);
                     var pendingIntro = atsReanalyzeMode
                         ? 'Reanálise em curso...'
                         : 'Análise em curso...';
                     actions.innerHTML =
                         '<p class="mb-2 text-[11px] leading-snug text-slate-700">' +
                         pendingIntro +
-                        ' Se a tabela já apareceu no chat, use o botão abaixo.</p>' +
+                        ' Copie a tabela do chat (Ctrl+C) e use a caixa amarela ou o botão abaixo.</p>' +
                         '<div class="mt-2 flex flex-wrap gap-2">' +
                         '<button type="button" class="' +
                         btnClassViolet +
@@ -1207,16 +1208,78 @@ function initChatKitLibrarySendButtons(chatKitEl) {
         if (!chatEl) {
             return '';
         }
-        if (typeof chatEl.innerText === 'string' && chatEl.innerText.length > 40) {
-            return chatEl.innerText;
+        var parts = [];
+        if (typeof chatEl.innerText === 'string' && chatEl.innerText.trim().length > 0) {
+            parts.push(chatEl.innerText);
         }
-        var chatText = '';
         walkChatKitNodes(chatEl, function (n) {
             if (n.nodeType === 3 && n.textContent) {
-                chatText += n.textContent + '\n';
+                parts.push(n.textContent);
             }
         });
-        return chatText;
+        var iframes = chatEl.querySelectorAll ? chatEl.querySelectorAll('iframe') : [];
+        var fi;
+        for (fi = 0; fi < iframes.length; fi++) {
+            try {
+                var idoc = iframes[fi].contentDocument || (iframes[fi].contentWindow && iframes[fi].contentWindow.document);
+                if (idoc && idoc.body && idoc.body.innerText) {
+                    parts.push(idoc.body.innerText);
+                }
+            } catch (iframeErr) {}
+        }
+        return parts.join('\n');
+    }
+
+    function showAtsPastePanel(show) {
+        var panel = document.getElementById('chatkit-ats-paste-panel');
+        if (panel) {
+            if (show) {
+                panel.classList.remove('hidden');
+            } else {
+                panel.classList.add('hidden');
+            }
+        }
+    }
+
+    function tryReadClipboardText() {
+        if (!navigator.clipboard || typeof navigator.clipboard.readText !== 'function') {
+            return Promise.resolve('');
+        }
+        return navigator.clipboard.readText().catch(function () {
+            return '';
+        });
+    }
+
+    function persistAtsFromRawText(text) {
+        var pair = getSelectedAtsPairIds();
+        if (pair.jdId <= 0 || pair.userCvId <= 0) {
+            return Promise.resolve({ success: false, error: 'Escolha CV e vaga.' });
+        }
+        var raw = String(text || '').trim();
+        if (raw.length < 8) {
+            return Promise.resolve({ success: false, error: 'Texto da tabela demasiado curto.' });
+        }
+        atsAutoPersistInFlight = true;
+        setStatus('A guardar tabela ATS no workspace…');
+        return window
+            .chatkitPersistAtsAnalysis({
+                jd_document_id: pair.jdId,
+                user_cv_id: pair.userCvId,
+                raw_table_text: raw,
+                items: [],
+            })
+            .then(function (result) {
+                atsAutoPersistInFlight = false;
+                if (result && result.success !== false && !result.skipped) {
+                    atsChatkitToolPersisted = true;
+                    showAtsPastePanel(false);
+                }
+                return result;
+            })
+            .catch(function (err) {
+                atsAutoPersistInFlight = false;
+                return { success: false, error: err && err.message };
+            });
     }
 
     function parseAtsScoreFromChatText(text) {
@@ -1318,16 +1381,17 @@ function initChatKitLibrarySendButtons(chatKitEl) {
         if (pair.jdId <= 0 || pair.userCvId <= 0) {
             return Promise.resolve({ success: false, skipped: true });
         }
-        var extracted = extractAtsPayloadFromChatDom(chatKitEl);
-        if (!extracted || !extracted.items || extracted.items.length < 1) {
+
+        function failExtract() {
+            showAtsPastePanel(true);
             if (manual) {
                 var noTableMsg =
-                    'Não foi possível ler a tabela no chat. Confirme que a tabela ATS está visível ou use o botão do assistente para guardar.';
+                    'Copie a tabela no chat (Ctrl+C) e use «Guardar tabela colada» ou «Usar texto da área de transferência» abaixo.';
                 setStatus(noTableMsg);
                 if (window.chatApp && window.chatApp.showErrorMessage) {
                     window.chatApp.showErrorMessage(noTableMsg);
                 }
-            } else if (atsAutoPersistAttempt < 4) {
+            } else if (atsAutoPersistAttempt < 3) {
                 atsAutoPersistAttempt += 1;
                 clearTimeout(atsAutoPersistTimer);
                 atsAutoPersistTimer = setTimeout(function () {
@@ -1335,7 +1399,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 }, 3500);
             } else {
                 var extractFailMsg =
-                    'Não foi possível ler a tabela no chat. Clique em «Guardar tabela no workspace» ou reabra «Passar no filtro».';
+                    'Não foi possível ler a tabela automaticamente. Copie a tabela do chat e cole na caixa amarela abaixo.';
                 setStatus(extractFailMsg);
                 if (window.chatApp && window.chatApp.showErrorMessage) {
                     window.chatApp.showErrorMessage(extractFailMsg);
@@ -1343,39 +1407,71 @@ function initChatKitLibrarySendButtons(chatKitEl) {
             }
             return Promise.resolve({ success: false, skipped: true });
         }
-        atsAutoPersistInFlight = true;
-        setStatus('A guardar tabela ATS no workspace…');
-        return window
-            .chatkitPersistAtsAnalysis({
-                jd_document_id: pair.jdId,
-                user_cv_id: pair.userCvId,
-                ats_score: extracted.ats_score,
-                items: extracted.items,
-            })
-            .then(function (result) {
-                atsAutoPersistInFlight = false;
-                if (result && result.success !== false && !result.skipped) {
-                    atsChatkitToolPersisted = true;
-                    atsAutoPersistAttempt = 0;
-                } else if (result && result.error) {
-                    setStatus(result.error);
-                    if (manual && window.chatApp && window.chatApp.showErrorMessage) {
-                        window.chatApp.showErrorMessage(result.error);
+
+        function persistExtracted(extracted) {
+            atsAutoPersistInFlight = true;
+            setStatus('A guardar tabela ATS no workspace…');
+            return window
+                .chatkitPersistAtsAnalysis({
+                    jd_document_id: pair.jdId,
+                    user_cv_id: pair.userCvId,
+                    ats_score: extracted.ats_score,
+                    items: extracted.items,
+                })
+                .then(function (result) {
+                    atsAutoPersistInFlight = false;
+                    if (result && result.success !== false && !result.skipped) {
+                        atsChatkitToolPersisted = true;
+                        atsAutoPersistAttempt = 0;
+                        showAtsPastePanel(false);
+                    } else if (result && result.error) {
+                        setStatus(result.error);
+                        showAtsPastePanel(true);
+                        if (manual && window.chatApp && window.chatApp.showErrorMessage) {
+                            window.chatApp.showErrorMessage(result.error);
+                        }
                     }
-                }
-                return result;
-            })
-            .catch(function (err) {
-                atsAutoPersistInFlight = false;
-                if (manual) {
-                    var msg = (err && err.message) || 'Erro ao guardar tabela ATS.';
-                    setStatus(msg);
-                    if (window.chatApp && window.chatApp.showErrorMessage) {
-                        window.chatApp.showErrorMessage(msg);
+                    return result;
+                })
+                .catch(function (err) {
+                    atsAutoPersistInFlight = false;
+                    showAtsPastePanel(true);
+                    if (manual) {
+                        var msg = (err && err.message) || 'Erro ao guardar tabela ATS.';
+                        setStatus(msg);
+                        if (window.chatApp && window.chatApp.showErrorMessage) {
+                            window.chatApp.showErrorMessage(msg);
+                        }
                     }
+                    return { success: false, error: err && err.message };
+                });
+        }
+
+        if (manual) {
+            var pasteEl = document.getElementById('chatkit-ats-paste-input');
+            if (pasteEl && String(pasteEl.value || '').trim().length > 8) {
+                return persistAtsFromRawText(pasteEl.value);
+            }
+            return tryReadClipboardText().then(function (clipText) {
+                if (clipText && clipText.trim().length > 8) {
+                    if (pasteEl) {
+                        pasteEl.value = clipText;
+                    }
+                    return persistAtsFromRawText(clipText);
                 }
-                return { success: false, error: err && err.message };
+                var extractedManual = extractAtsPayloadFromChatDom(chatKitEl);
+                if (extractedManual && extractedManual.items && extractedManual.items.length > 0) {
+                    return persistExtracted(extractedManual);
+                }
+                return failExtract();
             });
+        }
+
+        var extracted = extractAtsPayloadFromChatDom(chatKitEl);
+        if (!extracted || !extracted.items || extracted.items.length < 1) {
+            return failExtract();
+        }
+        return persistExtracted(extracted);
     }
 
     function scheduleAutoPersistAtsFromChat() {
@@ -1390,8 +1486,36 @@ function initChatKitLibrarySendButtons(chatKitEl) {
     }
 
     window.chatkitTryPersistAtsFromChat = function (manual) {
+        showAtsPastePanel(true);
         return tryAutoPersistAtsFromChat(manual !== false);
     };
+
+    function initAtsPastePanelHandlers() {
+        var pasteSave = document.getElementById('chatkit-ats-paste-save');
+        var pasteClipboard = document.getElementById('chatkit-ats-paste-try-clipboard');
+        if (pasteSave) {
+            pasteSave.addEventListener('click', function () {
+                var pasteEl = document.getElementById('chatkit-ats-paste-input');
+                persistAtsFromRawText(pasteEl ? pasteEl.value : '').then(function (result) {
+                    if (result && result.error && window.chatApp && window.chatApp.showErrorMessage) {
+                        window.chatApp.showErrorMessage(result.error);
+                    }
+                });
+            });
+        }
+        if (pasteClipboard) {
+            pasteClipboard.addEventListener('click', function () {
+                tryReadClipboardText().then(function (text) {
+                    var pasteEl = document.getElementById('chatkit-ats-paste-input');
+                    if (pasteEl) {
+                        pasteEl.value = text;
+                    }
+                    return persistAtsFromRawText(text);
+                });
+            });
+        }
+    }
+    initAtsPastePanelHandlers();
 
     function normalizePersistParams(params) {
         var p = params && typeof params === 'object' ? params : {};
@@ -1413,6 +1537,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
             user_cv_id: p.user_cv_id,
             ats_score: score,
             items: items,
+            raw_table_text: p.raw_table_text ? String(p.raw_table_text) : null,
         };
     }
 
@@ -1433,10 +1558,12 @@ function initChatKitLibrarySendButtons(chatKitEl) {
             var pair = getSelectedAtsPairIds();
             var jdId = parseInt(p.jd_document_id, 10) || pair.jdId;
             var userCvId = parseInt(p.user_cv_id, 10) || pair.userCvId;
-            if (!jdId || !userCvId || !Array.isArray(p.items) || p.items.length < 1) {
+            var rawTableText = p.raw_table_text ? String(p.raw_table_text).trim() : '';
+            var hasItems = Array.isArray(p.items) && p.items.length > 0;
+            if (!jdId || !userCvId || (!hasItems && rawTableText.length < 8)) {
                 postChatKitClientLog({
                     agent_id: agentId,
-                    message: 'persist_ats_analysis skipped: missing ids or items',
+                    message: 'persist_ats_analysis skipped: missing ids or table data',
                     source: 'persist_ats_analysis',
                 });
                 return Promise.resolve({ success: false, skipped: true });
@@ -1454,7 +1581,8 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                     jd_document_id: jdId,
                     user_cv_id: userCvId,
                     ats_score: p.ats_score != null ? p.ats_score : null,
-                    items: p.items,
+                    items: hasItems ? p.items : [],
+                    raw_table_text: rawTableText.length > 0 ? rawTableText : null,
                 }),
             })
                 .then(function (res) {
