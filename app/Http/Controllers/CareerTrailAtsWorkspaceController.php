@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Agent;
 use App\Models\AtsAnalysis;
 use App\Models\AtsAnalysisItem;
 use App\Models\CareerTrailStep;
 use App\Models\UserCv;
 use App\Services\AtsKeywordAnalysisService;
+use App\Services\ChatKitThreadItemsService;
 use App\Support\AtsChatKitSyncNormalizer;
 use App\Support\CareerTrailAtsJdValidator;
 use Illuminate\Http\JsonResponse;
@@ -198,7 +200,60 @@ class CareerTrailAtsWorkspaceController extends Controller
             'raw_table_text' => ['nullable', 'string', 'max:50000'],
         ]);
 
-        $payload = $request->all();
+        return $this->persistChatKitSync($request, $request->all());
+    }
+
+    public function syncFromChatKitThread(Request $request, ChatKitThreadItemsService $threadItems): JsonResponse
+    {
+        $validated = $request->validate([
+            'agent_id' => ['required', 'integer', 'exists:agents,id'],
+            'thread_id' => ['required', 'string', 'max:128'],
+            'jd_document_id' => ['required', 'integer', 'min:1'],
+            'user_cv_id' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $user = $request->user();
+        abort_if($user === null, 401);
+
+        $agent = Agent::query()->findOrFail($validated['agent_id']);
+        abort_unless($agent->isChatKitWorkflow(), 422, 'Este agente não usa ChatKit.');
+
+        $jd = CareerTrailAtsJdValidator::validatedJdForUser((int) $validated['jd_document_id'], $user);
+        abort_unless((int) $jd->agent_id === (int) $agent->id, 422, 'Agente não corresponde à vaga.');
+        abort_unless((int) $jd->user_cv_id === (int) $validated['user_cv_id'], 422, 'CV não corresponde à vaga.');
+        abort_if($reason = $jd->atsFlowBlockReason(), 403, $reason);
+
+        $items = $threadItems->fetchItems($agent, $validated['thread_id']);
+        $extracted = $threadItems->extractAtsSyncPayload($items);
+
+        if ($extracted === null) {
+            Log::info('ats-thread-sync: table not ready', [
+                'user_id' => $user->id,
+                'agent_id' => $agent->id,
+                'thread_id' => mb_substr($validated['thread_id'], 0, 24),
+                'items_fetched' => count($items),
+            ]);
+
+            return response()->json([
+                'ok' => false,
+                'ready' => false,
+                'message' => 'A tabela ATS ainda não está disponível no thread. Aguarde alguns segundos.',
+            ], 404);
+        }
+
+        $payload = array_merge($extracted, [
+            'jd_document_id' => (int) $validated['jd_document_id'],
+            'user_cv_id' => (int) $validated['user_cv_id'],
+        ]);
+
+        return $this->persistChatKitSync($request, $payload);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function persistChatKitSync(Request $request, array $payload): JsonResponse
+    {
         $normalized = AtsChatKitSyncNormalizer::normalize($payload);
         $scoreFromPayload = AtsChatKitSyncNormalizer::parseAtsScore(
             $payload['ats_score'] ?? $payload['ats_percent'] ?? $payload['score'] ?? null

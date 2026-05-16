@@ -74,6 +74,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/trilha/ats/workspace/items/{item}', [CareerTrailAtsWorkspaceController::class, 'patchItem'])->name('career-trail.ats.workspace.item');
     Route::get('/chat/chatkit/ats-pair-status', [CareerTrailAtsWorkspaceController::class, 'pairStatus'])->name('chat.chatkit.ats-pair-status');
     Route::post('/chat/chatkit/ats-analysis-sync', [CareerTrailAtsWorkspaceController::class, 'syncFromChatKit'])->name('chat.chatkit.ats-analysis-sync');
+    Route::post('/chat/chatkit/ats-thread-sync', [CareerTrailAtsWorkspaceController::class, 'syncFromChatKitThread'])->name('chat.chatkit.ats-thread-sync');
     Route::post('/trilha/cv/extrair-arquivo', [CareerTrailCvController::class, 'extractFile'])->name('career-trail.cv.extract-file');
     Route::post('/trilha/cv', [CareerTrailCvController::class, 'store'])->name('career-trail.cv.store');
     Route::post('/trilha/cv/importar-agente', [CareerTrailCvController::class, 'importFromAgentDocument'])->name('career-trail.cv.import-agent');

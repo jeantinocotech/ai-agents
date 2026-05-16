@@ -10,6 +10,7 @@ use App\Models\UserCareerTrailProgress;
 use App\Models\UserCv;
 use App\Services\AtsKeywordAnalysisService;
 use Database\Seeders\CareerTrailStepsSeeder;
+use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
     $this->seed(CareerTrailStepsSeeder::class);
@@ -851,6 +852,126 @@ test('chatkit sync accepts raw_table_text without items array', function () {
         ->assertJsonPath('source', AtsAnalysis::SOURCE_CHATKIT_TOOL);
 
     expect(AtsAnalysis::findForPair($user->id, $jd->id, $cv->id)?->items)->toHaveCount(1);
+});
+
+test('chatkit thread sync extracts assistant table from OpenAI thread items', function () {
+    config(['services.openai.api_key' => 'sk-test-thread-sync']);
+
+    $agent = Agent::query()->create([
+        'name' => 'ATS Thread',
+        'price' => 0,
+        'model_type' => 'gpt-4o-mini',
+        'integration' => Agent::INTEGRATION_CHATKIT_WORKFLOW,
+        'chatkit_workflow_id' => 'wf_thread',
+        'is_active' => true,
+    ]);
+    CareerTrailStep::query()->where('slug', 'ats')->update(['agent_id' => $agent->id]);
+
+    $user = User::factory()->create();
+    $cv = UserCv::query()->create([
+        'user_id' => $user->id,
+        'title' => 'CV',
+        'body' => 'body',
+        'is_default' => true,
+        'source' => UserCv::SOURCE_MANUAL,
+    ]);
+    $jd = AgentDocument::query()->create([
+        'user_id' => $user->id,
+        'agent_id' => $agent->id,
+        'type' => AgentDocument::TYPE_JD,
+        'title' => 'JD',
+        'body' => 'body',
+        'user_cv_id' => $cv->id,
+        'is_active' => true,
+    ]);
+
+    $markdown = "ATS: 72%\n| Keyword | Status |\n| --- | --- |\n| Scrum | Parcial |";
+
+    Http::fake([
+        'api.openai.com/v1/chatkit/threads/cthr_ats/items*' => Http::response([
+            'object' => 'list',
+            'data' => [
+                [
+                    'type' => 'chatkit.assistant_message',
+                    'content' => [
+                        ['type' => 'output_text', 'text' => $markdown],
+                    ],
+                ],
+            ],
+        ]),
+    ]);
+
+    $this->actingAs($user)
+        ->postJson(route('chat.chatkit.ats-thread-sync'), [
+            'agent_id' => $agent->id,
+            'thread_id' => 'cthr_ats',
+            'jd_document_id' => $jd->id,
+            'user_cv_id' => $cv->id,
+        ])
+        ->assertOk()
+        ->assertJsonPath('source', AtsAnalysis::SOURCE_CHATKIT_TOOL)
+        ->assertJsonPath('ats_score', 72);
+
+    $analysis = AtsAnalysis::findForPair($user->id, $jd->id, $cv->id);
+    expect($analysis)->not->toBeNull();
+    expect($analysis->items)->toHaveCount(1);
+    expect($analysis->items->first()->keyword)->toBe('Scrum');
+});
+
+test('chatkit thread sync returns 404 when table not ready in thread', function () {
+    config(['services.openai.api_key' => 'sk-test-thread-empty']);
+
+    $agent = Agent::query()->create([
+        'name' => 'ATS Thread Empty',
+        'price' => 0,
+        'model_type' => 'gpt-4o-mini',
+        'integration' => Agent::INTEGRATION_CHATKIT_WORKFLOW,
+        'chatkit_workflow_id' => 'wf_thread_empty',
+        'is_active' => true,
+    ]);
+    CareerTrailStep::query()->where('slug', 'ats')->update(['agent_id' => $agent->id]);
+
+    $user = User::factory()->create();
+    $cv = UserCv::query()->create([
+        'user_id' => $user->id,
+        'title' => 'CV',
+        'body' => 'body',
+        'is_default' => true,
+        'source' => UserCv::SOURCE_MANUAL,
+    ]);
+    $jd = AgentDocument::query()->create([
+        'user_id' => $user->id,
+        'agent_id' => $agent->id,
+        'type' => AgentDocument::TYPE_JD,
+        'title' => 'JD',
+        'body' => 'body',
+        'user_cv_id' => $cv->id,
+        'is_active' => true,
+    ]);
+
+    Http::fake([
+        'api.openai.com/v1/chatkit/threads/cthr_empty/items*' => Http::response([
+            'object' => 'list',
+            'data' => [
+                [
+                    'type' => 'chatkit.assistant_message',
+                    'content' => [
+                        ['type' => 'output_text', 'text' => 'A analisar o CV…'],
+                    ],
+                ],
+            ],
+        ]),
+    ]);
+
+    $this->actingAs($user)
+        ->postJson(route('chat.chatkit.ats-thread-sync'), [
+            'agent_id' => $agent->id,
+            'thread_id' => 'cthr_empty',
+            'jd_document_id' => $jd->id,
+            'user_cv_id' => $cv->id,
+        ])
+        ->assertNotFound()
+        ->assertJsonPath('ready', false);
 });
 
 test('chatkit document defaults ignores legacy boolean cv id from client', function () {

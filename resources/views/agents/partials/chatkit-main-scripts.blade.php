@@ -396,6 +396,11 @@ function bootOpenAiChatKit() {
             if (call.name !== 'persist_ats_analysis') {
                 return { success: false, error: 'unknown_tool' };
             }
+            postChatKitClientLog({
+                agent_id: agentId,
+                message: 'persist_ats_analysis tool invoked',
+                source: 'persist_ats_analysis',
+            });
             return Promise.resolve(window.chatkitPersistAtsAnalysis(call.params || {}))
                 .then(function (result) {
                     if (result && typeof result === 'object') {
@@ -452,7 +457,9 @@ function initChatKitLibrarySendButtons(chatKitEl) {
     var pendingCvTurnDebits = 0;
     var sessionTokensUsedAccum = 0;
     var atsAnalysisSyncUrl = @json($compactTrailAts ? route('chat.chatkit.ats-analysis-sync') : null);
+    var atsThreadSyncUrl = @json($compactTrailAts ? route('chat.chatkit.ats-thread-sync') : null);
     var atsPairStatusUrl = @json($compactTrailAts ? route('chat.chatkit.ats-pair-status') : null);
+    var atsChatKitThreadId = null;
     var chatkitJdMetaById = @json($chatkitJdMetaById ?? []);
     var atsReanalyzeMode = @json($compactTrailAts && request()->query('reanalyze') === '1');
     var atsReanalyzeWorkspaceUrl = @json($atsReanalyzeWorkspaceUrl);
@@ -684,28 +691,13 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 }
 
                 if (hasPending) {
-                    showAtsPastePanel(true);
                     var pendingIntro = atsReanalyzeMode
-                        ? 'Reanálise em curso...'
-                        : 'Análise em curso...';
+                        ? 'Reanálise em curso — a sincronizar tabela ATS…'
+                        : 'Análise em curso — a sincronizar tabela ATS…';
                     actions.innerHTML =
                         '<p class="mb-2 text-[11px] leading-snug text-slate-700">' +
                         pendingIntro +
-                        ' Copie a tabela do chat (Ctrl+C) e use a caixa amarela ou o botão abaixo.</p>' +
-                        '<div class="mt-2 flex flex-wrap gap-2">' +
-                        '<button type="button" class="' +
-                        btnClassViolet +
-                        '" onclick="window.chatkitTryPersistAtsFromChat(true)">Guardar tabela no workspace</button>' +
-                        '<form method="post" action="' +
-                        storeUrl +
-                        '" class="inline">' +
-                        '<input type="hidden" name="_token" value="' +
-                        csrfToken +
-                        '">' +
-                        '<input type="hidden" name="jd_document_id" value="' +
-                        pair.jdId +
-                        '">' +
-                        '<button type="submit" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50">Lista automática (fallback)</button></form></div>';
+                        ' O workspace abre automaticamente quando a tabela estiver guardada.</p>';
                     return;
                 }
 
@@ -991,531 +983,197 @@ function initChatKitLibrarySendButtons(chatKitEl) {
         return isNaN(n) || n < 0 || n > 100 ? null : n;
     }
 
-    function walkChatKitNodes(node, visit) {
-        if (!node) {
-            return;
+    function resolveChatKitThreadId() {
+        if (atsChatKitThreadId) {
+            return atsChatKitThreadId;
         }
-        visit(node);
-        if (node.shadowRoot) {
-            walkChatKitNodes(node.shadowRoot, visit);
-        }
-        var kids = node.children;
-        if (kids) {
-            for (var wi = 0; wi < kids.length; wi++) {
-                walkChatKitNodes(kids[wi], visit);
-            }
-        }
-    }
-
-    function mapAtsTableHeaderKey(label) {
-        var s = String(label || '')
-            .toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .trim();
-        if (!s) {
-            return '';
-        }
-        if (/keyword|palavra|termo|skill|competenc|requisito|cargo|role|titulo/.test(s)) {
-            return 'keyword';
-        }
-        if (/prior|relev/.test(s)) {
-            return 'relevance';
-        }
-        if (/status|match|inclu|presen|ausen|parcial/.test(s)) {
-            return 'match_status';
-        }
-        if (/comment|explic|sugest|nota|observ/.test(s)) {
-            return 'suggestion';
-        }
-        if (/snippet|trecho|no cv|cv:/.test(s)) {
-            return 'cv_snippet';
-        }
-        if (/score|pontu|percent|resultado|%/.test(s)) {
-            return 'score';
-        }
-        return s;
-    }
-
-    function normalizeAtsRelevance(value) {
-        var s = String(value || '').toLowerCase();
-        if (/alta|high|elevada/.test(s)) {
-            return 'high';
-        }
-        if (/baixa|low/.test(s)) {
-            return 'low';
-        }
-        return 'medium';
-    }
-
-    function normalizeAtsMatchStatus(value) {
-        var s = String(value || '').toLowerCase();
-        if (/presente|present|completo|full|ok|inclu/.test(s)) {
-            return 'present';
-        }
-        if (/parcial|partial/.test(s)) {
-            return 'partial';
-        }
-        return 'missing';
-    }
-
-    function parseAtsItemsFromHtmlTable(table) {
-        var trs = table.querySelectorAll('tr');
-        if (!trs || trs.length < 2) {
-            return [];
-        }
-        var headerCells = trs[0].querySelectorAll('th, td');
-        var keys = [];
-        for (var hi = 0; hi < headerCells.length; hi++) {
-            keys.push(mapAtsTableHeaderKey(headerCells[hi].textContent));
-        }
-        var items = [];
-        for (var ri = 1; ri < trs.length; ri++) {
-            var cells = trs[ri].querySelectorAll('td, th');
-            if (!cells || cells.length < 2) {
-                continue;
-            }
-            var row = {};
-            for (var ci = 0; ci < cells.length; ci++) {
-                var key = keys[ci] || 'col' + ci;
-                row[key] = String(cells[ci].textContent || '').trim();
-            }
-            var keyword =
-                row.keyword ||
-                row.col0 ||
-                row[keys[0]] ||
-                '';
-            keyword = String(keyword).trim();
-            if (!keyword || keyword.length < 2) {
-                continue;
-            }
-            items.push({
-                keyword: keyword,
-                relevance: normalizeAtsRelevance(row.relevance || row.prioridade || ''),
-                match_status: normalizeAtsMatchStatus(row.match_status || row.status || ''),
-                cv_snippet: row.cv_snippet || null,
-                suggestion: row.suggestion || row.comments || row.explicacao || null,
-                _row_score: parseAtsScoreFromValue(row.score),
-            });
-        }
-        return items;
-    }
-
-    function splitMarkdownTableCells(line) {
-        var trimmed = String(line || '').trim();
-        if (trimmed.charAt(0) === '|') {
-            trimmed = trimmed.slice(1);
-        }
-        if (trimmed.charAt(trimmed.length - 1) === '|') {
-            trimmed = trimmed.slice(0, -1);
-        }
-        return trimmed.split('|').map(function (cell) {
-            return cell.trim();
-        });
-    }
-
-    function atsItemFromRowCells(cells, keys) {
-        if (!cells || cells.length < 2) {
+        if (!chatKitEl) {
             return null;
         }
-        var row = {};
-        var ci;
-        for (ci = 0; ci < cells.length; ci++) {
-            var key = keys[ci] || (ci === 0 ? 'keyword' : 'col' + ci);
-            row[key] = cells[ci];
+        if (chatKitEl.threadId) {
+            return String(chatKitEl.threadId);
         }
-        var keyword = String(row.keyword || row.col0 || cells[0] || '').trim();
-        if (!keyword || keyword.length < 2 || /^[\-\:\s]+$/.test(keyword)) {
-            return null;
-        }
-        return {
-            keyword: keyword,
-            relevance: normalizeAtsRelevance(row.relevance || row.prioridade || cells[1] || ''),
-            match_status: normalizeAtsMatchStatus(row.match_status || row.status || cells[2] || ''),
-            cv_snippet: row.cv_snippet || null,
-            suggestion: row.suggestion || row.comments || row.explicacao || null,
-            _row_score: parseAtsScoreFromValue(row.score || cells[cells.length - 1]),
-        };
-    }
-
-    function parseAtsItemsFromMarkdownTable(text) {
-        var lines = String(text || '').split(/\r?\n/);
-        var keys = [];
-        var items = [];
-        var li;
-        for (li = 0; li < lines.length; li++) {
-            var line = lines[li];
-            if (line.indexOf('|') < 0) {
-                continue;
-            }
-            var cells = splitMarkdownTableCells(line);
-            if (cells.length < 2) {
-                continue;
-            }
-            if (cells.every(function (c) {
-                return /^[\-\:\s]+$/.test(c);
-            })) {
-                continue;
-            }
-            if (keys.length === 0) {
-                keys = cells.map(mapAtsTableHeaderKey);
-                if (keys[0] !== 'keyword' && keys[0] !== '') {
-                    keys[0] = 'keyword';
-                }
-                continue;
-            }
-            var item = atsItemFromRowCells(cells, keys);
-            if (item) {
-                items.push(item);
-            }
-        }
-        return items;
-    }
-
-    function parseAtsItemsFromRoleTable(tableEl) {
-        var rowEls = tableEl.querySelectorAll('[role="row"]');
-        if (!rowEls || rowEls.length < 2) {
-            return [];
-        }
-        var keys = [];
-        var items = [];
-        var ri;
-        for (ri = 0; ri < rowEls.length; ri++) {
-            var cellEls = rowEls[ri].querySelectorAll(
-                '[role="cell"], [role="columnheader"], [role="gridcell"]'
-            );
-            var cells = [];
-            var ci;
-            for (ci = 0; ci < cellEls.length; ci++) {
-                cells.push(String(cellEls[ci].textContent || '').trim());
-            }
-            if (cells.length < 2) {
-                continue;
-            }
-            if (keys.length === 0) {
-                keys = cells.map(mapAtsTableHeaderKey);
-                continue;
-            }
-            var item = atsItemFromRowCells(cells, keys);
-            if (item) {
-                items.push(item);
-            }
-        }
-        return items;
-    }
-
-    function collectChatPlainText(chatEl) {
-        if (!chatEl) {
-            return '';
-        }
-        var parts = [];
-        if (typeof chatEl.innerText === 'string' && chatEl.innerText.trim().length > 0) {
-            parts.push(chatEl.innerText);
-        }
-        walkChatKitNodes(chatEl, function (n) {
-            if (n.nodeType === 3 && n.textContent) {
-                parts.push(n.textContent);
-            }
-        });
-        var iframes = chatEl.querySelectorAll ? chatEl.querySelectorAll('iframe') : [];
-        var fi;
-        for (fi = 0; fi < iframes.length; fi++) {
+        if (typeof chatKitEl.getThreadId === 'function') {
             try {
-                var idoc = iframes[fi].contentDocument || (iframes[fi].contentWindow && iframes[fi].contentWindow.document);
-                if (idoc && idoc.body && idoc.body.innerText) {
-                    parts.push(idoc.body.innerText);
+                var tid = chatKitEl.getThreadId();
+                if (tid) {
+                    return String(tid);
                 }
-            } catch (iframeErr) {}
-        }
-        return parts.join('\n');
-    }
-
-    function showAtsPastePanel(show) {
-        var panel = document.getElementById('chatkit-ats-paste-panel');
-        if (panel) {
-            if (show) {
-                panel.classList.remove('hidden');
-            } else {
-                panel.classList.add('hidden');
-            }
-        }
-    }
-
-    function tryReadClipboardText() {
-        if (!navigator.clipboard || typeof navigator.clipboard.readText !== 'function') {
-            return Promise.resolve('');
-        }
-        return navigator.clipboard.readText().catch(function () {
-            return '';
-        });
-    }
-
-    function persistAtsFromRawText(text) {
-        var pair = getSelectedAtsPairIds();
-        if (pair.jdId <= 0 || pair.userCvId <= 0) {
-            return Promise.resolve({ success: false, error: 'Escolha CV e vaga.' });
-        }
-        var raw = String(text || '').trim();
-        if (raw.length < 8) {
-            return Promise.resolve({ success: false, error: 'Texto da tabela demasiado curto.' });
-        }
-        atsAutoPersistInFlight = true;
-        setStatus('A guardar tabela ATS no workspace…');
-        return window
-            .chatkitPersistAtsAnalysis({
-                jd_document_id: pair.jdId,
-                user_cv_id: pair.userCvId,
-                raw_table_text: raw,
-                items: [],
-            })
-            .then(function (result) {
-                atsAutoPersistInFlight = false;
-                if (result && result.success !== false && !result.skipped) {
-                    atsChatkitToolPersisted = true;
-                    showAtsPastePanel(false);
-                }
-                return result;
-            })
-            .catch(function (err) {
-                atsAutoPersistInFlight = false;
-                return { success: false, error: err && err.message };
-            });
-    }
-
-    function parseAtsScoreFromChatText(text) {
-        var s = String(text || '');
-        var m = s.match(/ATS\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*%/i);
-        if (m) {
-            return parseAtsScoreFromValue(m[1]);
-        }
-        m = s.match(/(\d+(?:[.,]\d+)?)\s*%\s*(?:de\s+)?compatibilidade/i);
-        if (m) {
-            return parseAtsScoreFromValue(m[1]);
+            } catch (threadErr) {}
         }
         return null;
     }
 
-    function extractAtsPayloadFromChatDom(chatEl) {
-        if (!chatEl) {
-            return null;
-        }
-        var items = [];
-        var tables = [];
-        walkChatKitNodes(chatEl, function (n) {
-            if (n.nodeType !== 1) {
-                return;
-            }
-            if (n.tagName === 'TABLE') {
-                tables.push(n);
-            }
-            if (n.getAttribute && n.getAttribute('role') === 'table') {
-                var roleParsed = parseAtsItemsFromRoleTable(n);
-                if (roleParsed.length > items.length) {
-                    items = roleParsed;
-                }
-            }
-        });
-        var tableIndex;
-        for (tableIndex = tables.length - 1; tableIndex >= 0; tableIndex--) {
-            var htmlParsed = parseAtsItemsFromHtmlTable(tables[tableIndex]);
-            if (htmlParsed.length > items.length) {
-                items = htmlParsed;
-            }
-        }
-        var chatText = collectChatPlainText(chatEl);
-        var mdParsed = parseAtsItemsFromMarkdownTable(chatText);
-        if (mdParsed.length > items.length) {
-            items = mdParsed;
-        }
-        if (items.length < 1) {
-            postChatKitClientLog({
-                agent_id: agentId,
-                message:
-                    'extract_ats_table: 0 rows (tables=' +
-                    tables.length +
-                    ', textLen=' +
-                    chatText.length +
-                    ')',
-                source: 'persist_ats_analysis',
-            });
-            return null;
-        }
-        var rowScores = [];
-        var cleaned = [];
-        var ii;
-        for (ii = 0; ii < items.length; ii++) {
-            var it = items[ii];
-            if (it._row_score != null) {
-                rowScores.push(it._row_score);
-            }
-            cleaned.push({
-                keyword: it.keyword,
-                relevance: it.relevance,
-                match_status: it.match_status,
-                cv_snippet: it.cv_snippet,
-                suggestion: it.suggestion,
+    function finishAtsSyncResponse(o, jdId, userCvId) {
+        if (o.data && o.data.workspace_url && o.data.analysis_id) {
+            writeAtsSessionSync(jdId, userCvId, {
+                analysis_id: o.data.analysis_id,
+                workspace_url: o.data.workspace_url,
+                ats_score: o.data.ats_score != null ? o.data.ats_score : null,
+                synced_at: Date.now(),
             });
         }
-        var atsScore = parseAtsScoreFromChatText(chatText);
-        if (atsScore == null && rowScores.length > 0) {
-            var sum = 0;
-            for (ii = 0; ii < rowScores.length; ii++) {
-                sum += rowScores[ii];
-            }
-            atsScore = Math.round((sum / rowScores.length) * 10) / 10;
+        atsReanalyzeMode = false;
+        atsAwaitingJdAnalysis = false;
+        atsChatkitToolPersisted = true;
+        clearTimeout(atsJdAnalysisEndTimer);
+        clearTimeout(atsAutoPersistTimer);
+        refreshAtsWorkspaceCta();
+        markAtsStepsAllComplete();
+        var returnUrl =
+            (o.data && o.data.workspace_url) ||
+            atsReanalyzeWorkspaceUrl ||
+            null;
+        if (window.chatApp && window.chatApp.showSuccessMessage) {
+            window.chatApp.showSuccessMessage(
+                returnUrl
+                    ? 'Tabela ATS guardada — a abrir o workspace…'
+                    : 'Tabela ATS guardada — pode ajustar o CV no workspace.'
+            );
         }
-        return { items: cleaned, ats_score: atsScore };
+        if (returnUrl) {
+            var dest =
+                returnUrl + (returnUrl.indexOf('?') >= 0 ? '&' : '?') + 'synced=1';
+            window.setTimeout(function () {
+                window.location.href = dest;
+            }, 1200);
+            return {
+                success: true,
+                analysis_id: o.data && o.data.analysis_id,
+                workspace_url: returnUrl,
+                redirected: true,
+            };
+        }
+        return {
+            success: true,
+            analysis_id: o.data && o.data.analysis_id,
+            workspace_url: o.data && o.data.workspace_url,
+        };
     }
 
-    function tryAutoPersistAtsFromChat(manual) {
-        if (!chatKitTrailAts || typeof window.chatkitPersistAtsAnalysis !== 'function') {
-            return Promise.resolve({ success: false, skipped: true });
-        }
-        if (atsChatkitToolPersisted) {
-            return Promise.resolve({ success: true, skipped: true });
-        }
-        if (atsAutoPersistInFlight) {
+    function syncAtsFromServerThread(attempt) {
+        attempt = attempt || 0;
+        if (
+            !chatKitTrailAts ||
+            !atsThreadSyncUrl ||
+            atsChatkitToolPersisted ||
+            atsAutoPersistInFlight
+        ) {
             return Promise.resolve({ success: false, skipped: true });
         }
         var pair = getSelectedAtsPairIds();
         if (pair.jdId <= 0 || pair.userCvId <= 0) {
             return Promise.resolve({ success: false, skipped: true });
         }
-
-        function failExtract() {
-            showAtsPastePanel(true);
-            if (manual) {
-                var noTableMsg =
-                    'Copie a tabela no chat (Ctrl+C) e use «Guardar tabela colada» ou «Usar texto da área de transferência» abaixo.';
-                setStatus(noTableMsg);
-                if (window.chatApp && window.chatApp.showErrorMessage) {
-                    window.chatApp.showErrorMessage(noTableMsg);
-                }
-            } else if (atsAutoPersistAttempt < 3) {
-                atsAutoPersistAttempt += 1;
+        var threadId = resolveChatKitThreadId();
+        if (!threadId) {
+            if (attempt < 6) {
                 clearTimeout(atsAutoPersistTimer);
                 atsAutoPersistTimer = setTimeout(function () {
-                    tryAutoPersistAtsFromChat(false);
-                }, 3500);
-            } else {
-                var extractFailMsg =
-                    'Não foi possível ler a tabela automaticamente. Copie a tabela do chat e cole na caixa amarela abaixo.';
-                setStatus(extractFailMsg);
-                if (window.chatApp && window.chatApp.showErrorMessage) {
-                    window.chatApp.showErrorMessage(extractFailMsg);
-                }
+                    syncAtsFromServerThread(attempt + 1);
+                }, 1200);
             }
             return Promise.resolve({ success: false, skipped: true });
         }
 
-        function persistExtracted(extracted) {
-            atsAutoPersistInFlight = true;
-            setStatus('A guardar tabela ATS no workspace…');
-            return window
-                .chatkitPersistAtsAnalysis({
-                    jd_document_id: pair.jdId,
-                    user_cv_id: pair.userCvId,
-                    ats_score: extracted.ats_score,
-                    items: extracted.items,
-                })
-                .then(function (result) {
-                    atsAutoPersistInFlight = false;
-                    if (result && result.success !== false && !result.skipped) {
-                        atsChatkitToolPersisted = true;
-                        atsAutoPersistAttempt = 0;
-                        showAtsPastePanel(false);
-                    } else if (result && result.error) {
-                        setStatus(result.error);
-                        showAtsPastePanel(true);
-                        if (manual && window.chatApp && window.chatApp.showErrorMessage) {
-                            window.chatApp.showErrorMessage(result.error);
-                        }
+        atsAutoPersistInFlight = true;
+        setStatus('A sincronizar tabela ATS com o workspace…');
+        return fetch(atsThreadSyncUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                agent_id: agentId,
+                thread_id: threadId,
+                jd_document_id: pair.jdId,
+                user_cv_id: pair.userCvId,
+            }),
+        })
+            .then(function (res) {
+                return res.text().then(function (text) {
+                    var data = {};
+                    try {
+                        data = text ? JSON.parse(text) : {};
+                    } catch (parseErr) {
+                        data = {
+                            message: text ? text.slice(0, 300) : 'Resposta inválida do servidor.',
+                        };
                     }
-                    return result;
-                })
-                .catch(function (err) {
-                    atsAutoPersistInFlight = false;
-                    showAtsPastePanel(true);
-                    if (manual) {
-                        var msg = (err && err.message) || 'Erro ao guardar tabela ATS.';
-                        setStatus(msg);
-                        if (window.chatApp && window.chatApp.showErrorMessage) {
-                            window.chatApp.showErrorMessage(msg);
-                        }
-                    }
-                    return { success: false, error: err && err.message };
+                    return { ok: res.ok, status: res.status, data: data };
                 });
-        }
-
-        if (manual) {
-            var pasteEl = document.getElementById('chatkit-ats-paste-input');
-            if (pasteEl && String(pasteEl.value || '').trim().length > 8) {
-                return persistAtsFromRawText(pasteEl.value);
-            }
-            return tryReadClipboardText().then(function (clipText) {
-                if (clipText && clipText.trim().length > 8) {
-                    if (pasteEl) {
-                        pasteEl.value = clipText;
-                    }
-                    return persistAtsFromRawText(clipText);
+            })
+            .then(function (o) {
+                atsAutoPersistInFlight = false;
+                if (o.ok) {
+                    postChatKitClientLog({
+                        agent_id: agentId,
+                        message:
+                            'ats_thread_sync ok items=' +
+                            String((o.data && o.data.items_count) || '?'),
+                        source: 'persist_ats_analysis',
+                    });
+                    return finishAtsSyncResponse(o, pair.jdId, pair.userCvId);
                 }
-                var extractedManual = extractAtsPayloadFromChatDom(chatKitEl);
-                if (extractedManual && extractedManual.items && extractedManual.items.length > 0) {
-                    return persistExtracted(extractedManual);
+                if (o.status === 404 && attempt < 10) {
+                    clearTimeout(atsAutoPersistTimer);
+                    atsAutoPersistTimer = setTimeout(function () {
+                        syncAtsFromServerThread(attempt + 1);
+                    }, 2500);
+                    return { success: false, retrying: true };
                 }
-                return failExtract();
+                if (attempt >= 10) {
+                    var failMsg =
+                        (o.data && o.data.message) ||
+                        'Não foi possível sincronizar a tabela ATS. Tente «Passar no filtro» novamente.';
+                    setStatus(failMsg);
+                    postChatKitClientLog({
+                        agent_id: agentId,
+                        message:
+                            'ats_thread_sync fail_' +
+                            (o.status || '') +
+                            ': ' +
+                            String(failMsg).slice(0, 400),
+                        source: 'persist_ats_analysis',
+                    });
+                }
+                return { success: false, error: o.data && o.data.message };
+            })
+            .catch(function (err) {
+                atsAutoPersistInFlight = false;
+                if (attempt < 10) {
+                    clearTimeout(atsAutoPersistTimer);
+                    atsAutoPersistTimer = setTimeout(function () {
+                        syncAtsFromServerThread(attempt + 1);
+                    }, 2500);
+                    return { success: false, retrying: true };
+                }
+                return { success: false, error: err && err.message };
             });
-        }
-
-        var extracted = extractAtsPayloadFromChatDom(chatKitEl);
-        if (!extracted || !extracted.items || extracted.items.length < 1) {
-            return failExtract();
-        }
-        return persistExtracted(extracted);
     }
 
-    function scheduleAutoPersistAtsFromChat() {
+    function scheduleAtsThreadSyncFallback() {
         if (!chatKitTrailAts || atsChatkitToolPersisted) {
             return;
         }
         atsAutoPersistAttempt = 0;
         clearTimeout(atsAutoPersistTimer);
         atsAutoPersistTimer = setTimeout(function () {
-            tryAutoPersistAtsFromChat(false);
-        }, 2800);
+            syncAtsFromServerThread(0);
+        }, 2000);
     }
 
-    window.chatkitTryPersistAtsFromChat = function (manual) {
-        showAtsPastePanel(true);
-        return tryAutoPersistAtsFromChat(manual !== false);
-    };
+    chatKitEl.addEventListener('chatkit.thread.change', function (ev) {
+        var detail = ev && ev.detail ? ev.detail : {};
+        if (detail.threadId) {
+            atsChatKitThreadId = String(detail.threadId);
+        }
+    });
 
-    function initAtsPastePanelHandlers() {
-        var pasteSave = document.getElementById('chatkit-ats-paste-save');
-        var pasteClipboard = document.getElementById('chatkit-ats-paste-try-clipboard');
-        if (pasteSave) {
-            pasteSave.addEventListener('click', function () {
-                var pasteEl = document.getElementById('chatkit-ats-paste-input');
-                persistAtsFromRawText(pasteEl ? pasteEl.value : '').then(function (result) {
-                    if (result && result.error && window.chatApp && window.chatApp.showErrorMessage) {
-                        window.chatApp.showErrorMessage(result.error);
-                    }
-                });
-            });
-        }
-        if (pasteClipboard) {
-            pasteClipboard.addEventListener('click', function () {
-                tryReadClipboardText().then(function (text) {
-                    var pasteEl = document.getElementById('chatkit-ats-paste-input');
-                    if (pasteEl) {
-                        pasteEl.value = text;
-                    }
-                    return persistAtsFromRawText(text);
-                });
-            });
-        }
-    }
-    initAtsPastePanelHandlers();
 
     function normalizePersistParams(params) {
         var p = params && typeof params === 'object' ? params : {};
@@ -1618,52 +1276,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                         }
                         return { success: false, error: errMsg };
                     }
-                    if (o.data && o.data.workspace_url && o.data.analysis_id) {
-                        writeAtsSessionSync(jdId, userCvId, {
-                            analysis_id: o.data.analysis_id,
-                            workspace_url: o.data.workspace_url,
-                            ats_score: o.data.ats_score != null ? o.data.ats_score : null,
-                            synced_at: Date.now(),
-                        });
-                    }
-                    atsReanalyzeMode = false;
-                    atsAwaitingJdAnalysis = false;
-                    atsChatkitToolPersisted = true;
-                    clearTimeout(atsJdAnalysisEndTimer);
-                    clearTimeout(atsAutoPersistTimer);
-                    refreshAtsWorkspaceCta();
-                    markAtsStepsAllComplete();
-                    var returnUrl =
-                        (o.data && o.data.workspace_url) ||
-                        atsReanalyzeWorkspaceUrl ||
-                        null;
-                    if (window.chatApp && window.chatApp.showSuccessMessage) {
-                        window.chatApp.showSuccessMessage(
-                            returnUrl
-                                ? 'Tabela ATS guardada — a abrir o workspace…'
-                                : 'Tabela ATS guardada — pode ajustar o CV no workspace.'
-                        );
-                    }
-                    if (returnUrl) {
-                        var dest =
-                            returnUrl +
-                            (returnUrl.indexOf('?') >= 0 ? '&' : '?') +
-                            'synced=1';
-                        window.setTimeout(function () {
-                            window.location.href = dest;
-                        }, 1200);
-                        return {
-                            success: true,
-                            analysis_id: o.data && o.data.analysis_id,
-                            workspace_url: returnUrl,
-                            redirected: true,
-                        };
-                    }
-                    return {
-                        success: true,
-                        analysis_id: o.data && o.data.analysis_id,
-                        workspace_url: o.data && o.data.workspace_url,
-                    };
+                    return finishAtsSyncResponse(o, jdId, userCvId);
                 })
                 .catch(function (err) {
                     var netMsg = (err && err.message) || 'Erro de rede ao sincronizar análise ATS.';
@@ -1930,7 +1543,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 setStatus(
                     'Tabela visível no chat. A sincronizar com o workspace…'
                 );
-                scheduleAutoPersistAtsFromChat();
+                scheduleAtsThreadSyncFallback();
             }, 1600);
         }
 

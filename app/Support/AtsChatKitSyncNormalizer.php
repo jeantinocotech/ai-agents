@@ -39,12 +39,12 @@ final class AtsChatKitSyncNormalizer
             ?? null
         );
 
-        if ($atsScore === null && $items !== []) {
-            $atsScore = self::estimateScoreFromItems($items);
-        }
-
         if ($atsScore === null && is_string($payload['raw_table_text'] ?? null)) {
             $atsScore = self::parseAtsScoreFromText((string) $payload['raw_table_text']);
+        }
+
+        if ($atsScore === null && $items !== []) {
+            $atsScore = self::estimateScoreFromItems($items);
         }
 
         return [
