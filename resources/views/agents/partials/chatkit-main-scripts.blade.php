@@ -501,15 +501,48 @@ function initChatKitLibrarySendButtons(chatKitEl) {
 
     var atsFlowBlockedMessage = @json(\App\Models\AgentDocument::ATS_FLOW_BLOCKED_MESSAGE);
 
-    function atsFlowStatusError(jdId) {
-        if (!chatKitTrailAts || !jdId) {
-            return null;
+    /** Validação em tempo real no servidor (pair-status), não só meta da página em cache. */
+    function fetchAtsPairFlowCheck(jdId, userCvId) {
+        if (!chatKitTrailAts || !atsPairStatusUrl || jdId <= 0 || userCvId <= 0) {
+            return Promise.resolve({ allowed: true });
         }
-        var row = chatkitJdMetaById[jdId] || chatkitJdMetaById[String(jdId)];
-        if (row && row.allows_ats_flow === false) {
-            return row.ats_flow_block_message || atsFlowBlockedMessage;
-        }
-        return null;
+        var url =
+            atsPairStatusUrl +
+            '?jd_document_id=' +
+            encodeURIComponent(String(jdId)) +
+            '&user_cv_id=' +
+            encodeURIComponent(String(userCvId));
+        return fetch(url, {
+            method: 'GET',
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            credentials: 'same-origin',
+        })
+            .then(function (res) {
+                return res.json().then(function (data) {
+                    return { ok: res.ok, status: res.status, data: data };
+                });
+            })
+            .then(function (o) {
+                if (!o.ok || !o.data) {
+                    return {
+                        allowed: false,
+                        message: 'Não foi possível validar a vaga para o ATS (erro ' + (o.status || '') + ').',
+                    };
+                }
+                if (o.data.pair_valid === false || o.data.allows_ats_flow === false) {
+                    return {
+                        allowed: false,
+                        message: o.data.message || atsFlowBlockedMessage,
+                    };
+                }
+                return { allowed: true };
+            })
+            .catch(function () {
+                return {
+                    allowed: false,
+                    message: 'Não foi possível validar a vaga para o ATS.',
+                };
+            });
     }
 
     function validateAtsPairBeforeJdSend() {
@@ -517,15 +550,22 @@ function initChatKitLibrarySendButtons(chatKitEl) {
         if (pair.jdId <= 0 || pair.userCvId <= 0) {
             return 'Escolha um CV e uma vaga antes de enviar.';
         }
-        var flowErr = atsFlowStatusError(pair.jdId);
-        if (flowErr) {
-            return flowErr;
-        }
         var paired = jdPairedUserCvId(pair.jdId);
         if (paired > 0 && paired !== pair.userCvId) {
             return 'O CV seleccionado não corresponde a esta vaga. Escolha o CV associado à vaga ou outra vaga.';
         }
         return null;
+    }
+
+    function validateAtsPairBeforeJdSendAsync() {
+        var syncErr = validateAtsPairBeforeJdSend();
+        if (syncErr) {
+            return Promise.resolve(syncErr);
+        }
+        var pair = getSelectedAtsPairIds();
+        return fetchAtsPairFlowCheck(pair.jdId, pair.userCvId).then(function (check) {
+            return check.allowed ? null : check.message;
+        });
     }
 
     function updateAtsPairContextUi() {
@@ -753,14 +793,6 @@ function initChatKitLibrarySendButtons(chatKitEl) {
         if (!chatKitTrailAts || !cvSel || !jdSel || !chatKitEl) {
             return Promise.reject(new Error('Chat ATS não está pronto.'));
         }
-        var pairErr = validateAtsPairBeforeJdSend();
-        if (pairErr) {
-            setStatus(pairErr);
-            if (window.chatApp && window.chatApp.showErrorMessage) {
-                window.chatApp.showErrorMessage(pairErr);
-            }
-            return Promise.reject(new Error(pairErr));
-        }
         var cvId = cvSel.value;
         var jdId = jdSel.value;
         if (!cvId || !jdId) {
@@ -778,16 +810,26 @@ function initChatKitLibrarySendButtons(chatKitEl) {
             return Promise.reject(new Error(needTokens));
         }
 
-        atsBundledAutoSendDone = true;
-        pendingAutoAtsJdAfterCv = false;
-        waitAssistantEndAfterCv = false;
-        jdSendAllowed = false;
-        cvBtn.disabled = true;
-        jdBtn.disabled = true;
-        setStatus('A carregar CV e vaga…');
-
         var pair = getSelectedAtsPairIds();
-        return Promise.all([fetchDocumentBody(cvId), fetchDocumentBody(jdId)])
+        return validateAtsPairBeforeJdSendAsync().then(function (pairErr) {
+            if (pairErr) {
+                setStatus(pairErr);
+                if (window.chatApp && window.chatApp.showErrorMessage) {
+                    window.chatApp.showErrorMessage(pairErr);
+                }
+                return Promise.reject(new Error(pairErr));
+            }
+
+            atsBundledAutoSendDone = true;
+            pendingAutoAtsJdAfterCv = false;
+            waitAssistantEndAfterCv = false;
+            jdSendAllowed = false;
+            cvBtn.disabled = true;
+            jdBtn.disabled = true;
+            setStatus('A carregar CV e vaga…');
+
+            return Promise.all([fetchDocumentBody(cvId), fetchDocumentBody(jdId)]);
+        })
             .then(function (results) {
                 var cvRes = results[0];
                 var jdRes = results[1];
@@ -1212,10 +1254,14 @@ function initChatKitLibrarySendButtons(chatKitEl) {
             return;
         }
         var pair = getSelectedAtsPairIds();
-        var flowErr = atsFlowStatusError(pair.jdId);
-        if (flowErr && pair.jdId > 0) {
-            setStatus(flowErr);
+        if (pair.jdId <= 0 || pair.userCvId <= 0) {
+            return;
         }
+        fetchAtsPairFlowCheck(pair.jdId, pair.userCvId).then(function (check) {
+            if (!check.allowed) {
+                setStatus(check.message);
+            }
+        });
     }
 
     if (!chatKitLibraryCvOnly && jdSel) {
@@ -1306,17 +1352,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
             }
             return;
         }
-        if (chatKitTrailAts) {
-            var cvFlowPair = getSelectedAtsPairIds();
-            var cvFlowErr = atsFlowStatusError(cvFlowPair.jdId);
-            if (cvFlowErr) {
-                setStatus(cvFlowErr);
-                if (window.chatApp && window.chatApp.showErrorMessage) {
-                    window.chatApp.showErrorMessage(cvFlowErr);
-                }
-                return;
-            }
-        }
+        function runCvSend() {
         if (
             chatKitLibraryCvOnly &&
             chatkitConsultationCost > 0 &&
@@ -1427,6 +1463,21 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 cvBtn.disabled = false;
                 syncJdButton();
             });
+        }
+        if (chatKitTrailAts) {
+            validateAtsPairBeforeJdSendAsync().then(function (cvFlowErr) {
+                if (cvFlowErr) {
+                    setStatus(cvFlowErr);
+                    if (window.chatApp && window.chatApp.showErrorMessage) {
+                        window.chatApp.showErrorMessage(cvFlowErr);
+                    }
+                    return;
+                }
+                runCvSend();
+            });
+            return;
+        }
+        runCvSend();
     });
     (function autoCareerTrailCvSendFromQuery() {
         try {
@@ -1509,47 +1560,51 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 }
                 return;
             }
-            var autoJdId = parseInt(String(jdid).replace(/\D/g, ''), 10) || 0;
-            var autoFlowErr = atsFlowStatusError(autoJdId);
-            if (autoFlowErr) {
-                setStatus(autoFlowErr);
-                postChatKitClientLog({
-                    agent_id: agentId,
-                    message: autoFlowErr,
-                    source: 'auto_ats_pair',
-                });
-                if (window.chatApp && window.chatApp.showErrorMessage) {
-                    window.chatApp.showErrorMessage(autoFlowErr);
-                }
-                return;
-            }
             jdSel.value = String(jdid);
             cvSel.value = cvWanted;
             jdSel.dispatchEvent(new Event('change', { bubbles: true }));
             cvSel.dispatchEvent(new Event('change', { bubbles: true }));
-            params.delete('auto_ats_pair');
-            params.delete('jd_document_id');
-            params.delete('profile_cv_id');
-            params.delete('reanalyze');
-            params.delete('ats_analysis_id');
-            var q = params.toString();
-            window.history.replaceState({}, '', window.location.pathname + (q ? '?' + q : '') + window.location.hash);
-            if (isReanalyze) {
-                var rePair = {
-                    jdId: parseInt(String(jdid).replace(/\D/g, ''), 10) || 0,
-                    userCvId: parseInt(String(pCv).replace(/\D/g, ''), 10) || 0,
-                };
-                if (rePair.jdId > 0 && rePair.userCvId > 0) {
-                    markAtsPendingChatkitSync(rePair.jdId, rePair.userCvId);
-                    scheduleAtsCtaRefresh();
-                    setStatus(
-                        'Reanálise: aguarde a nova tabela no chat e «Tabela ATS guardada» para actualizar o workspace.'
-                    );
+            validateAtsPairBeforeJdSendAsync().then(function (autoFlowErr) {
+                if (autoFlowErr) {
+                    setStatus(autoFlowErr);
+                    postChatKitClientLog({
+                        agent_id: agentId,
+                        message: autoFlowErr,
+                        source: 'auto_ats_pair',
+                    });
+                    if (window.chatApp && window.chatApp.showErrorMessage) {
+                        window.chatApp.showErrorMessage(autoFlowErr);
+                    }
+                    return;
                 }
-            }
-            setTimeout(function () {
-                sendAtsCvAndJdBundled({ reanalyze: isReanalyze }).catch(function () {});
-            }, 400);
+                params.delete('auto_ats_pair');
+                params.delete('jd_document_id');
+                params.delete('profile_cv_id');
+                params.delete('reanalyze');
+                params.delete('ats_analysis_id');
+                var q = params.toString();
+                window.history.replaceState(
+                    {},
+                    '',
+                    window.location.pathname + (q ? '?' + q : '') + window.location.hash
+                );
+                if (isReanalyze) {
+                    var rePair = {
+                        jdId: parseInt(String(jdid).replace(/\D/g, ''), 10) || 0,
+                        userCvId: parseInt(String(pCv).replace(/\D/g, ''), 10) || 0,
+                    };
+                    if (rePair.jdId > 0 && rePair.userCvId > 0) {
+                        markAtsPendingChatkitSync(rePair.jdId, rePair.userCvId);
+                        scheduleAtsCtaRefresh();
+                        setStatus(
+                            'Reanálise: aguarde a nova tabela no chat e «Tabela ATS guardada» para actualizar o workspace.'
+                        );
+                    }
+                }
+                setTimeout(function () {
+                    sendAtsCvAndJdBundled({ reanalyze: isReanalyze }).catch(function () {});
+                }, 400);
+            });
         } catch (err) {
             console.error(err);
         }
@@ -1576,16 +1631,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
             }
             return;
         }
-        if (chatKitTrailAts) {
-            var pairErr = validateAtsPairBeforeJdSend();
-            if (pairErr) {
-                setStatus(pairErr);
-                if (window.chatApp && window.chatApp.showErrorMessage) {
-                    window.chatApp.showErrorMessage(pairErr);
-                }
-                return;
-            }
-        }
+        function runJdSend() {
         jdBtn.disabled = true;
         setStatus('A carregar a vaga…');
         fetch(contentUrl(id), {
@@ -1665,6 +1711,21 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 jdBtn.disabled = false;
                 syncJdButton();
             });
+        }
+        if (chatKitTrailAts) {
+            validateAtsPairBeforeJdSendAsync().then(function (pairErr) {
+                if (pairErr) {
+                    setStatus(pairErr);
+                    if (window.chatApp && window.chatApp.showErrorMessage) {
+                        window.chatApp.showErrorMessage(pairErr);
+                    }
+                    return;
+                }
+                runJdSend();
+            });
+            return;
+        }
+        runJdSend();
     });
     }
 
