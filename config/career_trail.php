@@ -12,12 +12,12 @@ return [
     /*
     | Texto por defeito na caixa da Graça no chat ATS (compacto), se não existir mensagem em BD (slot ats_chat_page_intro).
     */
-    'ats_chat_graca_fallback' => 'Use os botões «Enviar CV» e «Enviar Vaga» acima do assistente para começar. Estou também no mapa da trilha se precisar de contexto.',
+    'ats_chat_graca_fallback' => 'Siga os passos acima: envie o CV, aguarde o assistente e envie a vaga para ver o ATS % e a tabela. Depois use «Ajustar CV com base na tabela» para trabalhar keyword a keyword. A lista de vagas fica em «Vagas» na trilha.',
 
     /*
     | Linha cinza no resumo colapsável da Graça (chat ATS compacto).
     */
-    'ats_chat_graca_summary_line' => 'Mensagem para este passo ATS (envio de CV e vaga no chat abaixo).',
+    'ats_chat_graca_summary_line' => 'Passo ATS: envio de CV e vaga, análise no chat e ajustes guiados na app.',
 
     /*
     | Chat compacto da carta de motivação (passo cover-letter): título e textos da caixa Graça (a saudação ChatKit central é a mesma que no ATS).

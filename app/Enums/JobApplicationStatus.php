@@ -38,4 +38,10 @@ enum JobApplicationStatus: string
     {
         return $this === self::Accepted || $this === self::DidNotProceed;
     }
+
+    /** Tabela ATS no workspace: só em preparação ou após alinhamento no assistente. */
+    public function allowsAtsTableWorkspace(): bool
+    {
+        return $this === self::Draft || $this === self::Submitted;
+    }
 }

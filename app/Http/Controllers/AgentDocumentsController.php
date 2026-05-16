@@ -15,6 +15,7 @@ use App\Services\AgentDocumentDefaultJdSync;
 use App\Services\AgentDocumentJdLifecycle;
 use App\Services\CareerTrailAgentAccess;
 use App\Services\InterviewProcessOutcomeService;
+use App\Services\JobApplicationStatusSync;
 use App\Services\TrailJdDesiredStatusApplier;
 use App\Support\AgentDocumentLimits;
 use App\Support\AgentsDocumentLibraryViewData;
@@ -337,6 +338,7 @@ class AgentDocumentsController extends Controller
         abort_unless($document->type === AgentDocument::TYPE_JD, 404);
         abort_unless($document->is_active, 404);
         abort_if($document->user_cv_id === null, 422, 'Associe um CV do perfil à vaga antes de registar o envio ao ATS.');
+        abort_unless($document->allowsAtsFlow(), 422, AgentDocument::ATS_FLOW_BLOCKED_MESSAGE);
 
         $process = InterviewProcess::query()
             ->where('user_id', $request->user()->id)
@@ -353,6 +355,8 @@ class AgentDocumentsController extends Controller
 
         $document->ats_submitted_at = now();
         $document->save();
+        JobApplicationStatusSync::reconcile($document);
+        $document->refresh();
 
         if ($request->expectsJson()) {
             return response()->json([

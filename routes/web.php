@@ -13,6 +13,7 @@ use App\Http\Controllers\AgentsPublicController;
 use App\Http\Controllers\AgentStepController;
 use App\Http\Controllers\Api\ChatController;
 use App\Http\Controllers\Auth\TwoFactorSettingsController;
+use App\Http\Controllers\CareerTrailAtsWorkspaceController;
 use App\Http\Controllers\CareerTrailController;
 use App\Http\Controllers\CareerTrailCvController;
 use App\Http\Controllers\CartController;
@@ -20,6 +21,7 @@ use App\Http\Controllers\ChatKitSessionController;
 use App\Http\Controllers\CvAnalysisController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GamificationNotificationController;
+use App\Http\Controllers\GracaPanelPreferenceController;
 use App\Http\Controllers\InterviewPreparationController;
 use App\Http\Controllers\InterviewProcessOutcomeController;
 use App\Http\Controllers\LandingController;
@@ -66,6 +68,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/trilha', [CareerTrailController::class, 'index'])->name('career-trail.index');
     Route::get('/trilha/cv', [CareerTrailCvController::class, 'show'])->name('career-trail.cv');
     Route::get('/trilha/ats', [CareerTrailController::class, 'ats'])->name('career-trail.ats');
+    Route::post('/trilha/ats/analyses', [CareerTrailAtsWorkspaceController::class, 'store'])->name('career-trail.ats.analyses.store');
+    Route::get('/trilha/ats/workspace/{analysis}', [CareerTrailAtsWorkspaceController::class, 'show'])->name('career-trail.ats.workspace');
+    Route::put('/trilha/ats/workspace/{analysis}/cv', [CareerTrailAtsWorkspaceController::class, 'updateCv'])->name('career-trail.ats.workspace.cv');
+    Route::patch('/trilha/ats/workspace/items/{item}', [CareerTrailAtsWorkspaceController::class, 'patchItem'])->name('career-trail.ats.workspace.item');
+    Route::get('/chat/chatkit/ats-pair-status', [CareerTrailAtsWorkspaceController::class, 'pairStatus'])->name('chat.chatkit.ats-pair-status');
+    Route::post('/chat/chatkit/ats-analysis-sync', [CareerTrailAtsWorkspaceController::class, 'syncFromChatKit'])->name('chat.chatkit.ats-analysis-sync');
     Route::post('/trilha/cv/extrair-arquivo', [CareerTrailCvController::class, 'extractFile'])->name('career-trail.cv.extract-file');
     Route::post('/trilha/cv', [CareerTrailCvController::class, 'store'])->name('career-trail.cv.store');
     Route::post('/trilha/cv/importar-agente', [CareerTrailCvController::class, 'importFromAgentDocument'])->name('career-trail.cv.import-agent');
@@ -141,6 +149,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::patch('/profile/graca-panel', [GracaPanelPreferenceController::class, 'update'])->name('profile.graca-panel.update');
 
     Route::get('/conta/consentimento', [LegalConsentController::class, 'show'])->name('legal.consent.show');
     Route::post('/conta/consentimento', [LegalConsentController::class, 'store'])->name('legal.consent.store');
@@ -193,6 +202,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/chat/chatkit/debit-consultation', [ChatKitSessionController::class, 'debitConsultation'])
         ->middleware('throttle:30,1')
         ->name('chat.chatkit.debit-consultation');
+
+    Route::post('/chat/chatkit/client-report', [ChatKitSessionController::class, 'clientReport'])
+        ->middleware('throttle:60,1')
+        ->name('chat.chatkit.client-report');
 
     Route::post('/chat/send', [AgentController::class, 'sendChat'])->name('chat.send');
     Route::post('/chat/sendfile', [AgentController::class, 'sendFile'])->name('chat.sendfile');

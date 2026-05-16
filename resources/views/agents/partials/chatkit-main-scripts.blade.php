@@ -1,6 +1,7 @@
 @php
     $chatkitSimpleChat = $chatkitSimpleChat ?? false;
     $compactTrailCvOnly = ($compactTrailCvOnly ?? false) === true;
+    $compactTrailAts = isset($compactTrailStep) && (($compactTrailStep->slug ?? null) === 'ats') && ! $compactTrailCvOnly;
     if ($chatkitSimpleChat) {
         $ckStartGreeting = 'Descreva a sua experiência ou o que pretende no CV. Quando o assistente tiver ajudado a estruturar o texto, copie-o para a página da trilha e guarde.';
         $ckComposerPlaceholder = 'Escreva a sua mensagem…';
@@ -13,6 +14,27 @@
     } else {
         $ckStartGreeting = 'Clique no botão «Enviar CV» e depois da resposta, clique no botão «Enviar Vaga».';
         $ckComposerPlaceholder = '';
+    }
+    $atsReanalyzeWorkspaceUrl = null;
+    if ($compactTrailAts && request()->query('reanalyze') === '1') {
+        $reanalysisId = (int) request()->query('ats_analysis_id');
+        if ($reanalysisId > 0) {
+            $atsReanalyzeWorkspaceUrl = route('career-trail.ats.workspace', ['analysis' => $reanalysisId]);
+        }
+    }
+
+    $chatkitJdMetaById = [];
+    if ($compactTrailAts && is_array($documentLibrary ?? null)) {
+        foreach ($documentLibrary['jds'] ?? [] as $jdRow) {
+            $jdMetaId = (int) ($jdRow['id'] ?? 0);
+            if ($jdMetaId > 0) {
+                $chatkitJdMetaById[$jdMetaId] = [
+                    'user_cv_id' => isset($jdRow['user_cv_id']) ? (int) $jdRow['user_cv_id'] : null,
+                    'title' => (string) ($jdRow['title'] ?? ''),
+                    'allows_ats_flow' => (bool) ($jdRow['allows_ats_flow'] ?? false),
+                ];
+            }
+        }
     }
 @endphp
 <script>
@@ -33,8 +55,53 @@ window.chatApp = {
         setTimeout(function () { notification.remove(); }, 12000);
     },
 };
+/**
+ * Erros do widget ChatKit que só aparecem no browser — regista em storage/logs/laravel.log (canal default).
+ * Usar só mensagens curtas (nunca corpo de CV/JD).
+ */
+function postChatKitClientLog(payload) {
+    try {
+        var meta = document.querySelector('meta[name="csrf-token"]');
+        var tok = meta ? meta.getAttribute('content') : '';
+        if (!tok || !payload || payload.message == null || String(payload.message) === '') {
+            return;
+        }
+        var aid = payload.agent_id;
+        if (aid === undefined || aid === null || aid === '') {
+            return;
+        }
+        var msg = String(payload.message);
+        if (msg.length > 1500) {
+            msg = msg.slice(0, 1500) + '…';
+        }
+        var src = payload.source != null ? String(payload.source).slice(0, 64) : '';
+        fetch(@json(route('chat.chatkit.client-report')), {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Accept: 'application/json',
+                'X-CSRF-TOKEN': tok,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+            keepalive: true,
+            body: JSON.stringify({
+                agent_id: aid,
+                message: msg,
+                source: src,
+            }),
+        }).catch(function () {});
+    } catch (e) {}
+}
 var chatKitBootAttempts = 0;
 var chatKitMaxBootAttempts = 240;
+
+@if ($compactTrailAts)
+window.chatkitPersistAtsAnalysis = function () {
+    return Promise.reject(new Error('ChatKit ATS ainda não está pronto.'));
+};
+window.chatkitRefreshAtsWorkspaceCta = function () {};
+@endif
 
 (function loadChatKitScript() {
     if (window.__openAiChatKitScriptQueued) {
@@ -206,6 +273,11 @@ function bootOpenAiChatKit() {
                     window.chatApp.showErrorMessage(text);
                 }
                 console.error('[chatkit.error]', err);
+                postChatKitClientLog({
+                    agent_id: {{ (int) $agent->id }},
+                    message: text,
+                    source: 'chatkit.error',
+                });
                 var sx = document.getElementById('chatkit-documents-status');
                 if (sx && text) {
                     sx.textContent = text;
@@ -304,6 +376,11 @@ function bootOpenAiChatKit() {
                     if (window.chatApp && window.chatApp.showErrorMessage) {
                         window.chatApp.showErrorMessage(msg);
                     }
+                    postChatKitClientLog({
+                        agent_id: {{ (int) $agent->id }},
+                        message: 'session_http_' + res.status + ': ' + String(msg).slice(0, 500),
+                        source: 'chatkit_session',
+                    });
                     throw new Error(msg);
                 }
                 if (typeof data.token_balance === 'number' && typeof window.setDisplayedUserTokenBalance === 'function') {
@@ -312,6 +389,27 @@ function bootOpenAiChatKit() {
                 return data.client_secret;
             },
         },
+        @if ($compactTrailAts)
+        onClientTool: function (toolCall) {
+            var call = toolCall && typeof toolCall === 'object' ? toolCall : {};
+            if (call.name !== 'persist_ats_analysis') {
+                return { success: false, error: 'unknown_tool' };
+            }
+            return Promise.resolve(window.chatkitPersistAtsAnalysis(call.params || {}))
+                .then(function (result) {
+                    if (result && typeof result === 'object') {
+                        return result;
+                    }
+                    return { success: true };
+                })
+                .catch(function (err) {
+                    return {
+                        success: false,
+                        error: (err && err.message) || 'persist_ats_analysis_failed',
+                    };
+                });
+        },
+        @endif
     });
     if (typeof el.sendUserMessage === 'function') {
         initChatKitLibrarySendButtons(el);
@@ -323,6 +421,7 @@ function bootOpenAiChatKit() {
 
 function initChatKitLibrarySendButtons(chatKitEl) {
     var chatKitLibraryCvOnly = @json($compactTrailCvOnly ?? false);
+    var chatKitTrailAts = @json($compactTrailAts ?? false);
     var cvBtn = document.getElementById('chatkit-send-cv');
     var jdBtn = document.getElementById('chatkit-send-jd');
     var cvSel = document.getElementById('chatkit-default-cv');
@@ -346,9 +445,587 @@ function initChatKitLibrarySendButtons(chatKitEl) {
     var waitAssistantEndAfterCv = false;
     var pendingAutoAtsJdAfterCv = false;
     var pendingAtsDebit = false;
+    var atsAwaitingJdAnalysis = false;
+    var atsJdAnalysisEndTimer = null;
     /** Assistente de CV só com biblioteca: um débito por «Enviar CV» quando o assistente termina a resposta. */
     var pendingCvTurnDebits = 0;
     var sessionTokensUsedAccum = 0;
+    var atsAnalysisSyncUrl = @json($compactTrailAts ? route('chat.chatkit.ats-analysis-sync') : null);
+    var atsPairStatusUrl = @json($compactTrailAts ? route('chat.chatkit.ats-pair-status') : null);
+    var chatkitJdMetaById = @json($chatkitJdMetaById ?? []);
+    var atsReanalyzeMode = @json($compactTrailAts && request()->query('reanalyze') === '1');
+    var atsReanalyzeWorkspaceUrl = @json($atsReanalyzeWorkspaceUrl);
+    var atsBundledAutoSendDone = false;
+    var atsCtaRefreshTimer = null;
+    var btnClassViolet =
+        'inline-flex items-center rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-violet-700';
+
+    function parseCvSelectUserId() {
+        var v = cvSel ? cvSel.value : '';
+        if (!/^p\d+$/.test(String(v))) {
+            return 0;
+        }
+        return parseInt(String(v).slice(1), 10) || 0;
+    }
+
+    function getSelectedAtsPairIds() {
+        var jdId = jdSel && jdSel.value ? parseInt(String(jdSel.value).replace(/\D/g, ''), 10) || 0 : 0;
+        return { jdId: jdId, userCvId: parseCvSelectUserId() };
+    }
+
+    function buildAtsMetaBlock(jdId, userCvId) {
+        var meta = {};
+        if (userCvId > 0) {
+            meta.user_cv_id = userCvId;
+        }
+        if (jdId > 0) {
+            meta.jd_document_id = jdId;
+        }
+        if (Object.keys(meta).length === 0) {
+            return '';
+        }
+        return '\n\n[ATS_META]' + JSON.stringify(meta) + '[/ATS_META]';
+    }
+
+    function jdPairedUserCvId(jdId) {
+        if (!jdId || !chatkitJdMetaById || typeof chatkitJdMetaById !== 'object') {
+            return 0;
+        }
+        var row = chatkitJdMetaById[jdId] || chatkitJdMetaById[String(jdId)];
+        if (!row || row.user_cv_id == null) {
+            return 0;
+        }
+        return parseInt(row.user_cv_id, 10) || 0;
+    }
+
+    var atsFlowBlockedMessage = @json(\App\Models\AgentDocument::ATS_FLOW_BLOCKED_MESSAGE);
+
+    function atsFlowStatusError(jdId) {
+        if (!chatKitTrailAts || !jdId) {
+            return null;
+        }
+        var row = chatkitJdMetaById[jdId] || chatkitJdMetaById[String(jdId)];
+        if (row && row.allows_ats_flow === false) {
+            return atsFlowBlockedMessage;
+        }
+        return null;
+    }
+
+    function validateAtsPairBeforeJdSend() {
+        var pair = getSelectedAtsPairIds();
+        if (pair.jdId <= 0 || pair.userCvId <= 0) {
+            return 'Escolha um CV e uma vaga antes de enviar.';
+        }
+        var flowErr = atsFlowStatusError(pair.jdId);
+        if (flowErr) {
+            return flowErr;
+        }
+        var paired = jdPairedUserCvId(pair.jdId);
+        if (paired > 0 && paired !== pair.userCvId) {
+            return 'O CV seleccionado não corresponde a esta vaga. Escolha o CV associado à vaga ou outra vaga.';
+        }
+        return null;
+    }
+
+    function updateAtsPairContextUi() {
+        if (!chatKitTrailAts) {
+            return;
+        }
+        var el = document.getElementById('chatkit-ats-pair-context');
+        if (!el || !cvSel || !jdSel) {
+            return;
+        }
+        var pair = getSelectedAtsPairIds();
+        var cvOpt = cvSel.options[cvSel.selectedIndex];
+        var jdOpt = jdSel.options[jdSel.selectedIndex];
+        if (pair.userCvId <= 0 && pair.jdId <= 0) {
+            el.classList.add('hidden');
+            el.textContent = '';
+            return;
+        }
+        el.classList.remove('hidden');
+        el.innerHTML =
+            '<span class="font-semibold text-slate-800">Par seleccionado:</span> ' +
+            (cvOpt && cvOpt.text ? cvOpt.text.trim() : 'CV') +
+            ' <span class="text-slate-400" aria-hidden="true">·</span> ' +
+            (jdOpt && jdOpt.text ? jdOpt.text.trim() : 'Vaga');
+    }
+
+    function refreshAtsWorkspaceCta() {
+        if (!chatKitTrailAts || !atsPairStatusUrl) {
+            return;
+        }
+        var cta = document.getElementById('chatkit-ats-workspace-cta');
+        var actions = document.getElementById('chatkit-ats-workspace-cta-actions');
+        if (!cta || !actions) {
+            return;
+        }
+        var pair = getSelectedAtsPairIds();
+        if (pair.jdId <= 0 || pair.userCvId <= 0) {
+            cta.classList.add('hidden');
+            actions.innerHTML = '';
+            return;
+        }
+        cta.classList.remove('hidden');
+        actions.innerHTML =
+            '<span class="text-[11px] text-slate-500">A carregar opções do workspace…</span>';
+        var url =
+            atsPairStatusUrl +
+            '?jd_document_id=' +
+            encodeURIComponent(String(pair.jdId)) +
+            '&user_cv_id=' +
+            encodeURIComponent(String(pair.userCvId));
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        })
+            .then(function (res) {
+                return res.json().then(function (data) {
+                    return { ok: res.ok, data: data };
+                });
+            })
+            .then(function (o) {
+                if (!o.ok || !o.data || o.data.pair_valid === false) {
+                    var msg =
+                        (o.data && o.data.message) ||
+                        'Não foi possível validar o par CV/vaga para o workspace.';
+                    actions.innerHTML =
+                        '<p class="text-[11px] text-amber-800">' + msg + '</p>';
+                    return;
+                }
+                var pendingKey = atsPendingStorageKey(pair.jdId, pair.userCvId);
+                var hasPending = false;
+                try {
+                    hasPending = !!sessionStorage.getItem(pendingKey);
+                } catch (e) {}
+
+                var sessionSync = hasPending ? null : readAtsSessionSync(pair.jdId, pair.userCvId);
+                var storeUrl = cta.getAttribute('data-store-url') || '';
+
+                if (sessionSync && sessionSync.workspace_url) {
+                    var scoreNote =
+                        sessionSync.ats_score != null
+                            ? ' <span class="text-slate-500">(ATS ' +
+                              Math.round(Number(sessionSync.ats_score)) +
+                              '%)</span>'
+                            : '';
+                    actions.innerHTML =
+                        '<a href="' +
+                        sessionSync.workspace_url +
+                        '" class="' +
+                        btnClassViolet +
+                        '">Ver análise e ajustar CV</a>'
+                    return;
+                    
+                }
+
+                if (hasPending) {
+                    var pendingIntro = atsReanalyzeMode
+                        ? 'Reanálise em curso...'
+                        : 'Análise em curso...';
+                    actions.innerHTML =
+                        '<p class="mb-2 text-[11px] leading-snug text-slate-700">' +
+                        pendingIntro +
+                        '</p>' +
+                        '<p class="text-[10px] text-slate-500"</p>' +
+                        '<form method="post" action="' +
+                        storeUrl +
+                        '" class="mt-2 inline">' +
+                        '<input type="hidden" name="_token" value="' +
+                        csrfToken +
+                        '">' +
+                        '<input type="hidden" name="jd_document_id" value="' +
+                        pair.jdId +
+                        '">' +
+                        '<button type="submit" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50">Preparar lista automática</button></form>';
+                    return;
+                }
+
+                if (o.data.workspace_url && o.data.source === 'chatkit_tool') {
+                    actions.innerHTML =
+                        '<p class="mb-2 text-[11px] leading-snug text-slate-600"</p>';
+                    return;
+                }
+
+                if (o.data.workspace_url && o.data.source !== 'chatkit_tool') {
+                    actions.innerHTML =
+                        '<p class="mb-2 text-[11px] leading-snug text-slate-600">Existe uma lista automática antiga. Use o ChatKit para sincronizar a tabela actual.</p>' +
+                        '<form method="post" action="' +
+                        (cta.getAttribute('data-store-url') || '') +
+                        '" class="inline">' +
+                        '<input type="hidden" name="_token" value="' +
+                        csrfToken +
+                        '">' +
+                        '<input type="hidden" name="jd_document_id" value="' +
+                        pair.jdId +
+                        '">' +
+                        '<button type="submit" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50">Gerar lista automática (legado)</button></form>';
+                    return;
+                }
+
+                actions.innerHTML =
+                    '<form method="post" action="' +
+                    storeUrl +
+                    '" class="inline">' +
+                    '<input type="hidden" name="_token" value="' +
+                    csrfToken +
+                    '">' +
+                    '<input type="hidden" name="jd_document_id" value="' +
+                    pair.jdId +
+                    '">' +
+                    '<button type="submit" class="' +
+                    btnClassViolet +
+                    '">Preparar lista de ajustes</button></form>';
+            })
+            .catch(function () {
+                actions.innerHTML =
+                    '<p class="text-[11px] text-slate-500">Não foi possível carregar o workspace.</p>';
+            });
+    }
+
+    function atsPairStorageKey(jdId, userCvId) {
+        return 'ats_chatkit_sync_' + jdId + '_' + userCvId;
+    }
+
+    function atsPendingStorageKey(jdId, userCvId) {
+        return 'ats_pending_chatkit_' + jdId + '_' + userCvId;
+    }
+
+    function readAtsSessionSync(jdId, userCvId) {
+        try {
+            var raw = sessionStorage.getItem(atsPairStorageKey(jdId, userCvId));
+            if (!raw) {
+                return null;
+            }
+            var data = JSON.parse(raw);
+            if (!data || !data.workspace_url || !data.analysis_id) {
+                return null;
+            }
+            return data;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function writeAtsSessionSync(jdId, userCvId, payload) {
+        try {
+            sessionStorage.setItem(atsPairStorageKey(jdId, userCvId), JSON.stringify(payload));
+            sessionStorage.removeItem(atsPendingStorageKey(jdId, userCvId));
+        } catch (e) {}
+    }
+
+    function markAtsPendingChatkitSync(jdId, userCvId) {
+        try {
+            sessionStorage.setItem(atsPendingStorageKey(jdId, userCvId), String(Date.now()));
+            sessionStorage.removeItem(atsPairStorageKey(jdId, userCvId));
+        } catch (e) {}
+    }
+
+    function fetchDocumentBody(documentId) {
+        return fetch(contentUrl(documentId), {
+            method: 'GET',
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+            credentials: 'same-origin',
+        }).then(function (res) {
+            return res.json().then(function (data) {
+                return { ok: res.ok, data: data };
+            });
+        });
+    }
+
+    /**
+     * Um único turno no chat (CV + vaga) para evitar duas tabelas ATS seguidas.
+     */
+    function sendAtsCvAndJdBundled(options) {
+        options = options || {};
+        if (atsBundledAutoSendDone) {
+            return Promise.resolve();
+        }
+        if (!chatKitTrailAts || !cvSel || !jdSel || !chatKitEl) {
+            return Promise.reject(new Error('Chat ATS não está pronto.'));
+        }
+        var pairErr = validateAtsPairBeforeJdSend();
+        if (pairErr) {
+            setStatus(pairErr);
+            if (window.chatApp && window.chatApp.showErrorMessage) {
+                window.chatApp.showErrorMessage(pairErr);
+            }
+            return Promise.reject(new Error(pairErr));
+        }
+        var cvId = cvSel.value;
+        var jdId = jdSel.value;
+        if (!cvId || !jdId) {
+            return Promise.reject(new Error('Escolha CV e vaga.'));
+        }
+        if (chatkitConsultationCost > 0 && parseTokenBalanceFromPill() < chatkitConsultationCost) {
+            var needTokens =
+                'Precisa de pelo menos ' +
+                chatkitConsultationCost.toLocaleString('pt-BR') +
+                ' tokens para esta consulta ATS.';
+            setStatus(needTokens);
+            if (window.chatApp && window.chatApp.showErrorMessage) {
+                window.chatApp.showErrorMessage(needTokens);
+            }
+            return Promise.reject(new Error(needTokens));
+        }
+
+        atsBundledAutoSendDone = true;
+        pendingAutoAtsJdAfterCv = false;
+        waitAssistantEndAfterCv = false;
+        jdSendAllowed = false;
+        cvBtn.disabled = true;
+        jdBtn.disabled = true;
+        setStatus('A carregar CV e vaga…');
+
+        var pair = getSelectedAtsPairIds();
+        return Promise.all([fetchDocumentBody(cvId), fetchDocumentBody(jdId)])
+            .then(function (results) {
+                var cvRes = results[0];
+                var jdRes = results[1];
+                if (!cvRes.ok) {
+                    throw new Error(
+                        (cvRes.data && cvRes.data.message) || 'Não foi possível carregar o CV.'
+                    );
+                }
+                if (!jdRes.ok) {
+                    throw new Error(
+                        (jdRes.data && jdRes.data.message) || 'Não foi possível carregar a vaga.'
+                    );
+                }
+                var cvBody = cvRes.data.body;
+                var jdBody = jdRes.data.body;
+                if (typeof cvBody !== 'string' || typeof jdBody !== 'string') {
+                    throw new Error('Resposta inválida ao carregar documentos.');
+                }
+                if (cvBody.length > limits.cv) {
+                    throw new Error('O CV excede o limite de ' + limits.cv + ' caracteres.');
+                }
+                if (jdBody.length > limits.jd) {
+                    throw new Error('A vaga excede o limite de ' + limits.jd + ' caracteres.');
+                }
+                var intro = options.reanalyze
+                    ? 'Reanálise ATS — segue o CV actualizado e a vaga. Responda com o ATS % e uma única tabela de keywords:\n\n'
+                    : 'Análise ATS — segue o CV e a vaga. Responda com o ATS % e uma única tabela de keywords:\n\n';
+                var text =
+                    intro +
+                    '--- CV ---\n' +
+                    cvBody +
+                    '\n\n--- VAGA (JD) ---\n' +
+                    jdBody;
+                text += buildAtsMetaBlock(pair.jdId, pair.userCvId);
+                return chatKitEl.sendUserMessage({ text: text, newThread: true });
+            })
+            .then(function () {
+                updateAtsStepUi(3);
+                atsAwaitingJdAnalysis = true;
+                if (pair.jdId > 0 && pair.userCvId > 0) {
+                    markAtsPendingChatkitSync(pair.jdId, pair.userCvId);
+                }
+                scheduleAtsCtaRefresh();
+                if (chatkitConsultationCost > 0) {
+                    pendingAtsDebit = true;
+                }
+                setStatus(
+                    'CV e vaga enviados numa só mensagem. Aguarde «Tabela ATS guardada» para abrir o workspace.'
+                );
+                if (window.chatApp && window.chatApp.showSuccessMessage) {
+                    window.chatApp.showSuccessMessage(
+                        options.reanalyze
+                            ? 'Reanálise enviada — aguarde a nova tabela no chat.'
+                            : 'CV e vaga enviados — aguarde a análise no chat.'
+                    );
+                }
+                var jid = pair.jdId;
+                if (jid > 0 && markApplicationSubmittedUrlTemplate) {
+                    postMarkApplicationSubmitted(jid).catch(function (e) {
+                        console.warn('[ATS] Registo de candidatura submetida:', e);
+                    });
+                }
+            })
+            .catch(function (err) {
+                atsBundledAutoSendDone = false;
+                var msg = err && err.message ? err.message : 'Erro ao enviar CV e vaga.';
+                setStatus(msg);
+                postChatKitClientLog({
+                    agent_id: agentId,
+                    message: String(msg).slice(0, 1500),
+                    source: 'ats_bundled_send',
+                });
+                if (window.chatApp && window.chatApp.showErrorMessage) {
+                    window.chatApp.showErrorMessage(msg);
+                }
+            })
+            .finally(function () {
+                cvBtn.disabled = false;
+                syncJdButton();
+            });
+    }
+
+    function parseAtsScoreFromValue(value) {
+        if (value == null || value === '') {
+            return null;
+        }
+        if (typeof value === 'number' && !isNaN(value) && value >= 0 && value <= 100) {
+            return value;
+        }
+        var s = String(value);
+        var m = s.match(/(\d+(?:[.,]\d+)?)/);
+        if (!m) {
+            return null;
+        }
+        var n = parseFloat(m[1].replace(',', '.'));
+        return isNaN(n) || n < 0 || n > 100 ? null : n;
+    }
+
+    function normalizePersistParams(params) {
+        var p = params && typeof params === 'object' ? params : {};
+        var items = p.items;
+        if (!Array.isArray(items)) {
+            items = p.keywords || p.rows || p.table || [];
+        }
+        if (!Array.isArray(items)) {
+            items = [];
+        }
+        var score =
+            parseAtsScoreFromValue(p.ats_score) ??
+            parseAtsScoreFromValue(p.ats_percent) ??
+            parseAtsScoreFromValue(p.score) ??
+            parseAtsScoreFromValue(p.ats_percentage) ??
+            parseAtsScoreFromValue(p.ats_result);
+        return {
+            jd_document_id: p.jd_document_id,
+            user_cv_id: p.user_cv_id,
+            ats_score: score,
+            items: items,
+        };
+    }
+
+    function scheduleAtsCtaRefresh() {
+        if (!chatKitTrailAts) {
+            return;
+        }
+        clearTimeout(atsCtaRefreshTimer);
+        atsCtaRefreshTimer = setTimeout(function () {
+            updateAtsPairContextUi();
+            refreshAtsWorkspaceCta();
+        }, 120);
+    }
+
+    if (chatKitTrailAts) {
+        window.chatkitPersistAtsAnalysis = function (params) {
+            var p = normalizePersistParams(params);
+            var pair = getSelectedAtsPairIds();
+            var jdId = parseInt(p.jd_document_id, 10) || pair.jdId;
+            var userCvId = parseInt(p.user_cv_id, 10) || pair.userCvId;
+            if (!jdId || !userCvId || !Array.isArray(p.items) || p.items.length < 1) {
+                postChatKitClientLog({
+                    agent_id: agentId,
+                    message: 'persist_ats_analysis skipped: missing ids or items',
+                    source: 'persist_ats_analysis',
+                });
+                return Promise.resolve({ success: false, skipped: true });
+            }
+            return fetch(atsAnalysisSyncUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify({
+                    jd_document_id: jdId,
+                    user_cv_id: userCvId,
+                    ats_score: p.ats_score != null ? p.ats_score : null,
+                    items: p.items,
+                }),
+            })
+                .then(function (res) {
+                    return res.json().then(function (data) {
+                        return { ok: res.ok, status: res.status, data: data };
+                    });
+                })
+                .then(function (o) {
+                    if (!o.ok) {
+                        var errMsg =
+                            (o.data && o.data.message) ||
+                            'Não foi possível sincronizar a análise ATS com o workspace.';
+                        postChatKitClientLog({
+                            agent_id: agentId,
+                            message: String(errMsg).slice(0, 1500),
+                            source: 'persist_ats_analysis',
+                        });
+                        if (window.chatApp && window.chatApp.showErrorMessage) {
+                            window.chatApp.showErrorMessage(errMsg);
+                        }
+                        return { success: false, error: errMsg };
+                    }
+                    if (o.data && o.data.workspace_url && o.data.analysis_id) {
+                        writeAtsSessionSync(jdId, userCvId, {
+                            analysis_id: o.data.analysis_id,
+                            workspace_url: o.data.workspace_url,
+                            ats_score: o.data.ats_score != null ? o.data.ats_score : null,
+                            synced_at: Date.now(),
+                        });
+                    }
+                    atsReanalyzeMode = false;
+                    atsAwaitingJdAnalysis = false;
+                    clearTimeout(atsJdAnalysisEndTimer);
+                    refreshAtsWorkspaceCta();
+                    markAtsStepsAllComplete();
+                    var returnUrl =
+                        (o.data && o.data.workspace_url) ||
+                        atsReanalyzeWorkspaceUrl ||
+                        null;
+                    if (window.chatApp && window.chatApp.showSuccessMessage) {
+                        window.chatApp.showSuccessMessage(
+                            atsReanalyzeWorkspaceUrl && returnUrl
+                                ? 'Tabela actualizada — a redireccionar para o workspace…'
+                                : 'Tabela ATS guardada — pode ajustar o CV no workspace.'
+                        );
+                    }
+                    if (atsReanalyzeWorkspaceUrl && returnUrl) {
+                        var dest =
+                            returnUrl +
+                            (returnUrl.indexOf('?') >= 0 ? '&' : '?') +
+                            'synced=1';
+                        window.setTimeout(function () {
+                            window.location.href = dest;
+                        }, 1200);
+                        return {
+                            success: true,
+                            analysis_id: o.data && o.data.analysis_id,
+                            workspace_url: returnUrl,
+                            redirected: true,
+                        };
+                    }
+                    return {
+                        success: true,
+                        analysis_id: o.data && o.data.analysis_id,
+                        workspace_url: o.data && o.data.workspace_url,
+                    };
+                })
+                .catch(function (err) {
+                    var netMsg = (err && err.message) || 'Erro de rede ao sincronizar análise ATS.';
+                    postChatKitClientLog({
+                        agent_id: agentId,
+                        message: String(netMsg).slice(0, 1500),
+                        source: 'persist_ats_analysis',
+                    });
+                    return { success: false, error: netMsg };
+                });
+        };
+        window.chatkitRefreshAtsWorkspaceCta = refreshAtsWorkspaceCta;
+    }
 
     function bumpSessionTokensUsed(amount) {
         var n = parseInt(amount, 10);
@@ -463,12 +1140,52 @@ function initChatKitLibrarySendButtons(chatKitEl) {
         }
     }
 
+    function updateAtsStepUi(activeStep) {
+        if (!chatKitTrailAts) {
+            return;
+        }
+        var n = parseInt(activeStep, 10);
+        if (isNaN(n) || n < 1) {
+            n = 1;
+        }
+        if (n > 4) {
+            n = 4;
+        }
+        for (var s = 1; s <= 3; s++) {
+            var el = document.getElementById('chatkit-ats-step-' + s);
+            if (!el) {
+                continue;
+            }
+            var allDone = n >= 4;
+            var active = !allDone && s === n;
+            var done = allDone || s < n;
+            el.className =
+                'inline-flex items-center gap-1 rounded-md px-2 py-0.5 ' +
+                (active
+                    ? 'bg-indigo-600 text-white'
+                    : done
+                      ? 'bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200'
+                      : 'bg-white text-slate-600 ring-1 ring-slate-200');
+        }
+    }
+
+    function markAtsStepsAllComplete() {
+        updateAtsStepUi(4);
+    }
+
     function syncJdButton() {
         if (chatKitLibraryCvOnly) {
             return;
         }
         var hasJd = jdSel.value !== '';
         jdBtn.disabled = !(hasJd && jdSendAllowed);
+        if (chatKitTrailAts) {
+            if (jdSendAllowed && hasJd) {
+                updateAtsStepUi(2);
+            } else if (waitAssistantEndAfterCv) {
+                updateAtsStepUi(2);
+            }
+        }
     }
 
     function resetJdGate() {
@@ -477,11 +1194,37 @@ function initChatKitLibrarySendButtons(chatKitEl) {
         syncJdButton();
     }
 
+    if (chatKitTrailAts) {
+        updateAtsStepUi(1);
+        scheduleAtsCtaRefresh();
+    }
+
     cvSel.addEventListener('change', function () {
         resetJdGate();
+        if (chatKitTrailAts) {
+            updateAtsStepUi(1);
+            scheduleAtsCtaRefresh();
+        }
     });
+    function syncAtsFlowGate() {
+        if (!chatKitTrailAts || !jdSel) {
+            return;
+        }
+        var pair = getSelectedAtsPairIds();
+        var flowErr = atsFlowStatusError(pair.jdId);
+        if (flowErr && pair.jdId > 0) {
+            setStatus(flowErr);
+        }
+    }
+
     if (!chatKitLibraryCvOnly && jdSel) {
-        jdSel.addEventListener('change', syncJdButton);
+        jdSel.addEventListener('change', function () {
+            syncJdButton();
+            if (chatKitTrailAts) {
+                syncAtsFlowGate();
+                scheduleAtsCtaRefresh();
+            }
+        });
     }
 
     chatKitEl.addEventListener('chatkit.response.end', function () {
@@ -521,8 +1264,30 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 });
         }
 
+        if (chatKitTrailAts && atsAwaitingJdAnalysis) {
+            clearTimeout(atsJdAnalysisEndTimer);
+            atsJdAnalysisEndTimer = setTimeout(function () {
+                if (!atsAwaitingJdAnalysis) {
+                    return;
+                }
+                updateAtsStepUi(3);
+                scheduleAtsCtaRefresh();
+                setStatus(
+                    'Tabela visível no chat. Aguarde «Tabela ATS guardada» para abrir o workspace.'
+                );
+            }, 1600);
+        }
+
         syncJdButton();
-        if (pendingAutoAtsJdAfterCv && jdSendAllowed && jdBtn && !jdBtn.disabled && jdSel && jdSel.value) {
+        if (
+            pendingAutoAtsJdAfterCv &&
+            !atsBundledAutoSendDone &&
+            jdSendAllowed &&
+            jdBtn &&
+            !jdBtn.disabled &&
+            jdSel &&
+            jdSel.value
+        ) {
             pendingAutoAtsJdAfterCv = false;
             setTimeout(function () {
                 jdBtn.click();
@@ -530,7 +1295,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
         }
     });
 
-    cvBtn.addEventListener('click', function () {
+        cvBtn.addEventListener('click', function () {
         pendingAtsDebit = false;
         var id = cvSel.value;
         if (!id) {
@@ -539,6 +1304,17 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 window.chatApp.showErrorMessage('Escolha um CV na lista.');
             }
             return;
+        }
+        if (chatKitTrailAts) {
+            var cvFlowPair = getSelectedAtsPairIds();
+            var cvFlowErr = atsFlowStatusError(cvFlowPair.jdId);
+            if (cvFlowErr) {
+                setStatus(cvFlowErr);
+                if (window.chatApp && window.chatApp.showErrorMessage) {
+                    window.chatApp.showErrorMessage(cvFlowErr);
+                }
+                return;
+            }
         }
         if (
             chatKitLibraryCvOnly &&
@@ -581,7 +1357,14 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 if (body.length > limits.cv) {
                     throw new Error('O CV guardado excede o limite de ' + limits.cv + ' caracteres.');
                 }
-                var text = 'Segue o meu CV para análise:\n\n' + body;
+                var text = atsReanalyzeMode
+                    ? 'Reanálise ATS — segue o meu CV actualizado:\n\n'
+                    : 'Segue o meu CV para análise:\n\n';
+                text += body;
+                if (chatKitTrailAts) {
+                    var cvPair = getSelectedAtsPairIds();
+                    text += buildAtsMetaBlock(cvPair.jdId, cvPair.userCvId);
+                }
                 return chatKitEl.sendUserMessage({ text: text, newThread: true });
             })
             .then(function () {
@@ -605,11 +1388,33 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                     jdSendAllowed = false;
                     waitAssistantEndAfterCv = true;
                     syncJdButton();
+                    if (chatKitTrailAts) {
+                        updateAtsStepUi(2);
+                        var cvPair = getSelectedAtsPairIds();
+                        if (cvPair.jdId > 0 && cvPair.userCvId > 0) {
+                            try {
+                                sessionStorage.removeItem(atsPairStorageKey(cvPair.jdId, cvPair.userCvId));
+                                if (atsReanalyzeMode) {
+                                    markAtsPendingChatkitSync(cvPair.jdId, cvPair.userCvId);
+                                } else {
+                                    sessionStorage.removeItem(
+                                        atsPendingStorageKey(cvPair.jdId, cvPair.userCvId)
+                                    );
+                                }
+                            } catch (e) {}
+                        }
+                        scheduleAtsCtaRefresh();
+                    }
                 }
             })
             .catch(function (err) {
                 var msg = err && err.message ? err.message : 'Erro ao enviar CV.';
                 setStatus(msg);
+                postChatKitClientLog({
+                    agent_id: agentId,
+                    message: String(msg).slice(0, 1500),
+                    source: 'chatkit_send_cv',
+                });
                 if (window.chatApp && window.chatApp.showErrorMessage) {
                     window.chatApp.showErrorMessage(msg);
                 }
@@ -667,6 +1472,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
             if (params.get('auto_ats_pair') !== '1') {
                 return;
             }
+            var isReanalyze = params.get('reanalyze') === '1';
             var jdid = params.get('jd_document_id');
             var pCv = params.get('profile_cv_id');
             if (!jdid || !pCv) {
@@ -689,7 +1495,31 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 }
             }
             if (!jdOk || !cvOk) {
-                setStatus('Combinação CV/vaga não encontrada para envio automático.');
+                var autoMsg =
+                    'Combinação CV/vaga não encontrada para envio automático. Verifique o par na página Vagas.';
+                setStatus(autoMsg);
+                postChatKitClientLog({
+                    agent_id: agentId,
+                    message: autoMsg,
+                    source: 'auto_ats_pair',
+                });
+                if (window.chatApp && window.chatApp.showErrorMessage) {
+                    window.chatApp.showErrorMessage(autoMsg);
+                }
+                return;
+            }
+            var autoJdId = parseInt(String(jdid).replace(/\D/g, ''), 10) || 0;
+            var autoFlowErr = atsFlowStatusError(autoJdId);
+            if (autoFlowErr) {
+                setStatus(autoFlowErr);
+                postChatKitClientLog({
+                    agent_id: agentId,
+                    message: autoFlowErr,
+                    source: 'auto_ats_pair',
+                });
+                if (window.chatApp && window.chatApp.showErrorMessage) {
+                    window.chatApp.showErrorMessage(autoFlowErr);
+                }
                 return;
             }
             jdSel.value = String(jdid);
@@ -699,12 +1529,26 @@ function initChatKitLibrarySendButtons(chatKitEl) {
             params.delete('auto_ats_pair');
             params.delete('jd_document_id');
             params.delete('profile_cv_id');
+            params.delete('reanalyze');
+            params.delete('ats_analysis_id');
             var q = params.toString();
             window.history.replaceState({}, '', window.location.pathname + (q ? '?' + q : '') + window.location.hash);
-            pendingAutoAtsJdAfterCv = true;
+            if (isReanalyze) {
+                var rePair = {
+                    jdId: parseInt(String(jdid).replace(/\D/g, ''), 10) || 0,
+                    userCvId: parseInt(String(pCv).replace(/\D/g, ''), 10) || 0,
+                };
+                if (rePair.jdId > 0 && rePair.userCvId > 0) {
+                    markAtsPendingChatkitSync(rePair.jdId, rePair.userCvId);
+                    scheduleAtsCtaRefresh();
+                    setStatus(
+                        'Reanálise: aguarde a nova tabela no chat e «Tabela ATS guardada» para actualizar o workspace.'
+                    );
+                }
+            }
             setTimeout(function () {
-                cvBtn.click();
-            }, 0);
+                sendAtsCvAndJdBundled({ reanalyze: isReanalyze }).catch(function () {});
+            }, 400);
         } catch (err) {
             console.error(err);
         }
@@ -730,6 +1574,16 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 window.chatApp.showErrorMessage(msg);
             }
             return;
+        }
+        if (chatKitTrailAts) {
+            var pairErr = validateAtsPairBeforeJdSend();
+            if (pairErr) {
+                setStatus(pairErr);
+                if (window.chatApp && window.chatApp.showErrorMessage) {
+                    window.chatApp.showErrorMessage(pairErr);
+                }
+                return;
+            }
         }
         jdBtn.disabled = true;
         setStatus('A carregar a vaga…');
@@ -758,13 +1612,30 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 if (body.length > limits.jd) {
                     throw new Error('A vaga guardada excede o limite de ' + limits.jd + ' caracteres.');
                 }
-                var text = 'Segue a descrição da vaga (JD) para análise:\n\n' + body;
+                var text =
+                    'O CV já foi partilhado nesta conversa. Segue a vaga (JD) — responda com o ATS % e uma única tabela:\n\n';
+                text += body;
+                if (chatKitTrailAts) {
+                    var jdPair = getSelectedAtsPairIds();
+                    text += buildAtsMetaBlock(jdPair.jdId, jdPair.userCvId);
+                }
                 return chatKitEl.sendUserMessage({ text: text });
             })
             .then(function () {
-                setStatus('Vaga enviada ao chat.');
+                setStatus(
+                    'Vaga enviada. Aguarde a análise no chat e depois «Tabela ATS guardada» para o passo 3.'
+                );
                 if (window.chatApp && window.chatApp.showSuccessMessage) {
-                    window.chatApp.showSuccessMessage('Vaga enviada ao chat.');
+                    window.chatApp.showSuccessMessage('Vaga enviada — aguarde a análise no chat.');
+                }
+                if (chatKitTrailAts) {
+                    updateAtsStepUi(3);
+                    atsAwaitingJdAnalysis = true;
+                    var sentPair = getSelectedAtsPairIds();
+                    if (sentPair.jdId > 0 && sentPair.userCvId > 0) {
+                        markAtsPendingChatkitSync(sentPair.jdId, sentPair.userCvId);
+                        scheduleAtsCtaRefresh();
+                    }
                 }
                 if (chatkitConsultationCost > 0) {
                     pendingAtsDebit = true;
@@ -779,6 +1650,11 @@ function initChatKitLibrarySendButtons(chatKitEl) {
             .catch(function (err) {
                 var msg = err && err.message ? err.message : 'Erro ao enviar a vaga.';
                 setStatus(msg);
+                postChatKitClientLog({
+                    agent_id: agentId,
+                    message: String(msg).slice(0, 1500),
+                    source: 'chatkit_send_jd',
+                });
                 if (window.chatApp && window.chatApp.showErrorMessage) {
                     window.chatApp.showErrorMessage(msg);
                 }

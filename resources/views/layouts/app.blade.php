@@ -21,6 +21,8 @@
                 dashboardUrl: @json(route('dashboard')),
                 pollMs: 25000,
             };
+            window.GracaPanelSaveUrl = @json(route('profile.graca-panel.update'));
+            window.GracaPanelPrefs = @json(\App\Support\GracaPanelPreferences::read(auth()->user()));
         </script>
         @endauth
 

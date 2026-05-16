@@ -1,6 +1,8 @@
 @php
     $compactTrail = $compactTrail ?? $compactAts ?? false;
     $compactCvOnly = $compactCvOnly ?? false;
+    $compactTrailAts = $compactTrail && ! $compactCvOnly;
+    $atsPairContext = $atsPairContext ?? null;
 @endphp
 @if ($compactTrail)
     @if ($compactCvOnly)
@@ -39,6 +41,32 @@
     @else
         <section class="mb-3 rounded-xl border border-slate-200/90 bg-gradient-to-b from-white to-slate-50/80 p-2.5 shadow-sm ring-1 ring-slate-100">
             <div class="flex flex-col gap-2">
+                @if ($compactTrailAts)
+                    <div id="chatkit-ats-steps" class="rounded-lg border border-indigo-100/90 bg-indigo-50/40 px-2.5 py-2" role="navigation" aria-label="Passos da análise ATS">
+                        <ol class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] font-medium text-slate-700">
+                            <li id="chatkit-ats-step-1" class="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-2 py-0.5 text-white" data-step="1">
+                                <span class="tabular-nums">1</span> Enviar CV
+                            </li>
+                            <li class="text-slate-400" aria-hidden="true">→</li>
+                            <li id="chatkit-ats-step-2" class="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-slate-600 ring-1 ring-slate-200" data-step="2">
+                                <span class="tabular-nums">2</span> Enviar vaga
+                            </li>
+                            <li class="text-slate-400" aria-hidden="true">→</li>
+                            <li id="chatkit-ats-step-3" class="inline-flex items-center gap-1 rounded-md bg-white px-2 py-0.5 text-slate-600 ring-1 ring-slate-200" data-step="3">
+                                <span class="tabular-nums">3</span> Ver análise
+                            </li>
+                        </ol>
+                    </div>
+                    <p id="chatkit-ats-pair-context"
+                       class="text-[11px] leading-snug text-slate-600 @if (empty($atsPairContext)) hidden @endif">
+                        @if (! empty($atsPairContext))
+                            <span class="font-semibold text-slate-800">Par seleccionado:</span>
+                            {{ $atsPairContext['cv_title'] ?? 'CV' }}
+                            <span class="text-slate-400" aria-hidden="true">·</span>
+                            {{ $atsPairContext['jd_title'] ?? 'Vaga' }}
+                        @endif
+                    </p>
+                @endif
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                     <div class="min-w-0 space-y-1">
                         <div class="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
@@ -72,7 +100,9 @@
                                         $jdOptLabel .= ' · CV: '.$jd['paired_cv_label'];
                                     }
                                 @endphp
-                                <option value="{{ $jd['id'] }}" @selected((int) $ckDefJd === (int) $jd['id'])>{{ $jdOptLabel }}</option>
+                                <option value="{{ $jd['id'] }}"
+                                        data-user-cv-id="{{ $jd['user_cv_id'] ?? '' }}"
+                                        @selected((int) $ckDefJd === (int) $jd['id'])>{{ $jdOptLabel }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -127,7 +157,9 @@
                                 $jdOptLabel .= ' · CV: '.$jd['paired_cv_label'];
                             }
                         @endphp
-                        <option value="{{ $jd['id'] }}" @selected((int) $ckDefJd === (int) $jd['id'])>{{ $jdOptLabel }}</option>
+                        <option value="{{ $jd['id'] }}"
+                                data-user-cv-id="{{ $jd['user_cv_id'] ?? '' }}"
+                                @selected((int) $ckDefJd === (int) $jd['id'])>{{ $jdOptLabel }}</option>
                     @endforeach
                 </select>
                 <a href="{{ $documentsHubUrl ?? route('agents.documents.index', $agent) }}"

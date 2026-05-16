@@ -27,14 +27,8 @@
             @endif
 
             {{-- Orientação da Graça + objetivo do passo 1 (texto em BD: slot cv_page_intro) --}}
-            <details class="mb-4 overflow-hidden rounded-2xl border border-violet-200 bg-gradient-to-br from-violet-50 to-white shadow-sm" open>
-                <summary class="cursor-pointer list-none px-4 py-2.5 text-sm font-semibold text-violet-950 marker:content-none [&::-webkit-details-marker]:hidden">
-                    <span class="flex items-center justify-between gap-2">
-                        <span>Orientação — {{ config('career_trail.mentor_label', 'Sra. Graça') }}</span>
-                        <span class="text-xs font-normal text-violet-700">Mostrar / ocultar</span>
-                    </span>
-                </summary>
-                <div class="flex flex-col gap-3 border-t border-violet-100/80 px-4 py-3 pt-3 sm:flex-row sm:items-start">
+            <x-graca-orientation-panel :page-key="\App\Support\GracaPanelPreferences::PAGE_TRAIL_CV">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
                     <div class="shrink-0 rounded-2xl bg-white p-1 shadow ring-1 ring-violet-100">
                         <img src="{{ asset(config('career_trail.mentor_avatar', 'img/graca-avatar.png')) }}"
                              alt="{{ config('career_trail.mentor_label', 'Sra. Graça') }}"
@@ -49,7 +43,7 @@
                         />
                     </div>
                 </div>
-            </details>
+            </x-graca-orientation-panel>
 
             <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                 <div class="border-b border-slate-100 bg-slate-50/80 px-4 py-3 sm:px-5">

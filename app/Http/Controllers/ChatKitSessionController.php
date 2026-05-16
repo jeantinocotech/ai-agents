@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Agent;
 use App\Models\Setting;
 use App\Services\CareerTrailAgentAccess;
+use App\Services\ChatKitClientAlertNotifier;
 use App\Services\GamificationService;
 use App\Services\TokenWalletService;
 use App\Support\ChatKitUserRef;
@@ -17,7 +18,8 @@ class ChatKitSessionController extends Controller
 {
     public function __construct(
         private TokenWalletService $tokenWallet,
-        private GamificationService $gamification
+        private GamificationService $gamification,
+        private ChatKitClientAlertNotifier $chatKitClientAlertNotifier,
     ) {}
 
     public function store(Request $request): JsonResponse
@@ -230,6 +232,54 @@ class ChatKitSessionController extends Controller
             'token_balance' => (int) $user->token_balance,
             'tokens_debited' => $debited,
         ]);
+    }
+
+    /**
+     * Regista no Laravel erros do widget ChatKit que só ocorrem no browser (ex.: falha de sessão ou comando no iframe).
+     * Não envie texto longo nem conteúdo de CV/JD — só mensagens curtas de diagnóstico.
+     */
+    public function clientReport(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'agent_id' => 'required|integer|exists:agents,id',
+            'message' => 'required|string|max:2000',
+            'source' => 'nullable|string|max:64',
+        ]);
+
+        $user = $request->user();
+        if (! $user) {
+            return response()->json(['message' => 'Não autenticado.'], 401);
+        }
+
+        $agent = Agent::query()->findOrFail($validated['agent_id']);
+
+        if ($denied = CareerTrailAgentAccess::denyJsonUnlessCanAccess($user, $agent)) {
+            return $denied;
+        }
+
+        if (! $agent->isChatKitWorkflow()) {
+            return response()->json(['message' => 'Este agente não está configurado para ChatKit.'], 422);
+        }
+
+        $referer = (string) $request->headers->get('Referer', '');
+
+        Log::warning('ChatKit cliente', [
+            'user_id' => $user->id,
+            'agent_id' => $agent->id,
+            'source' => $validated['source'] ?? null,
+            'message' => $validated['message'],
+            'referer' => mb_strlen($referer) > 500 ? mb_substr($referer, 0, 500).'…' : $referer,
+        ]);
+
+        $this->chatKitClientAlertNotifier->notifyIfWarranted(
+            $user,
+            $agent,
+            $validated['message'],
+            $validated['source'] ?? null,
+            mb_strlen($referer) > 500 ? mb_substr($referer, 0, 500).'…' : $referer,
+        );
+
+        return response()->json(['ok' => true]);
     }
 
     /**

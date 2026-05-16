@@ -6,6 +6,7 @@ import './brazil-cep';
 import Alpine from 'alpinejs';
 
 import { bootGamificationLive } from './gamification-live';
+import { bootGracaPanels } from './graca-panel';
 
 window.Alpine = Alpine;
 
@@ -55,6 +56,14 @@ Alpine.data('gratoGamificationBell', () => ({
 
 if (typeof window !== 'undefined' && window.GratoGamificationLive?.unreadUrl) {
     bootGamificationLive(window.GratoGamificationLive);
+}
+
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootGracaPanels);
+    } else {
+        bootGracaPanels();
+    }
 }
 
 Alpine.start();

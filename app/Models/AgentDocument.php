@@ -86,7 +86,7 @@ class AgentDocument extends Model
                     }
                 }
 
-                if ($doc->isDirty('user_cv_id')) {
+                if ($doc->exists && $doc->isDirty('user_cv_id')) {
                     $doc->ats_submitted_at = null;
                     $doc->cv_sent_to_employer_at = null;
                 }
@@ -152,5 +152,27 @@ class AgentDocument extends Model
     public function interviewProcesses(): HasMany
     {
         return $this->hasMany(InterviewProcess::class, 'jd_document_id');
+    }
+
+    public const ATS_FLOW_BLOCKED_MESSAGE = 'O assistente ATS só está disponível com status «Em preparação» ou «Alinhamento ATS». Altere o status da vaga na lista antes de analisar ou abrir a tabela.';
+
+    /**
+     * Chat ATS, sync da tabela e workspace: apenas «Em preparação» ou «Alinhamento ATS».
+     */
+    public function allowsAtsFlow(): bool
+    {
+        if ($this->type !== self::TYPE_JD || ! $this->is_active || $this->user_cv_id === null) {
+            return false;
+        }
+
+        $status = $this->application_status ?? JobApplicationStatus::Draft;
+
+        return $status->allowsAtsTableWorkspace();
+    }
+
+    /** @alias allowsAtsFlow() */
+    public function allowsAtsKeywordWorkspace(): bool
+    {
+        return $this->allowsAtsFlow();
     }
 }

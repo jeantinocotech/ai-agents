@@ -67,7 +67,11 @@
             @endif
 
             <div class="overflow-hidden rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-indigo-50/80 shadow-sm">
-                <div class="border-b border-violet-100/80 bg-white/60 px-6 py-6 sm:px-8">
+                <x-graca-orientation-panel
+                    :page-key="\App\Support\GracaPanelPreferences::PAGE_TRAIL_MAP"
+                    wrapper-class="mb-0 rounded-none border-0 bg-transparent shadow-none"
+                    border-class="border-0 bg-transparent"
+                >
                     <div class="flex flex-col gap-6 sm:flex-row sm:items-start">
                         <div class="shrink-0 rounded-2xl bg-gradient-to-br from-violet-500/20 to-indigo-600/20 p-1 shadow-md ring-4 ring-white">
                             <x-graca-avatar size="lg" class="ring-0 shadow-sm" />
@@ -83,9 +87,9 @@
                             />
                         </div>
                     </div>
-                </div>
+                </x-graca-orientation-panel>
 
-                <div class="px-6 py-6 sm:px-8">
+                <div class="border-t border-violet-100/80 px-6 py-6 sm:px-8">
                     <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Etapas e assistentes</h2>
                     <p class="mt-1 text-xs text-slate-500">Em cada passo encontram-se o objetivo da etapa e, quando configurado, o assistente correspondente. Desbloqueia ao atingir essa etapa na ordem da trilha (ou antes, se já tiver ultrapassado).</p>
 

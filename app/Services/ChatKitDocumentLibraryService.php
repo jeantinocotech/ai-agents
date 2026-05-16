@@ -71,7 +71,7 @@ final class ChatKitDocumentLibraryService
             ->where('is_active', true)
             ->with(['userCv:id,title,is_default'])
             ->orderByDesc('updated_at')
-            ->get(['id', 'title', 'user_cv_id']);
+            ->get(['id', 'title', 'user_cv_id', 'application_status']);
 
         $defaultsRow = AgentDocumentDefault::query()
             ->where('user_id', $userId)
@@ -92,9 +92,11 @@ final class ChatKitDocumentLibraryService
                 'title' => $d->title !== null && trim((string) $d->title) !== ''
                     ? (string) $d->title
                     : 'Vaga #'.$d->id,
+                'user_cv_id' => $d->user_cv_id ? (int) $d->user_cv_id : null,
                 'paired_cv_document_id' => $d->user_cv_id ? 'p'.$d->user_cv_id : null,
                 'paired_cv_label' => $pairedLabel,
                 'content_agent_id' => $jdQueryAgentId,
+                'allows_ats_flow' => $d->allowsAtsFlow(),
             ];
         })->values()->all();
 

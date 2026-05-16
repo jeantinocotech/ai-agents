@@ -15,6 +15,7 @@
     $jdListTotalCount = $jdListTotalCount ?? null;
     $jdListVisibleCount = $jdListVisibleCount ?? null;
 
+    $atsAnalysisByJd = $atsAnalysisByJd ?? collect();
     $jdListFilter = $jdListFilter ?? AgentsDocumentTrailListFilter::OPEN;
     $trailFilterQuery = static function (array $extra = []) use ($jdListFilter) {
         $q = $extra;
@@ -126,7 +127,7 @@
                             <tr>
                                 <th class="px-3 py-2">Vaga</th>
                                 <th class="px-3 py-2">CV</th>
-                                <th class="min-w-[12rem] px-3 py-2">Estado</th>
+                                <th class="min-w-[12rem] px-3 py-2">Status</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
@@ -147,6 +148,19 @@
                                            class="group block min-w-0 text-gray-900 hover:text-indigo-700">
                                             <span class="font-medium group-hover:underline">{{ $jd->title ?: 'Vaga #'.$jd->id }}</span>
                                         </a>
+                                        @php
+                                            $atsRow = $atsAnalysisByJd->get($jd->id);
+                                            $canEditAtsTable = $jd->allowsAtsFlow();
+                                        @endphp
+                                        @if ($atsRow && $jd->user_cv_id && $atsRow->ats_score !== null)
+                                            <span class="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px]">
+                                                <span class="font-semibold tabular-nums text-indigo-700">{{ number_format((float) $atsRow->ats_score, 0) }}%</span>
+                                                @if ($canEditAtsTable)
+                                                    <a href="{{ route('career-trail.ats.workspace', $atsRow) }}"
+                                                       class="font-semibold text-indigo-700 hover:underline">Editar com tabela</a>
+                                                @endif
+                                            </span>
+                                        @endif
                                     </td>
                                     <td class="px-3 py-2 align-middle text-gray-600">
                                         @if ($jd->userCv)
@@ -165,7 +179,7 @@
                                             @if ($interviewPrepAgent)
                                                 <input type="hidden" name="interview_prep_agent_id" value="{{ $interviewPrepAgent->id }}">
                                             @endif
-                                            <select name="desired_status" data-prev="{{ $statusKey }}" class="w-full rounded-md border-gray-300 text-xs shadow-sm" aria-label="Estado da vaga {{ $jd->title ?: '#'.$jd->id }}"
+                                            <select name="desired_status" data-prev="{{ $statusKey }}" class="w-full rounded-md border-gray-300 text-xs shadow-sm" aria-label="Status da vaga {{ $jd->title ?: '#'.$jd->id }}"
                                                     onchange="window.trailJdStatusPick(this, {{ json_encode([
                                                         'needsInterviewArchiveWarn' => $jdNeedsInterviewArchiveWarnTrail,
                                                         'archiveInterview' => $jdArchiveInterviewConfirm,
@@ -265,11 +279,39 @@
                         <button type="submit" class="inline-flex items-center rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700">
                             Salvar alterações
                         </button>
+                        @if ($editingJd->user_cv_id && ! $editingJd->allowsAtsFlow())
+                            <p class="w-full text-right text-xs text-amber-800 sm:w-auto">
+                                {{ \App\Models\AgentDocument::ATS_FLOW_BLOCKED_MESSAGE }}
+                            </p>
+                        @endif
                         @if (! empty($atsAnalyzeChatUrl))
                             <a href="{{ $atsAnalyzeChatUrl }}"
                                class="inline-flex items-center rounded-xl border border-indigo-300 bg-white px-5 py-2.5 text-sm font-semibold text-indigo-800 shadow-sm hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2">
                                 {{ $atsChatHeading }}
                             </a>
+                            @php
+                                $editWs = $editingJd->user_cv_id
+                                    ? $atsAnalysisByJd->get($editingJd->id)
+                                    : null;
+                                $canEditAtsTableOnEdit = $editingJd->allowsAtsFlow();
+                            @endphp
+                            @if ($editingJd->user_cv_id)
+                                @if ($editWs && $canEditAtsTableOnEdit)
+                                    <a href="{{ route('career-trail.ats.workspace', $editWs) }}"
+                                       class="inline-flex items-center rounded-xl border border-violet-300 bg-violet-50 px-5 py-2.5 text-sm font-semibold text-violet-900 shadow-sm hover:bg-violet-100">
+                                        Editar com tabela
+                                    </a>
+                                @elseif (! $editWs && $canEditAtsTableOnEdit)
+                                    <form method="post" action="{{ route('career-trail.ats.analyses.store') }}" class="inline">
+                                        @csrf
+                                        <input type="hidden" name="jd_document_id" value="{{ $editingJd->id }}">
+                                        <button type="submit"
+                                                class="inline-flex items-center rounded-xl border border-violet-300 bg-violet-50 px-5 py-2.5 text-sm font-semibold text-violet-900 shadow-sm hover:bg-violet-100">
+                                            Preparar lista de ajustes
+                                        </button>
+                                    </form>
+                                @endif
+                            @endif
                         @else
                             <span class="inline-flex cursor-not-allowed items-center rounded-xl border border-gray-200 bg-gray-100 px-5 py-2.5 text-sm font-semibold text-gray-400"
                                   role="note"

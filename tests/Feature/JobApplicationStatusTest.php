@@ -67,7 +67,7 @@ test('career trail ats page shows estado column when user has vagas', function (
     $this->actingAs($user)
         ->get(route('career-trail.ats'))
         ->assertOk()
-        ->assertSee('Estado');
+        ->assertSee('Status');
 });
 
 test('mark application submitted sets submitted status when json requested', function () {
@@ -109,6 +109,45 @@ test('mark application submitted sets submitted status when json requested', fun
     $jd->refresh();
     expect($jd->application_status)->toBe(JobApplicationStatus::Submitted)
         ->and($jd->ats_submitted_at)->not->toBeNull();
+});
+
+test('mark application submitted blocked when job status is not draft or submitted', function () {
+    $ats = makeJobStatusChatKitAgent('ATS block submit');
+    CareerTrailStep::query()->where('slug', 'ats')->update(['agent_id' => $ats->id]);
+
+    $user = User::factory()->create();
+    $atsStep = CareerTrailStep::query()->where('slug', 'ats')->firstOrFail();
+    UserCareerTrailProgress::query()->updateOrCreate(
+        ['user_id' => $user->id],
+        [
+            'current_step_id' => $atsStep->id,
+            'started_at' => now(),
+            'max_sort_order_reached' => (int) $atsStep->sort_order,
+        ]
+    );
+    $cv = UserCv::query()->create([
+        'user_id' => $user->id,
+        'title' => 'CV',
+        'body' => str_repeat('z', 400),
+        'is_default' => true,
+        'source' => UserCv::SOURCE_MANUAL,
+    ]);
+    $jd = AgentDocument::query()->create([
+        'user_id' => $user->id,
+        'agent_id' => $ats->id,
+        'type' => AgentDocument::TYPE_JD,
+        'title' => 'Vaga bloqueada',
+        'body' => str_repeat('w', 40),
+        'user_cv_id' => $cv->id,
+        'ats_submitted_at' => now(),
+    ]);
+    $jd->forceFill(['application_status' => JobApplicationStatus::CvSent])->saveQuietly();
+    $jd->refresh();
+    expect($jd->allowsAtsFlow())->toBeFalse();
+
+    $this->actingAs($user)
+        ->postJson(route('agents.documents.mark-application-submitted', [$ats, $jd]))
+        ->assertStatus(422);
 });
 
 test('mark cv sent to employer requires alignment ats first', function () {
@@ -159,6 +198,18 @@ test('mark cv sent to employer requires alignment ats first', function () {
     $jd->refresh();
     expect($jd->application_status)->toBe(JobApplicationStatus::CvSent)
         ->and($jd->cv_sent_to_employer_at)->not->toBeNull();
+
+    $this->actingAs($user)
+        ->post(route('agents.documents.trail-desired-status', [$ats, $jd]), [
+            'desired_status' => JobApplicationStatus::Submitted->value,
+            'trail_return' => 'career_trail_ats',
+        ])
+        ->assertRedirect();
+
+    $jd->refresh();
+    expect($jd->application_status)->toBe(JobApplicationStatus::Submitted)
+        ->and($jd->ats_submitted_at)->not->toBeNull()
+        ->and($jd->cv_sent_to_employer_at)->toBeNull();
 });
 
 test('first interview round requires cv sent to employer', function () {

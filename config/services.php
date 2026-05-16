@@ -37,6 +37,7 @@ return [
 
     'openai' => [
         'api_key' => env('OPENAI_API_KEY'),
+        'ats_analysis_model' => env('OPENAI_ATS_ANALYSIS_MODEL', 'gpt-4o-mini'),
     ],
 
     /*
@@ -51,6 +52,12 @@ return [
          * (servidores atrás de rede lenta/firewall beneficiam de valor mais alto).
          */
         'http_timeout' => (int) env('CHATKIT_HTTP_TIMEOUT', 60),
+        /*
+         * Alertas por email quando o browser reporta erros ChatKit (LOG_ALERT_MAIL, vírgulas).
+         */
+        'alert_mail_raw' => env('LOG_ALERT_MAIL', ''),
+        'alert_throttle_seconds' => (int) env('CHATKIT_ALERT_THROTTLE_SECONDS', 21600),
+        'alert_only_production' => filter_var(env('CHATKIT_ALERT_ONLY_PRODUCTION', true), FILTER_VALIDATE_BOOL),
     ],
 
 ];

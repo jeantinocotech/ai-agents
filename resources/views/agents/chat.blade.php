@@ -10,7 +10,15 @@
                     @endif
                     @if ($compactTrailChatUi ?? false)
                         <div class="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-slate-100 pb-2">
-                            <h2 class="text-base font-semibold tracking-tight text-slate-900 sm:text-lg">{{ $compactTrailChatTitle ?? 'Chat' }}</h2>
+                            <div class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+                                @if (($compactTrailStep->slug ?? null) === 'ats')
+                                    <a href="{{ route('career-trail.ats') }}"
+                                       class="shrink-0 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline">
+                                        &larr; Vagas
+                                    </a>
+                                @endif
+                                <h2 class="text-base font-semibold tracking-tight text-slate-900 sm:text-lg">{{ $compactTrailChatTitle ?? 'Chat' }}</h2>
+                            </div>
                             @if ($agent->isChatKitWorkflow())
                                 <p class="text-xs text-slate-600">
                                     Consumidos na sessão:
@@ -96,7 +104,11 @@
                         @include('agents.partials.chatkit-workspace', [
                             'compactTrail' => $compactTrailChatUi ?? false,
                             'compactCvOnly' => $compactTrailCvOnly,
+                            'atsPairContext' => $atsPairContext ?? null,
                         ])
+                        @if (($compactTrailStep->slug ?? null) === 'ats')
+                            @include('agents.partials.chatkit-ats-workspace-cta')
+                        @endif
                     @endif
                     @else
                     <div id="cv-reuse-banner" class="hidden mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950"></div>

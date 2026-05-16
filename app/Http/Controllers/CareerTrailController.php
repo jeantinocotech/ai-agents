@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AgentDocument;
+use App\Models\AtsAnalysis;
 use App\Models\CareerTrailStep;
 use App\Models\UserCareerTrailProgress;
 use App\Services\CareerTrailAgentAccess;
@@ -103,6 +104,16 @@ class CareerTrailController extends Controller
             if ($editingJd !== null && $atsAllowsCheck) {
                 $atsAnalyzeChatUrl = CareerTrailStep::atsAnalyzeChatUrlForJd($user, $agent, (int) $editingJd->id);
             }
+
+            $jdIds = collect($libraryPayload['jds'] ?? [])->pluck('id')->map(fn ($id) => (int) $id)->all();
+            $atsAnalysisByJd = $jdIds === []
+                ? collect()
+                : AtsAnalysis::query()
+                    ->where('user_id', $user->id)
+                    ->whereIn('agent_document_id', $jdIds)
+                    ->get(['id', 'user_id', 'agent_document_id', 'user_cv_id', 'ats_score', 'source'])
+                    ->keyBy('agent_document_id');
+            $libraryPayload['atsAnalysisByJd'] = $atsAnalysisByJd;
         }
 
         return view('career-trail.ats', [

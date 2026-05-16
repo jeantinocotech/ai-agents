@@ -135,7 +135,15 @@ final class TrailJdDesiredStatusApplier
             'Este processo já está encerrado ou aprovado; não é possível registar novo envio ATS.'
         );
 
-        abort_if($document->ats_submitted_at !== null, 422, 'O alinhamento ATS já está registado.');
+        if ($document->ats_submitted_at !== null) {
+            if ($document->cv_sent_to_employer_at !== null) {
+                $document->cv_sent_to_employer_at = null;
+                $document->save();
+            }
+            JobApplicationStatusSync::reconcile($document);
+
+            return;
+        }
 
         $document->ats_submitted_at = now();
         $document->save();

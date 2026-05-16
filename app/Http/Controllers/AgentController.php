@@ -181,6 +181,23 @@ class AgentController extends Controller
             $chatkitConsultationTokens = max(0, (int) Setting::get('chatkit_tokens_per_session', '50'));
         }
 
+        $atsPairContext = null;
+        $atsWorkspaceAnalysis = null;
+        if (
+            $compactTrailChatUi
+            && ($boundTrailStep?->slug ?? null) === 'ats'
+            && is_array($documentLibrary)
+        ) {
+            $atsPairContext = \App\Support\ChatKitAtsPairContext::fromLibrary($request, $documentLibrary);
+            if ($atsPairContext !== null) {
+                $atsWorkspaceAnalysis = \App\Models\AtsAnalysis::findForPair(
+                    (int) auth()->id(),
+                    (int) $atsPairContext['jd_id'],
+                    (int) $atsPairContext['profile_cv_id']
+                );
+            }
+        }
+
         if ($request->boolean('embedded') && $agent->isChatKitWorkflow()) {
             return view('agents.chat-embedded', compact(
                 'agent',
@@ -198,7 +215,9 @@ class AgentController extends Controller
                 'compactTrailChatUi',
                 'compactTrailChatTitle',
                 'compactTrailStep',
-                'markApplicationSubmittedUrlTemplate'
+                'markApplicationSubmittedUrlTemplate',
+                'atsPairContext',
+                'atsWorkspaceAnalysis',
             ));
         }
 
@@ -218,7 +237,9 @@ class AgentController extends Controller
             'compactTrailChatUi',
             'compactTrailChatTitle',
             'compactTrailStep',
-            'markApplicationSubmittedUrlTemplate'
+            'markApplicationSubmittedUrlTemplate',
+            'atsPairContext',
+            'atsWorkspaceAnalysis',
         ));
     }
 

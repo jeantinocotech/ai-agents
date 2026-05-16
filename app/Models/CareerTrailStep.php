@@ -140,8 +140,12 @@ class CareerTrailStep extends Model
     /**
      * Chat ATS (ChatKit) com envio automático do par CV de perfil + vaga (JD): query lida em chatkit-main-scripts.
      */
-    public static function atsAnalyzeChatUrlForJd(Authenticatable $user, Agent $atsAgent, int $jdDocumentId): ?string
-    {
+    public static function atsAnalyzeChatUrlForJd(
+        Authenticatable $user,
+        Agent $atsAgent,
+        int $jdDocumentId,
+        ?int $atsAnalysisId = null,
+    ): ?string {
         if (! $atsAgent->is_active || ! $atsAgent->isChatKitWorkflow()) {
             return null;
         }
@@ -154,18 +158,25 @@ class CareerTrailStep extends Model
             ->where('is_active', true)
             ->first();
 
-        if ($jd === null || ! $jd->user_cv_id) {
+        if ($jd === null || ! $jd->user_cv_id || ! $jd->allowsAtsFlow()) {
             return null;
         }
 
         $url = route('agents.chat', $atsAgent);
         $sep = str_contains($url, '?') ? '&' : '?';
 
-        return $url.$sep.http_build_query([
+        $query = [
             'jd_document_id' => $jdDocumentId,
             'profile_cv_id' => (int) $jd->user_cv_id,
             'auto_ats_pair' => '1',
-        ]);
+        ];
+
+        if ($atsAnalysisId !== null && $atsAnalysisId > 0) {
+            $query['reanalyze'] = '1';
+            $query['ats_analysis_id'] = $atsAnalysisId;
+        }
+
+        return $url.$sep.http_build_query($query);
     }
 
     /**
