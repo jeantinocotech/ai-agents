@@ -652,6 +652,21 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 var storeUrl = cta.getAttribute('data-store-url') || '';
 
                 if (sessionSync && sessionSync.workspace_url) {
+                    if (
+                        !o.data.analysis_id ||
+                        String(o.data.analysis_id) !== String(sessionSync.analysis_id)
+                    ) {
+                        clearAtsSessionForPair(pair.jdId, pair.userCvId);
+                        sessionSync = null;
+                        if (!hasPending) {
+                            markAtsPendingChatkitSync(pair.jdId, pair.userCvId);
+                            hasPending = true;
+                            atsAwaitingJdAnalysis = true;
+                        }
+                    }
+                }
+
+                if (sessionSync && sessionSync.workspace_url) {
                     var scoreNote =
                         sessionSync.ats_score != null
                             ? ' <span class="text-slate-500">(ATS ' +
@@ -768,6 +783,33 @@ function initChatKitLibrarySendButtons(chatKitEl) {
         } catch (e) {
             return null;
         }
+    }
+
+    function clearAtsSessionForPair(jdId, userCvId) {
+        try {
+            sessionStorage.removeItem(atsPairStorageKey(jdId, userCvId));
+            sessionStorage.removeItem(atsPendingStorageKey(jdId, userCvId));
+        } catch (e) {}
+        atsChatkitToolPersisted = false;
+    }
+
+    function formatApiError(data, fallback) {
+        if (!data) {
+            return fallback;
+        }
+        if (data.message) {
+            return String(data.message);
+        }
+        if (data.errors && typeof data.errors === 'object') {
+            var keys = Object.keys(data.errors);
+            for (var ki = 0; ki < keys.length; ki++) {
+                var arr = data.errors[keys[ki]];
+                if (arr && arr[0]) {
+                    return String(arr[0]);
+                }
+            }
+        }
+        return fallback;
     }
 
     function writeAtsSessionSync(jdId, userCvId, payload) {
@@ -1058,6 +1100,125 @@ function initChatKitLibrarySendButtons(chatKitEl) {
         return items;
     }
 
+    function splitMarkdownTableCells(line) {
+        var trimmed = String(line || '').trim();
+        if (trimmed.charAt(0) === '|') {
+            trimmed = trimmed.slice(1);
+        }
+        if (trimmed.charAt(trimmed.length - 1) === '|') {
+            trimmed = trimmed.slice(0, -1);
+        }
+        return trimmed.split('|').map(function (cell) {
+            return cell.trim();
+        });
+    }
+
+    function atsItemFromRowCells(cells, keys) {
+        if (!cells || cells.length < 2) {
+            return null;
+        }
+        var row = {};
+        var ci;
+        for (ci = 0; ci < cells.length; ci++) {
+            var key = keys[ci] || (ci === 0 ? 'keyword' : 'col' + ci);
+            row[key] = cells[ci];
+        }
+        var keyword = String(row.keyword || row.col0 || cells[0] || '').trim();
+        if (!keyword || keyword.length < 2 || /^[\-\:\s]+$/.test(keyword)) {
+            return null;
+        }
+        return {
+            keyword: keyword,
+            relevance: normalizeAtsRelevance(row.relevance || row.prioridade || cells[1] || ''),
+            match_status: normalizeAtsMatchStatus(row.match_status || row.status || cells[2] || ''),
+            cv_snippet: row.cv_snippet || null,
+            suggestion: row.suggestion || row.comments || row.explicacao || null,
+            _row_score: parseAtsScoreFromValue(row.score || cells[cells.length - 1]),
+        };
+    }
+
+    function parseAtsItemsFromMarkdownTable(text) {
+        var lines = String(text || '').split(/\r?\n/);
+        var keys = [];
+        var items = [];
+        var li;
+        for (li = 0; li < lines.length; li++) {
+            var line = lines[li];
+            if (line.indexOf('|') < 0) {
+                continue;
+            }
+            var cells = splitMarkdownTableCells(line);
+            if (cells.length < 2) {
+                continue;
+            }
+            if (cells.every(function (c) {
+                return /^[\-\:\s]+$/.test(c);
+            })) {
+                continue;
+            }
+            if (keys.length === 0) {
+                keys = cells.map(mapAtsTableHeaderKey);
+                if (keys[0] !== 'keyword' && keys[0] !== '') {
+                    keys[0] = 'keyword';
+                }
+                continue;
+            }
+            var item = atsItemFromRowCells(cells, keys);
+            if (item) {
+                items.push(item);
+            }
+        }
+        return items;
+    }
+
+    function parseAtsItemsFromRoleTable(tableEl) {
+        var rowEls = tableEl.querySelectorAll('[role="row"]');
+        if (!rowEls || rowEls.length < 2) {
+            return [];
+        }
+        var keys = [];
+        var items = [];
+        var ri;
+        for (ri = 0; ri < rowEls.length; ri++) {
+            var cellEls = rowEls[ri].querySelectorAll(
+                '[role="cell"], [role="columnheader"], [role="gridcell"]'
+            );
+            var cells = [];
+            var ci;
+            for (ci = 0; ci < cellEls.length; ci++) {
+                cells.push(String(cellEls[ci].textContent || '').trim());
+            }
+            if (cells.length < 2) {
+                continue;
+            }
+            if (keys.length === 0) {
+                keys = cells.map(mapAtsTableHeaderKey);
+                continue;
+            }
+            var item = atsItemFromRowCells(cells, keys);
+            if (item) {
+                items.push(item);
+            }
+        }
+        return items;
+    }
+
+    function collectChatPlainText(chatEl) {
+        if (!chatEl) {
+            return '';
+        }
+        if (typeof chatEl.innerText === 'string' && chatEl.innerText.length > 40) {
+            return chatEl.innerText;
+        }
+        var chatText = '';
+        walkChatKitNodes(chatEl, function (n) {
+            if (n.nodeType === 3 && n.textContent) {
+                chatText += n.textContent + '\n';
+            }
+        });
+        return chatText;
+    }
+
     function parseAtsScoreFromChatText(text) {
         var s = String(text || '');
         var m = s.match(/ATS\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*%/i);
@@ -1075,21 +1236,45 @@ function initChatKitLibrarySendButtons(chatKitEl) {
         if (!chatEl) {
             return null;
         }
+        var items = [];
         var tables = [];
         walkChatKitNodes(chatEl, function (n) {
-            if (n.nodeType === 1 && n.tagName === 'TABLE') {
+            if (n.nodeType !== 1) {
+                return;
+            }
+            if (n.tagName === 'TABLE') {
                 tables.push(n);
             }
+            if (n.getAttribute && n.getAttribute('role') === 'table') {
+                var roleParsed = parseAtsItemsFromRoleTable(n);
+                if (roleParsed.length > items.length) {
+                    items = roleParsed;
+                }
+            }
         });
-        var items = [];
         var tableIndex;
         for (tableIndex = tables.length - 1; tableIndex >= 0; tableIndex--) {
-            var parsed = parseAtsItemsFromHtmlTable(tables[tableIndex]);
-            if (parsed.length > items.length) {
-                items = parsed;
+            var htmlParsed = parseAtsItemsFromHtmlTable(tables[tableIndex]);
+            if (htmlParsed.length > items.length) {
+                items = htmlParsed;
             }
         }
+        var chatText = collectChatPlainText(chatEl);
+        var mdParsed = parseAtsItemsFromMarkdownTable(chatText);
+        if (mdParsed.length > items.length) {
+            items = mdParsed;
+        }
         if (items.length < 1) {
+            postChatKitClientLog({
+                agent_id: agentId,
+                message:
+                    'extract_ats_table: 0 rows (tables=' +
+                    tables.length +
+                    ', textLen=' +
+                    chatText.length +
+                    ')',
+                source: 'persist_ats_analysis',
+            });
             return null;
         }
         var rowScores = [];
@@ -1108,12 +1293,6 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 suggestion: it.suggestion,
             });
         }
-        var chatText = '';
-        walkChatKitNodes(chatEl, function (n) {
-            if (n.nodeType === 3 && n.textContent) {
-                chatText += n.textContent + '\n';
-            }
-        });
         var atsScore = parseAtsScoreFromChatText(chatText);
         if (atsScore == null && rowScores.length > 0) {
             var sum = 0;
@@ -1148,12 +1327,19 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 if (window.chatApp && window.chatApp.showErrorMessage) {
                     window.chatApp.showErrorMessage(noTableMsg);
                 }
-            } else if (atsAutoPersistAttempt < 2) {
+            } else if (atsAutoPersistAttempt < 4) {
                 atsAutoPersistAttempt += 1;
                 clearTimeout(atsAutoPersistTimer);
                 atsAutoPersistTimer = setTimeout(function () {
                     tryAutoPersistAtsFromChat(false);
                 }, 3500);
+            } else {
+                var extractFailMsg =
+                    'Não foi possível ler a tabela no chat. Clique em «Guardar tabela no workspace» ou reabra «Passar no filtro».';
+                setStatus(extractFailMsg);
+                if (window.chatApp && window.chatApp.showErrorMessage) {
+                    window.chatApp.showErrorMessage(extractFailMsg);
+                }
             }
             return Promise.resolve({ success: false, skipped: true });
         }
@@ -1171,8 +1357,11 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 if (result && result.success !== false && !result.skipped) {
                     atsChatkitToolPersisted = true;
                     atsAutoPersistAttempt = 0;
-                } else if (manual && result && result.error) {
+                } else if (result && result.error) {
                     setStatus(result.error);
+                    if (manual && window.chatApp && window.chatApp.showErrorMessage) {
+                        window.chatApp.showErrorMessage(result.error);
+                    }
                 }
                 return result;
             })
@@ -1269,18 +1458,31 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 }),
             })
                 .then(function (res) {
-                    return res.json().then(function (data) {
+                    return res.text().then(function (text) {
+                        var data = {};
+                        try {
+                            data = text ? JSON.parse(text) : {};
+                        } catch (parseErr) {
+                            data = { message: text ? text.slice(0, 300) : 'Resposta inválida do servidor.' };
+                        }
                         return { ok: res.ok, status: res.status, data: data };
                     });
                 })
                 .then(function (o) {
                     if (!o.ok) {
-                        var errMsg =
-                            (o.data && o.data.message) ||
-                            'Não foi possível sincronizar a análise ATS com o workspace.';
+                        var errMsg = formatApiError(
+                            o.data,
+                            'Não foi possível sincronizar a análise ATS (HTTP ' + (o.status || '') + ').'
+                        );
                         postChatKitClientLog({
                             agent_id: agentId,
-                            message: String(errMsg).slice(0, 1500),
+                            message:
+                                'sync_fail_' +
+                                (o.status || '') +
+                                ': ' +
+                                String(errMsg).slice(0, 1200) +
+                                ' items=' +
+                                p.items.length,
                             source: 'persist_ats_analysis',
                         });
                         if (window.chatApp && window.chatApp.showErrorMessage) {
@@ -2016,6 +2218,18 @@ function initChatKitLibrarySendButtons(chatKitEl) {
     }
 
     syncJdButton();
+
+    if (chatKitTrailAts) {
+        var bootPair = getSelectedAtsPairIds();
+        if (bootPair.jdId > 0 && bootPair.userCvId > 0) {
+            try {
+                if (sessionStorage.getItem(atsPendingStorageKey(bootPair.jdId, bootPair.userCvId))) {
+                    atsAwaitingJdAnalysis = true;
+                    scheduleAtsCtaRefresh();
+                }
+            } catch (bootErr) {}
+        }
+    }
 }
 
 (function initChatKitDocumentDefaults() {

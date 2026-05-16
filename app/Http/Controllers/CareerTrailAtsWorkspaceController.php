@@ -13,7 +13,9 @@ use App\Support\CareerTrailAtsJdValidator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
+use Illuminate\Validation\ValidationException;
 
 class CareerTrailAtsWorkspaceController extends Controller
 {
@@ -197,17 +199,29 @@ class CareerTrailAtsWorkspaceController extends Controller
             $payload['ats_score'] ?? $payload['ats_percent'] ?? $payload['score'] ?? null
         );
 
-        $validated = validator($normalized, [
-            'jd_document_id' => ['required', 'integer', 'min:1'],
-            'user_cv_id' => ['required', 'integer', 'min:1'],
-            'ats_score' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'items' => ['required', 'array', 'min:1', 'max:50'],
-            'items.*.keyword' => ['required', 'string', 'max:255'],
-            'items.*.relevance' => ['nullable', 'string', 'max:16'],
-            'items.*.match_status' => ['nullable', 'string', 'max:32'],
-            'items.*.cv_snippet' => ['nullable', 'string', 'max:500'],
-            'items.*.suggestion' => ['nullable', 'string', 'max:500'],
-        ])->validate();
+        try {
+            $validated = validator($normalized, [
+                'jd_document_id' => ['required', 'integer', 'min:1'],
+                'user_cv_id' => ['required', 'integer', 'min:1'],
+                'ats_score' => ['nullable', 'numeric', 'min:0', 'max:100'],
+                'items' => ['required', 'array', 'min:1', 'max:50'],
+                'items.*.keyword' => ['required', 'string', 'max:255'],
+                'items.*.relevance' => ['nullable', 'string', 'max:16'],
+                'items.*.match_status' => ['nullable', 'string', 'max:32'],
+                'items.*.cv_snippet' => ['nullable', 'string', 'max:500'],
+                'items.*.suggestion' => ['nullable', 'string', 'max:500'],
+            ])->validate();
+        } catch (ValidationException $e) {
+            Log::warning('ats-analysis-sync validation failed', [
+                'user_id' => $request->user()?->id,
+                'jd_document_id' => $normalized['jd_document_id'] ?? null,
+                'user_cv_id' => $normalized['user_cv_id'] ?? null,
+                'items_count' => is_array($normalized['items'] ?? null) ? count($normalized['items']) : 0,
+                'errors' => $e->errors(),
+            ]);
+
+            throw $e;
+        }
 
         $user = $request->user();
         $jd = CareerTrailAtsJdValidator::validatedJdForUser((int) $validated['jd_document_id'], $user);
