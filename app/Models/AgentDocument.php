@@ -177,6 +177,9 @@ class AgentDocument extends Model
             return self::ATS_FLOW_NEEDS_CV_MESSAGE;
         }
 
+        JobApplicationStatusSync::reconcile($this);
+        $this->refresh();
+
         $status = $this->application_status ?? JobApplicationStatus::Draft;
         if (! $status->allowsAtsTableWorkspace()) {
             return self::ATS_FLOW_BLOCKED_MESSAGE;

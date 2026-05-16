@@ -8,6 +8,7 @@ use App\Models\AgentDocumentDefault;
 use App\Models\CareerTrailStep;
 use App\Models\UserCv;
 use App\Support\AgentDocumentLimits;
+use App\Services\JobApplicationStatusSync;
 
 final class ChatKitDocumentLibraryService
 {
@@ -71,7 +72,10 @@ final class ChatKitDocumentLibraryService
             ->where('is_active', true)
             ->with(['userCv:id,title,is_default'])
             ->orderByDesc('updated_at')
-            ->get(['id', 'title', 'user_cv_id', 'application_status']);
+            ->get(['id', 'title', 'user_cv_id', 'application_status', 'ats_submitted_at', 'cv_sent_to_employer_at', 'is_active'])
+            ->each(function (AgentDocument $jd): void {
+                JobApplicationStatusSync::reconcile($jd);
+            });
 
         $defaultsRow = AgentDocumentDefault::query()
             ->where('user_id', $userId)

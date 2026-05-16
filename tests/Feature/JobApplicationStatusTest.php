@@ -141,7 +141,11 @@ test('mark application submitted blocked when job status is not draft or submitt
         'user_cv_id' => $cv->id,
         'ats_submitted_at' => now(),
     ]);
-    $jd->forceFill(['application_status' => JobApplicationStatus::CvSent])->saveQuietly();
+    $jd->forceFill([
+        'application_status' => JobApplicationStatus::CvSent,
+        'cv_sent_to_employer_at' => now(),
+        'ats_submitted_at' => now(),
+    ])->saveQuietly();
     $jd->refresh();
     expect($jd->allowsAtsFlow())->toBeFalse();
 

@@ -717,8 +717,8 @@ test('workspace forbidden when job application status is not draft or submitted'
         'is_active' => true,
         'ats_submitted_at' => now()->subDay(),
         'cv_sent_to_employer_at' => now(),
+        'application_status' => \App\Enums\JobApplicationStatus::CvSent,
     ]);
-    $jd->updateQuietly(['application_status' => \App\Enums\JobApplicationStatus::CvSent]);
     $analysis = AtsAnalysis::query()->create([
         'user_id' => $user->id,
         'agent_document_id' => $jd->id,
@@ -778,8 +778,9 @@ test('workspace forbidden when application status is cv sent even with ats submi
         'user_cv_id' => $cv->id,
         'is_active' => true,
         'ats_submitted_at' => now(),
+        'cv_sent_to_employer_at' => now(),
     ]);
-    $jd->updateQuietly(['application_status' => \App\Enums\JobApplicationStatus::CvSent]);
+    $jd->forceFill(['application_status' => \App\Enums\JobApplicationStatus::CvSent])->saveQuietly();
     $jd->refresh();
     expect($jd->application_status)->toBe(\App\Enums\JobApplicationStatus::CvSent)
         ->and($jd->allowsAtsFlow())->toBeFalse();

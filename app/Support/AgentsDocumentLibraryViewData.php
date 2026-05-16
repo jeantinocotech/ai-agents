@@ -8,6 +8,7 @@ use App\Models\AgentDocument;
 use App\Models\AgentDocumentDefault;
 use App\Models\User;
 use App\Models\UserCv;
+use App\Services\JobApplicationStatusSync;
 
 final class AgentsDocumentLibraryViewData
 {
@@ -48,7 +49,10 @@ final class AgentsDocumentLibraryViewData
                     ->where('outcome', InterviewApplicationOutcome::Ongoing),
             ])
             ->orderByDesc('updated_at')
-            ->get();
+            ->get()
+            ->each(function (AgentDocument $jd): void {
+                JobApplicationStatusSync::reconcile($jd);
+            });
 
         $inactiveJds = AgentDocument::query()
             ->where('user_id', $user->id)
