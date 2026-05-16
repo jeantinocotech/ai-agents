@@ -1,11 +1,37 @@
 <?php
 
+use App\Models\Agent;
+use App\Models\AgentDocument;
 use App\Models\User;
 use App\Support\GracaPanelPreferences;
 use Database\Seeders\CareerTrailStepsSeeder;
 
 beforeEach(function () {
     $this->seed(CareerTrailStepsSeeder::class);
+});
+
+test('ats flow block reason explains missing profile cv on draft jd', function () {
+    $user = User::factory()->create();
+    $agent = Agent::query()->create([
+        'name' => 'ATS',
+        'price' => 0,
+        'model_type' => 'gpt-4o-mini',
+        'integration' => Agent::INTEGRATION_CHATKIT_WORKFLOW,
+        'chatkit_workflow_id' => 'wf_cv_block',
+        'is_active' => true,
+    ]);
+    $jd = AgentDocument::query()->create([
+        'user_id' => $user->id,
+        'agent_id' => $agent->id,
+        'type' => AgentDocument::TYPE_JD,
+        'title' => 'Sem CV',
+        'body' => 'body',
+        'is_active' => true,
+        'application_status' => \App\Enums\JobApplicationStatus::Draft,
+    ]);
+
+    expect($jd->allowsAtsFlow())->toBeFalse()
+        ->and($jd->atsFlowBlockReason())->toBe(AgentDocument::ATS_FLOW_NEEDS_CV_MESSAGE);
 });
 
 test('graca panel defaults to expanded when no preference stored', function () {

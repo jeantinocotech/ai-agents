@@ -338,7 +338,7 @@ class AgentDocumentsController extends Controller
         abort_unless($document->type === AgentDocument::TYPE_JD, 404);
         abort_unless($document->is_active, 404);
         abort_if($document->user_cv_id === null, 422, 'Associe um CV do perfil à vaga antes de registar o envio ao ATS.');
-        abort_unless($document->allowsAtsFlow(), 422, AgentDocument::ATS_FLOW_BLOCKED_MESSAGE);
+        abort_if($reason = $document->atsFlowBlockReason(), 422, $reason);
 
         $process = InterviewProcess::query()
             ->where('user_id', $request->user()->id)

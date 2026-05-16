@@ -26,7 +26,7 @@ class CareerTrailAtsWorkspaceController extends Controller
 
         $user = $request->user();
         $jd = CareerTrailAtsJdValidator::validatedJdForUser((int) $validated['jd_document_id'], $user);
-        abort_unless($jd->allowsAtsFlow(), 403, AgentDocument::ATS_FLOW_BLOCKED_MESSAGE);
+        abort_if($reason = $jd->atsFlowBlockReason(), 403, $reason);
         $userCv = UserCv::query()
             ->whereKey($jd->user_cv_id)
             ->where('user_id', $user->id)
@@ -148,12 +148,12 @@ class CareerTrailAtsWorkspaceController extends Controller
         $user = $request->user();
         $jd = CareerTrailAtsJdValidator::validatedJdForUser((int) $validated['jd_document_id'], $user);
 
-        if (! $jd->allowsAtsFlow()) {
+        if ($blockReason = $jd->atsFlowBlockReason()) {
             return response()->json([
                 'ok' => true,
                 'pair_valid' => false,
                 'allows_ats_flow' => false,
-                'message' => AgentDocument::ATS_FLOW_BLOCKED_MESSAGE,
+                'message' => $blockReason,
             ]);
         }
 
@@ -209,7 +209,7 @@ class CareerTrailAtsWorkspaceController extends Controller
         $user = $request->user();
         $jd = CareerTrailAtsJdValidator::validatedJdForUser((int) $validated['jd_document_id'], $user);
         abort_unless((int) $jd->user_cv_id === (int) $validated['user_cv_id'], 422, 'CV não corresponde à vaga.');
-        abort_unless($jd->allowsAtsFlow(), 403, AgentDocument::ATS_FLOW_BLOCKED_MESSAGE);
+        abort_if($reason = $jd->atsFlowBlockReason(), 403, $reason);
 
         $userCv = UserCv::query()
             ->whereKey($validated['user_cv_id'])
@@ -282,6 +282,6 @@ class CareerTrailAtsWorkspaceController extends Controller
         $analysis->loadMissing('jdDocument');
         $jd = $analysis->jdDocument;
         abort_if($jd === null, 404);
-        abort_unless($jd->allowsAtsFlow(), 403, AgentDocument::ATS_FLOW_BLOCKED_MESSAGE);
+        abort_if($reason = $jd->atsFlowBlockReason(), 403, $reason);
     }
 }

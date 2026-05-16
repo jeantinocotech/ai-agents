@@ -32,6 +32,7 @@
                     'user_cv_id' => isset($jdRow['user_cv_id']) ? (int) $jdRow['user_cv_id'] : null,
                     'title' => (string) ($jdRow['title'] ?? ''),
                     'allows_ats_flow' => (bool) ($jdRow['allows_ats_flow'] ?? false),
+                    'ats_flow_block_message' => $jdRow['ats_flow_block_message'] ?? null,
                 ];
             }
         }
@@ -506,7 +507,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
         }
         var row = chatkitJdMetaById[jdId] || chatkitJdMetaById[String(jdId)];
         if (row && row.allows_ats_flow === false) {
-            return atsFlowBlockedMessage;
+            return row.ats_flow_block_message || atsFlowBlockedMessage;
         }
         return null;
     }

@@ -156,18 +156,41 @@ class AgentDocument extends Model
 
     public const ATS_FLOW_BLOCKED_MESSAGE = 'O assistente ATS só está disponível com status «Em preparação» ou «Alinhamento ATS». Altere o status da vaga na lista antes de analisar ou abrir a tabela.';
 
+    public const ATS_FLOW_NEEDS_CV_MESSAGE = 'Associe um CV do perfil à vaga antes de usar «Passar no filtro». Na lista de vagas, edite a vaga e escolha o CV.';
+
+    public const ATS_FLOW_INACTIVE_MESSAGE = 'Esta vaga está inactiva. Reactive-a na lista de vagas para usar o assistente ATS.';
+
     /**
-     * Chat ATS, sync da tabela e workspace: apenas «Em preparação» ou «Alinhamento ATS».
+     * Motivo pelo qual o fluxo ATS (chat, sync, workspace) está bloqueado; null = permitido.
      */
-    public function allowsAtsFlow(): bool
+    public function atsFlowBlockReason(): ?string
     {
-        if ($this->type !== self::TYPE_JD || ! $this->is_active || $this->user_cv_id === null) {
-            return false;
+        if ($this->type !== self::TYPE_JD) {
+            return 'Documento inválido para análise ATS.';
+        }
+
+        if (! $this->is_active) {
+            return self::ATS_FLOW_INACTIVE_MESSAGE;
+        }
+
+        if ($this->user_cv_id === null) {
+            return self::ATS_FLOW_NEEDS_CV_MESSAGE;
         }
 
         $status = $this->application_status ?? JobApplicationStatus::Draft;
+        if (! $status->allowsAtsTableWorkspace()) {
+            return self::ATS_FLOW_BLOCKED_MESSAGE;
+        }
 
-        return $status->allowsAtsTableWorkspace();
+        return null;
+    }
+
+    /**
+     * Chat ATS, sync da tabela e workspace: CV de perfil + «Em preparação» ou «Alinhamento ATS».
+     */
+    public function allowsAtsFlow(): bool
+    {
+        return $this->atsFlowBlockReason() === null;
     }
 
     /** @alias allowsAtsFlow() */

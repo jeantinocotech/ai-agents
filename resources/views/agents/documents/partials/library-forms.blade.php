@@ -279,9 +279,9 @@
                         <button type="submit" class="inline-flex items-center rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700">
                             Salvar alterações
                         </button>
-                        @if ($editingJd->user_cv_id && ! $editingJd->allowsAtsFlow())
+                        @if ($blockReason = $editingJd->atsFlowBlockReason())
                             <p class="w-full text-right text-xs text-amber-800 sm:w-auto">
-                                {{ \App\Models\AgentDocument::ATS_FLOW_BLOCKED_MESSAGE }}
+                                {{ $blockReason }}
                             </p>
                         @endif
                         @if (! empty($atsAnalyzeChatUrl))

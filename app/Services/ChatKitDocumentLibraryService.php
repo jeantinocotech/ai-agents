@@ -97,6 +97,7 @@ final class ChatKitDocumentLibraryService
                 'paired_cv_label' => $pairedLabel,
                 'content_agent_id' => $jdQueryAgentId,
                 'allows_ats_flow' => $d->allowsAtsFlow(),
+                'ats_flow_block_message' => $d->atsFlowBlockReason(),
             ];
         })->values()->all();
 
