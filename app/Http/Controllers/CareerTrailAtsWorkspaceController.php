@@ -44,7 +44,10 @@ class CareerTrailAtsWorkspaceController extends Controller
 
         return redirect()
             ->route('career-trail.ats.workspace', $analysis)
-            ->with('status', 'Lista de ajustes preparada. Trabalhe keyword a keyword.');
+            ->with(
+                'status',
+                'Lista automática gerada pela app (pode demorar e não substitui o ChatKit). Para a tabela oficial e ATS %, use «Passar no filtro» no chat e aguarde «Tabela ATS guardada».'
+            );
     }
 
     public function show(Request $request, AtsAnalysis $analysis): View

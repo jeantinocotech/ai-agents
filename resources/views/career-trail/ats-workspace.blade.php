@@ -26,7 +26,12 @@
             @if ($analysis->source !== \App\Models\AtsAnalysis::SOURCE_CHATKIT_TOOL)
                 <div class="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950" role="alert">
                     Esta lista foi gerada automaticamente pela app e pode não coincidir com a tabela do ChatKit.
-                    Volte ao chat ATS, conclua a análise e aguarde a mensagem «Tabela ATS guardada» antes de ajustar o CV aqui.
+                    @if ($reanalyzeUrl)
+                        <a href="{{ $reanalyzeUrl }}" class="font-semibold text-amber-950 underline hover:text-amber-800">Abrir «Passar no filtro» no chat</a>
+                        e aguarde a mensagem «Tabela ATS guardada» — o workspace será actualizado com o ATS % oficial.
+                    @else
+                        Volte ao chat ATS, conclua a análise e aguarde a mensagem «Tabela ATS guardada» antes de ajustar o CV aqui.
+                    @endif
                 </div>
             @endif
 

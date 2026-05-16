@@ -809,3 +809,36 @@ test('workspace forbidden when application status is cv sent even with ats submi
 
     expect(CareerTrailStep::atsAnalyzeChatUrlForJd($user, $agent, (int) $jd->id))->toBeNull();
 });
+
+test('chatkit document defaults ignores legacy boolean cv id from client', function () {
+    $agent = Agent::query()->create([
+        'name' => 'ATS Defaults',
+        'price' => 0,
+        'model_type' => 'gpt-4o-mini',
+        'integration' => Agent::INTEGRATION_CHATKIT_WORKFLOW,
+        'chatkit_workflow_id' => 'wf_ats_def',
+        'is_active' => true,
+    ]);
+    $atsStep = CareerTrailStep::query()->where('slug', 'ats')->firstOrFail();
+    $atsStep->update(['agent_id' => $agent->id]);
+
+    $user = User::factory()->create();
+    UserCareerTrailProgress::query()->updateOrCreate(
+        ['user_id' => $user->id],
+        [
+            'current_step_id' => $atsStep->id,
+            'max_sort_order_reached' => (int) $atsStep->sort_order,
+            'started_at' => now(),
+        ]
+    );
+
+    $this->actingAs($user)
+        ->postJson(route('agents.documents.defaults', $agent), [
+            'default_cv_document_id' => true,
+        ])
+        ->assertOk()
+        ->assertJsonPath('success', true)
+        ->assertJsonFragment([
+            'message' => 'CV de perfil não usa as preferências padrão desta biblioteca.',
+        ]);
+});

@@ -467,6 +467,23 @@ class AgentDocumentsController extends Controller
     {
         CareerTrailAgentAccess::abortUnlessCanAccess($request->user(), $agent);
 
+        if ($request->has('default_cv_document_id') && ! $request->has('default_jd_document_id')) {
+            $rawCv = $request->input('default_cv_document_id');
+            $isProfileCvRef = is_string($rawCv) && str_starts_with($rawCv, 'p');
+            $isInvalidLegacyClient = $rawCv === true || $rawCv === 'true';
+
+            if ($rawCv === null || $rawCv === '' || $isProfileCvRef || $isInvalidLegacyClient) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'CV de perfil não usa as preferências padrão desta biblioteca.',
+                    ]);
+                }
+
+                return redirect()->back();
+            }
+        }
+
         $validated = $request->validate([
             'default_cv_document_id' => 'sometimes|nullable|integer|exists:agent_documents,id',
             'default_jd_document_id' => 'sometimes|nullable|integer|exists:agent_documents,id',

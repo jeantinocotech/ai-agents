@@ -687,8 +687,19 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 }
 
                 if (o.data.workspace_url && o.data.source === 'chatkit_tool') {
+                    var chatkitScore =
+                        o.data.ats_score != null
+                            ? ' <span class="text-slate-500">(ATS ' +
+                              Math.round(Number(o.data.ats_score)) +
+                              '%)</span>'
+                            : '';
                     actions.innerHTML =
-                        '<p class="mb-2 text-[11px] leading-snug text-slate-600"</p>';
+                        '<a href="' +
+                        o.data.workspace_url +
+                        '" class="' +
+                        btnClassViolet +
+                        '">Ver análise e ajustar CV</a>' +
+                        chatkitScore;
                     return;
                 }
 
@@ -1031,12 +1042,12 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                         null;
                     if (window.chatApp && window.chatApp.showSuccessMessage) {
                         window.chatApp.showSuccessMessage(
-                            atsReanalyzeWorkspaceUrl && returnUrl
-                                ? 'Tabela actualizada — a redireccionar para o workspace…'
+                            returnUrl
+                                ? 'Tabela ATS guardada — a abrir o workspace…'
                                 : 'Tabela ATS guardada — pode ajustar o CV no workspace.'
                         );
                     }
-                    if (atsReanalyzeWorkspaceUrl && returnUrl) {
+                    if (returnUrl) {
                         var dest =
                             returnUrl +
                             (returnUrl.indexOf('?') >= 0 ? '&' : '?') +
@@ -1560,12 +1571,14 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                 }
                 return;
             }
+            window.chatkitSuppressDefaultPersist = true;
             jdSel.value = String(jdid);
             cvSel.value = cvWanted;
             jdSel.dispatchEvent(new Event('change', { bubbles: true }));
             cvSel.dispatchEvent(new Event('change', { bubbles: true }));
             validateAtsPairBeforeJdSendAsync().then(function (autoFlowErr) {
                 if (autoFlowErr) {
+                    window.chatkitSuppressDefaultPersist = false;
                     setStatus(autoFlowErr);
                     postChatKitClientLog({
                         agent_id: agentId,
@@ -1602,10 +1615,15 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                     }
                 }
                 setTimeout(function () {
-                    sendAtsCvAndJdBundled({ reanalyze: isReanalyze }).catch(function () {});
+                    sendAtsCvAndJdBundled({ reanalyze: isReanalyze })
+                        .catch(function () {})
+                        .finally(function () {
+                            window.chatkitSuppressDefaultPersist = false;
+                        });
                 }, 400);
             });
         } catch (err) {
+            window.chatkitSuppressDefaultPersist = false;
             console.error(err);
         }
     })();
@@ -1791,12 +1809,22 @@ function initChatKitLibrarySendButtons(chatKitEl) {
     }
 
     function persistCvDefault() {
-        if (!cvChkSave || !cvEl) {
+        if (!cvChkSave || !cvEl || window.chatkitSuppressDefaultPersist) {
             return;
         }
-        postDefaults({
-            default_cv_document_id: cvChkSave.checked ? true : null,
-        }, cvDefaultsUrl);
+        if (!cvChkSave.checked) {
+            postDefaults({ default_cv_document_id: null }, cvDefaultsUrl);
+            return;
+        }
+        var raw = String(cvEl.value || '');
+        if (/^p\d+$/.test(raw)) {
+            return;
+        }
+        var cvDocId = parseInt(raw.replace(/\D/g, ''), 10) || 0;
+        if (cvDocId <= 0) {
+            return;
+        }
+        postDefaults({ default_cv_document_id: cvDocId }, cvDefaultsUrl);
     }
 
     function persistJdDefault() {
