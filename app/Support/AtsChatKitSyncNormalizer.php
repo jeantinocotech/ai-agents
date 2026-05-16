@@ -205,10 +205,10 @@ final class AtsChatKitSyncNormalizer
         $preamble = self::scorePreambleFromAssistantText($text);
 
         $patterns = [
-            '/ATS\s*%?\s*estimado\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*%/iu',
+            '/ATS\s*%?\s*estimado\b[^%\n]{0,120}?(\d+(?:[.,]\d+)?)\s*%/iu',
             '/ATS\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*%/iu',
-            '/(\d+(?:[.,]\d+)?)\s*%\s*(?:de\s+)?(?:compatibilidade|estimado)/iu',
-            '/(?:compatibilidade|estimado)\s*(?:ATS)?\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*%/iu',
+            '/(\d+(?:[.,]\d+)?)\s*%\s*(?:de\s+)?(?:compatibilidade|ader[eê]ncia|estimado)/iu',
+            '/(?:compatibilidade|ader[eê]ncia|estimado)\s*(?:ATS)?\s*[:=]?\s*(\d+(?:[.,]\d+)?)\s*%/iu',
             '/ATS\s*%?\s*(\d+(?:[.,]\d+)?)\s*%/iu',
         ];
 

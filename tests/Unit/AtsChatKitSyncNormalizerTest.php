@@ -53,6 +53,25 @@ test('estimate score from items helper', function () {
     expect($score)->toBe(100.0);
 });
 
+test('parses ats percent estimado de aderencia before markdown table', function () {
+    $markdown = <<<'MD'
+ATS % estimado de aderência: 69%
+
+| Key word | Relevância | Include/Missing | Comments |
+| --- | --- | --- | --- |
+| Projetos financeiros | Alta | Ausente | Falta setor financeiro. |
+MD;
+
+    $normalized = AtsChatKitSyncNormalizer::normalize([
+        'jd_document_id' => 44,
+        'user_cv_id' => 11,
+        'raw_table_text' => $markdown,
+        'items' => [],
+    ]);
+
+    expect($normalized['ats_score'])->toBe(69.0);
+});
+
 test('parses ats percent estimado line before markdown table', function () {
     $markdown = <<<'MD'
 ATS % estimado: 74%

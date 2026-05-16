@@ -1110,11 +1110,36 @@ function initChatKitLibrarySendButtons(chatKitEl) {
             .then(function (o) {
                 atsAutoPersistInFlight = false;
                 if (o.ok) {
+                    var syncedScore =
+                        o.data && o.data.ats_score != null ? Number(o.data.ats_score) : null;
+                    var syncedItems = (o.data && o.data.items_count) || 0;
+                    var scoreLooksWrong =
+                        o.data &&
+                        o.data.score_estimated === true &&
+                        syncedScore === 0 &&
+                        syncedItems >= 5 &&
+                        attempt < 8;
+                    if (scoreLooksWrong) {
+                        postChatKitClientLog({
+                            agent_id: agentId,
+                            message:
+                                'ats_thread_sync retry: score 0 estimated, items=' +
+                                syncedItems,
+                            source: 'persist_ats_analysis',
+                        });
+                        clearTimeout(atsAutoPersistTimer);
+                        atsAutoPersistTimer = setTimeout(function () {
+                            syncAtsFromServerThread(attempt + 1);
+                        }, 3500);
+                        return { success: false, retrying: true };
+                    }
                     postChatKitClientLog({
                         agent_id: agentId,
                         message:
                             'ats_thread_sync ok items=' +
-                            String((o.data && o.data.items_count) || '?'),
+                            String(syncedItems) +
+                            ' score=' +
+                            String(syncedScore != null ? syncedScore : '?'),
                         source: 'persist_ats_analysis',
                     });
                     return finishAtsSyncResponse(o, pair.jdId, pair.userCvId);
@@ -1544,7 +1569,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                     'Tabela visível no chat. A sincronizar com o workspace…'
                 );
                 scheduleAtsThreadSyncFallback();
-            }, 1600);
+            }, 2800);
         }
 
         syncJdButton();
