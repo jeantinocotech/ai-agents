@@ -5,13 +5,11 @@ namespace App\Http\Controllers;
 use App\Models\AgentDocument;
 use App\Models\AtsAnalysis;
 use App\Models\CareerTrailStep;
-use App\Models\UserCareerTrailProgress;
 use App\Services\CareerTrailAgentAccess;
 use App\Services\CareerTrailProgressService;
 use App\Support\AgentsDocumentLibraryViewData;
 use App\Support\AgentsDocumentTrailListFilter;
 use App\Support\CareerTrailStepCompletion;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -25,7 +23,6 @@ class CareerTrailController extends Controller
 
         $user->refresh();
 
-        $currentStep = $bundle['current'];
         $atsTrailAgent = $bundle['steps']->firstWhere('slug', 'ats')?->resolvedAgent();
         $atsAllowsCheck = $atsTrailAgent !== null
             && $atsTrailAgent->is_active
@@ -34,9 +31,7 @@ class CareerTrailController extends Controller
         return view('career-trail.index', [
             'steps' => $bundle['steps'],
             'progress' => $bundle['progress'],
-            'currentStep' => $currentStep,
-            'currentStepReadiness' => CareerTrailStepCompletion::readiness($user, $currentStep),
-            'currentStepChecklist' => CareerTrailStepCompletion::checklist($user, $currentStep),
+            'maxReached' => $bundle['maxReached'],
             'atsStepAgent' => $atsTrailAgent,
             'atsAllowsCheck' => $atsAllowsCheck,
             'coverLetterStepAgent' => $bundle['steps']->firstWhere('slug', 'cover-letter')?->resolvedAgent(),
@@ -128,108 +123,5 @@ class CareerTrailController extends Controller
             'interviewPrepAgent' => $interviewPrepAgent,
             'canAccessInterviewPrep' => $canAccessInterviewPrep,
         ]);
-    }
-
-    public function advance(Request $request): RedirectResponse
-    {
-        $user = $request->user();
-        $progress = UserCareerTrailProgress::query()
-            ->where('user_id', $user->id)
-            ->firstOrFail();
-
-        $current = $progress->currentStep;
-        if (! $current) {
-            return redirect()->route('career-trail.index')
-                ->with('error', 'Estado da trilha inválido.');
-        }
-
-        $next = CareerTrailStep::query()
-            ->where('is_active', true)
-            ->where('sort_order', '>', $current->sort_order)
-            ->orderBy('sort_order')
-            ->first();
-
-        if (! $next) {
-            return redirect()->route('career-trail.index')
-                ->with('info', 'Já está na última etapa da trilha.');
-        }
-
-        $gate = CareerTrailStepCompletion::readiness($user, $current);
-        if (! $gate['ready']) {
-            return redirect()->route('career-trail.index')
-                ->with('error', $gate['blocked_message'] ?? 'Complete os requisitos desta etapa antes de avançar.');
-        }
-
-        if ($current->slug === 'ats') {
-            $landingStep = CareerTrailStep::landingStepAfterCompletedAts();
-            if (! $landingStep) {
-                return redirect()->route('career-trail.index')
-                    ->with('error', 'Configuração da trilha incompleta.');
-            }
-
-            $motivationStep = CareerTrailStep::query()
-                ->where('is_active', true)
-                ->where('slug', 'cover-letter')
-                ->first();
-            $interviewStep = CareerTrailStep::query()
-                ->where('is_active', true)
-                ->where('slug', 'interviews')
-                ->first();
-
-            $newMax = (int) ($progress->max_sort_order_reached ?? 0);
-            foreach ([$motivationStep, $interviewStep] as $stepUnlock) {
-                if ($stepUnlock !== null) {
-                    $newMax = max($newMax, (int) $stepUnlock->sort_order);
-                }
-            }
-
-            $progress->current_step_id = $landingStep->id;
-            $progress->max_sort_order_reached = $newMax;
-            $progress->save();
-
-            return redirect()->route('career-trail.index')
-                ->with('status', 'Motivação (opcional) e Entrevista estão desbloqueadas. Etapa sugerida: '.$landingStep->title.'.');
-        }
-
-        $progress->current_step_id = $next->id;
-        $progress->max_sort_order_reached = max(
-            (int) ($progress->max_sort_order_reached ?? 0),
-            (int) $next->sort_order
-        );
-        $progress->save();
-
-        return redirect()->route('career-trail.index')
-            ->with('status', 'Avançou para: '.$next->title);
-    }
-
-    public function back(Request $request): RedirectResponse
-    {
-        $user = $request->user();
-        $progress = UserCareerTrailProgress::query()
-            ->where('user_id', $user->id)
-            ->firstOrFail();
-
-        $current = $progress->currentStep;
-        if (! $current) {
-            return redirect()->route('career-trail.index')
-                ->with('error', 'Estado da trilha inválido.');
-        }
-
-        $prev = CareerTrailStep::query()
-            ->where('is_active', true)
-            ->where('sort_order', '<', $current->sort_order)
-            ->orderByDesc('sort_order')
-            ->first();
-
-        if (! $prev) {
-            return redirect()->route('career-trail.index')
-                ->with('info', 'Já está na primeira etapa.');
-        }
-
-        $progress->current_step_id = $prev->id;
-        $progress->save();
-
-        return redirect()->route('career-trail.index')
-            ->with('status', 'Voltou para: '.$prev->title);
     }
 }

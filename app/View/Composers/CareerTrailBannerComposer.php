@@ -33,12 +33,9 @@ final class CareerTrailBannerComposer
             return;
         }
 
-        /** @var \App\Models\CareerTrailStep $current */
-        $current = $bundle['current'];
         $steps = $bundle['steps'];
-
-        $progress = $bundle['progress'];
-        $maxReached = (int) ($progress->max_sort_order_reached ?? $current->sort_order);
+        $maxReached = $bundle['maxReached'];
+        $frontierStep = $bundle['frontierStep'];
 
         $atsTrailAgentForBanner = $steps->firstWhere('slug', 'ats')?->resolvedAgent();
         $atsAllowsCheck = $atsTrailAgentForBanner !== null
@@ -48,8 +45,8 @@ final class CareerTrailBannerComposer
         $view->with('careerTrailContext', [
             'user' => $user,
             'steps' => $steps,
-            'current' => $current,
             'maxReached' => $maxReached,
+            'frontierStep' => $frontierStep,
             'tokenBalance' => (int) $user->token_balance,
             'atsStepAgent' => $atsTrailAgentForBanner,
             'atsAllowsCheck' => $atsAllowsCheck,

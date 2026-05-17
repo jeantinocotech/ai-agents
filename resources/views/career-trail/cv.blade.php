@@ -82,17 +82,13 @@
                                                 <div class="inline-flex flex-wrap items-center justify-end gap-2">
                                                     <form method="post" action="{{ route('career-trail.cv.duplicate', $cv) }}" class="inline">
                                                         @csrf
-                                                        <button type="submit" class="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-800 hover:bg-slate-50">
-                                                            Duplicar
-                                                        </button>
+                                                        <x-ui.button type="submit" variant="secondary" size="xs">Duplicar</x-ui.button>
                                                     </form>
                                                     <form method="post" action="{{ route('career-trail.cv.destroy', $cv) }}" class="inline"
                                                           onsubmit="return confirm('Eliminar este CV da conta? Esta ação não pode ser anulada.');">
                                                         @csrf
                                                         @method('DELETE')
-                                                        <button type="submit" class="rounded-lg px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-50">
-                                                            Eliminar
-                                                        </button>
+                                                        <x-ui.button type="submit" variant="danger" size="xs">Eliminar</x-ui.button>
                                                     </form>
                                                 </div>
                                             </td>
@@ -107,15 +103,14 @@
 
 
                     <div class="flex flex-wrap items-center justify-end gap-2 rounded-xl border border-slate-200 bg-slate-50/50 p-2.5">
-                        <label class="inline-flex cursor-pointer items-center rounded-lg bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-slate-800">
+                        <label class="{{ \App\Support\UiButton::classes('outline', 'sm') }} cursor-pointer">
                             <span>Upload CV</span>
                             <input type="file" id="cv_extract_file_top" accept=".txt,.pdf,.doc,.docx" class="sr-only" aria-label="Ficheiro para extrair texto">
                         </label>
                         @if ($cvAssistantChatUrl)
-                            <button type="button" id="btn-open-cv-assistant"
-                                    class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700">
+                            <x-ui.button type="button" id="btn-open-cv-assistant" variant="primary" size="sm">
                                 Ajustar / Criar CV
-                            </button>
+                            </x-ui.button>
                         @endif
                     </div>
                     <div id="sec-cv-form" class="scroll-mt-24">
@@ -140,7 +135,7 @@
                         <div>
                             <span class="block text-sm font-medium text-slate-700">Tenho um CV <span class="font-normal text-slate-500"></span></span>
                             <div class="mt-1 flex flex-wrap items-center gap-3">
-                                <label class="inline-flex cursor-pointer items-center rounded-lg bg-indigo-50 px-4 py-2 text-sm font-medium text-indigo-700 shadow-sm ring-1 ring-inset ring-indigo-100 hover:bg-indigo-100 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-indigo-500">
+                                <label class="{{ \App\Support\UiButton::classes('outline', 'sm') }} cursor-pointer">
                                     <span>Selecionar arquivo</span>
                                     <input type="file" id="cv_extract_file" accept=".txt,.pdf,.doc,.docx" class="sr-only">
                                 </label>
@@ -222,20 +217,17 @@
                         @endif
 
                         <div class="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200/80 pt-3">
-                            <button type="submit" class="inline-flex items-center rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700">
+                            <x-ui.button type="submit" variant="primary" size="md">
                                 {{ $formCv ? 'Salvar alterações' : 'Salvar CV' }}
-                            </button>
+                            </x-ui.button>
                             @if (! empty($cvAnalyzeChatUrl))
                                 @if ($canAnalyzeCvNow)
-                                    <a id="btn-analisar-cv" href="{{ $cvAnalyzeChatUrl }}"
-                                       @class([
-                                           'inline-flex items-center rounded-xl border border-indigo-300 bg-white px-5 py-2.5 text-sm font-semibold text-indigo-800 shadow-sm hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2',
-                                           'ring-2 ring-indigo-400 ring-offset-2' => session('show_analisar'),
-                                       ])>
+                                    <x-ui.button id="btn-analisar-cv" variant="outline" size="md" href="{{ $cvAnalyzeChatUrl }}"
+                                                 @class(['ring-2 ring-indigo-400 ring-offset-2' => session('show_analisar')])>
                                         Analisar CV
-                                    </a>
+                                    </x-ui.button>
                                 @else
-                                    <span class="inline-flex cursor-not-allowed items-center rounded-xl border border-slate-200 bg-slate-100 px-5 py-2.5 text-sm font-semibold text-slate-400"
+                                    <span class="{{ \App\Support\UiButton::classes('secondary', 'md') }} cursor-not-allowed opacity-40"
                                           role="note"
                                           title="Grave o CV primeiro; depois pode abrir a análise no assistente.">
                                         Analisar CV

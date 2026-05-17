@@ -91,6 +91,22 @@ class CareerTrailGracaMessagesSeeder extends Seeder
                     ]
                 );
             }
+
+            $clLibrarySeed = trim((string) config('career_trail.cover_letter_library_graca_fallback'));
+            if ($clLibrarySeed !== '') {
+                CareerTrailGracaMessage::query()->firstOrCreate(
+                    [
+                        'process_key' => 'career_trail',
+                        'career_trail_step_id' => $coverStep->id,
+                        'slot' => CareerTrailGracaSlots::COVER_LETTER_LIBRARY_INTRO,
+                        'sort_order' => 0,
+                    ],
+                    [
+                        'body' => $clLibrarySeed,
+                        'is_active' => true,
+                    ]
+                );
+            }
         }
 
         $interviewsStep = CareerTrailStep::query()->where('slug', 'interviews')->first();

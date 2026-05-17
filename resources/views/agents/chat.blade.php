@@ -16,6 +16,11 @@
                                        class="shrink-0 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline">
                                         &larr; Vagas
                                     </a>
+                                @elseif (($compactTrailStep->slug ?? null) === 'cover-letter')
+                                    <a href="{{ route('agents.motivation-letters.index', $agent) }}"
+                                       class="shrink-0 text-xs font-medium text-indigo-600 hover:text-indigo-800 hover:underline">
+                                        &larr; Cartas
+                                    </a>
                                 @endif
                                 <h2 class="text-base font-semibold tracking-tight text-slate-900 sm:text-lg">{{ $compactTrailChatTitle ?? 'Chat' }}</h2>
                             </div>
@@ -77,13 +82,12 @@
                                     <strong id="token-balance-value" data-live-token-balance class="font-semibold tabular-nums text-slate-900">{{ number_format($tokenBalance ?? 0, 0, ',', '.') }}</strong>
                                 </span>
                             @endif
-                            <a href="{{ route('tokens.purchase') }}"
-                               class="inline-flex items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-indigo-500/25 transition hover:from-indigo-500 hover:to-violet-500 hover:shadow-lg hover:shadow-indigo-500/30 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                            <x-ui.button variant="primary" size="sm" href="{{ route('tokens.purchase') }}" class="gap-1.5 shadow-md">
                                 <svg class="h-4 w-4 shrink-0 opacity-90" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v12m6-6H6" />
                                 </svg>
                                 Comprar tokens
-                            </a>
+                            </x-ui.button>
                         </div>
                     </div>
                     @endif
@@ -104,6 +108,7 @@
                         @include('agents.partials.chatkit-workspace', [
                             'compactTrail' => $compactTrailChatUi ?? false,
                             'compactCvOnly' => $compactTrailCvOnly,
+                            'compactTrailStep' => $compactTrailStep ?? null,
                             'atsPairContext' => $atsPairContext ?? null,
                         ])
                         @if (($compactTrailStep->slug ?? null) === 'ats')
@@ -126,10 +131,9 @@
                                 <input type="text" id="userMessage"
                                     class="mr-0 min-w-0 flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm"
                                     placeholder="Digite sua mensagem...">
-                                <button type="submit"
-                                        class="shrink-0 rounded-lg bg-blue-500 px-3 py-2 text-sm text-white hover:bg-blue-600">
+                                <x-ui.button type="submit" variant="primary" size="sm" class="shrink-0">
                                     Enviar
-                                </button>
+                                </x-ui.button>
                             </form>
 
                             <div class="flex left mr-4 mt-2">

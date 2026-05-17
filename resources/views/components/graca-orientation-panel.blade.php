@@ -51,20 +51,12 @@
         <p class="font-medium">Manter a orientação oculta em todas as páginas da trilha?</p>
         <p class="mt-1 text-xs text-violet-900/80">Pode voltar a expandir em qualquer momento clicando em «Mostrar».</p>
         <div class="mt-3 flex flex-wrap gap-2">
-            <button
-                type="button"
-                data-graca-prompt-page-only
-                class="rounded-lg border border-violet-300 bg-white px-3 py-1.5 text-xs font-semibold text-violet-900 shadow-sm hover:bg-violet-50"
-            >
+            <x-ui.button type="button" data-graca-prompt-page-only variant="outline" size="xs">
                 Só nesta página
-            </button>
-            <button
-                type="button"
-                data-graca-prompt-global
-                class="rounded-lg bg-violet-700 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-violet-800"
-            >
+            </x-ui.button>
+            <x-ui.button type="button" data-graca-prompt-global variant="primary" size="xs">
                 Todas as páginas
-            </button>
+            </x-ui.button>
         </div>
     </div>
 </details>

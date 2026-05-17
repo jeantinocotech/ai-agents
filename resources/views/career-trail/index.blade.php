@@ -24,47 +24,9 @@
             @endif
 
             @php
-                $maxReached = (int) ($progress->max_sort_order_reached ?? $currentStep->sort_order);
                 /** @var \App\Models\User $trailMapUser — alinhamento com badge da trilha suspensa */
                 $trailMapUser = auth()->user();
             @endphp
-
-            @if ($currentStep->slug === 'cv' && count($currentStepChecklist ?? []) > 0)
-                <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50/80 px-5 py-4 shadow-sm">
-                    <h3 class="text-sm font-semibold text-amber-950">Curriculum</h3>
-                    <p class="mt-2 text-sm text-amber-950/90">Trabalhe o conteúdo do seu CV na página dedicada — o checklist completo está lá.</p>
-                    <a href="{{ route('career-trail.cv') }}" class="mt-4 inline-flex items-center rounded-lg bg-amber-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-950">
-                        Abrir página Curriculum
-                    </a>
-                    @if (! ($currentStepReadiness['ready'] ?? false) && ! empty($currentStepReadiness['blocked_message']))
-                        <p class="mt-3 text-xs text-amber-950/90">{{ $currentStepReadiness['blocked_message'] }}</p>
-                    @endif
-                </div>
-            @elseif (count($currentStepChecklist ?? []) > 0)
-                <div class="mb-6 rounded-xl border border-amber-200 bg-amber-50/80 px-5 py-4 shadow-sm">
-                    <h3 class="text-sm font-semibold text-amber-950">Para concluir esta etapa e avançar</h3>
-                    <ul class="mt-3 space-y-2 text-sm">
-                        @foreach ($currentStepChecklist as $item)
-                            <li @class([
-                                'flex gap-2',
-                                'text-emerald-900' => $item['done'],
-                                'text-slate-700' => ! $item['done'],
-                            ])>
-                                <span class="shrink-0 font-bold" aria-hidden="true">{{ $item['done'] ? '✓' : '○' }}</span>
-                                <span>{{ $item['label'] }}</span>
-                            </li>
-                        @endforeach
-                    </ul>
-                    @if (! ($currentStepReadiness['ready'] ?? false) && ! empty($currentStepReadiness['blocked_message']))
-                        <p class="mt-3 text-xs text-amber-950/90">{{ $currentStepReadiness['blocked_message'] }}</p>
-                    @endif
-                    @if ($currentStep->slug === 'ats')
-                        <p class="mt-3 text-xs text-amber-950/70">
-                            Você pode se candidatar a várias vagas em paralelo na biblioteca ATS; para avançar na trilha basta ter <strong>pelo menos uma</strong> vaga com JD e CV associados. Quando cumprir estes requisitos, <strong>Motivação</strong> (opcional) e <strong>Entrevista</strong> ficam disponíveis em paralelo na barra; ao clicar em "Avançar", a etapa inicial sugerida é Entrevista.
-                        </p>
-                    @endif
-                </div>
-            @endif
 
             <div class="overflow-hidden rounded-2xl border border-violet-100 bg-gradient-to-br from-violet-50 via-white to-indigo-50/80 shadow-sm">
                 <x-graca-orientation-panel
@@ -81,7 +43,7 @@
                             <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900">{{ config('career_trail.mentor_label', 'Sra. Graça') }}</h1>
                             <x-graca-slot
                                 :placement="\App\Support\CareerTrailGracaSlots::TRAIL_STEP_HEADER"
-                                :step="$currentStep"
+                                :step="null"
                                 paragraph-class="mt-2 text-sm leading-relaxed text-slate-600"
                                 :fallback="'Psicóloga, coaching e aconselhadora de carreira. Vou acompanhar cada etapa com calma e objetivos claros — começamos pelo essencial e avançamos no seu ritmo.'"
                             />
@@ -91,29 +53,26 @@
 
                 <div class="border-t border-violet-100/80 px-6 py-6 sm:px-8">
                     <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Etapas e assistentes</h2>
-                    <p class="mt-1 text-xs text-slate-500">Em cada passo encontram-se o objetivo da etapa e, quando configurado, o assistente correspondente. Desbloqueia ao atingir essa etapa na ordem da trilha (ou antes, se já tiver ultrapassado).</p>
+                    <p class="mt-1 text-xs text-slate-500">Cada passo desbloqueia ao cumprir o anterior. Depois de desbloqueado, pode navegar livremente entre as etapas disponíveis.</p>
 
                     <ol class="mt-6 space-y-3">
                         @foreach ($steps as $step)
                             @php
-                                $isCurrent = (int) $step->id === (int) $currentStep->id;
                                 $isUnlocked = (int) $step->sort_order <= $maxReached;
                                 $stepAgent = $step->resolvedAgent();
-                                $stepTrailDone = $isUnlocked && \App\Support\CareerTrailStepCompletion::bannerShowsCompletedBadge($trailMapUser, $step, $currentStep);
+                                $stepTrailDone = $isUnlocked && \App\Support\CareerTrailStepCompletion::bannerShowsCompletedBadge($trailMapUser, $step);
                             @endphp
                             <li>
                                 <div
                                     @class([
                                         'flex gap-4 rounded-xl border p-4 transition',
-                                        'border-violet-400 bg-violet-50/90 shadow-sm ring-1 ring-violet-200' => $isCurrent,
-                                        'border-emerald-200 bg-emerald-50/50' => $isUnlocked && ! $isCurrent,
+                                        'border-emerald-200 bg-emerald-50/50' => $isUnlocked,
                                         'border-slate-200 bg-slate-50/70' => ! $isUnlocked,
                                     ])
                                 >
                                     <div @class([
                                         'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold tabular-nums',
-                                        'bg-violet-600 text-white' => $isCurrent,
-                                        'bg-emerald-500 text-white' => $isUnlocked && ! $isCurrent,
+                                        'bg-emerald-500 text-white' => $isUnlocked,
                                         'border border-slate-300 bg-white text-slate-400' => ! $isUnlocked,
                                     ])>
                                         @if ($stepTrailDone)
@@ -126,10 +85,10 @@
                                         <div>
                                             <div class="flex flex-wrap items-center gap-2">
                                                 <h3 class="font-semibold text-slate-900">{{ $step->title }}</h3>
-                                                @if ($isCurrent)
-                                                    <span class="rounded-full bg-violet-600 px-2 py-0.5 text-xs font-medium text-white">Etapa atual</span>
+                                                @if ($stepTrailDone)
+                                                    <span class="rounded-full border border-emerald-300 bg-white px-2 py-0.5 text-xs font-medium text-emerald-800">Concluído</span>
                                                 @elseif ($isUnlocked)
-                                                    <span class="rounded-full border border-emerald-300 bg-white px-2 py-0.5 text-xs font-medium text-emerald-800">Assistente disponível</span>
+                                                    <span class="rounded-full border border-emerald-300 bg-white px-2 py-0.5 text-xs font-medium text-emerald-800">Disponível</span>
                                                 @else
                                                     <span class="rounded-full border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-600">Bloqueado</span>
                                                 @endif
@@ -265,118 +224,7 @@
                         @endforeach
                     </ol>
 
-                    @if ($currentStep->short_description)
-                        <div class="mt-8 rounded-xl border border-indigo-100 bg-indigo-50/40 p-5">
-                            <h3 class="text-sm font-semibold text-indigo-950">Foco nesta etapa</h3>
-                            <p class="mt-2 text-sm text-indigo-950/90">{{ $currentStep->short_description }}</p>
-                            @php
-                                $focusTrailUrl = (int) $currentStep->sort_order <= $maxReached ? $currentStep->trailChatUrl() : null;
-                                $focusPrimaryLabel = match ($currentStep->slug) {
-                                    'cv' => 'CV completo',
-                                    'ats' => 'Hub ATS',
-                                    'cover-letter' => 'Manter',
-                                    'interviews' => 'Manter',
-                                    default => 'Abrir etapa',
-                                };
-                            @endphp
-                            @if ($focusTrailUrl || $currentStep->slug === 'ats' || $currentStep->slug === 'cover-letter' || $currentStep->slug === 'interviews')
-                                <div class="mt-4 flex flex-wrap gap-3">
-                                    @if ($currentStep->slug === 'cv' && ($cvCreatorChatUrl ?? null))
-                                        <a href="{{ $focusTrailUrl }}"
-                                           class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700">
-                                            {{ $focusPrimaryLabel }}
-                                        </a>
-                                        <a href="{{ $cvCreatorChatUrl }}"
-                                           class="inline-flex items-center rounded-lg border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-950 shadow-sm hover:bg-indigo-50">
-                                            CV Creator
-                                        </a>
-                                    @elseif ($currentStep->slug === 'cv')
-                                        <a href="{{ $focusTrailUrl }}"
-                                           class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700">
-                                            {{ $focusPrimaryLabel }}
-                                        </a>
-                                    @elseif ($currentStep->slug === 'ats')
-                                        @if ($focusTrailUrl)
-                                            <a href="{{ route('career-trail.ats') }}"
-                                               class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700">
-                                                Biblioteca ATS
-                                            </a>
-                                        @endif
-                                        @if (($atsStepAgent ?? null) && $atsStepAgent->is_active && ($atsAllowsCheck ?? false))
-                                            <a href="{{ route('agents.chat', $atsStepAgent) }}"
-                                               class="inline-flex items-center rounded-lg border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-950 shadow-sm hover:bg-indigo-50">
-                                                ATS Filtro
-                                            </a>
-                                        @endif
-                                        <a href="{{ route('career-trail.cv') }}"
-                                           class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
-                                            Meu CV
-                                        </a>
-                                    @elseif ($currentStep->slug === 'cover-letter')
-                                        @if ($focusTrailUrl && ($coverLetterStepAgent ?? null) && $coverLetterStepAgent->is_active)
-                                            <a href="{{ $focusTrailUrl }}"
-                                               class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700">
-                                                Manter
-                                            </a>
-                                            <a href="{{ route('agents.chat', $coverLetterStepAgent) }}"
-                                               class="inline-flex items-center rounded-lg border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-950 shadow-sm hover:bg-indigo-50">
-                                                Nova
-                                            </a>
-                                        @endif
-                                    @elseif ($currentStep->slug === 'interviews')
-                                        @if ($focusTrailUrl && ($interviewStepAgent ?? null) && $interviewStepAgent->is_active)
-                                            <a href="{{ $focusTrailUrl }}"
-                                               class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700">
-                                                Manter
-                                            </a>
-                                            <a href="{{ route('agents.chat', $interviewStepAgent) }}"
-                                               class="inline-flex items-center rounded-lg border border-indigo-300 bg-white px-4 py-2 text-sm font-medium text-indigo-950 shadow-sm hover:bg-indigo-50">
-                                                Preparar
-                                            </a>
-                                        @endif
-                                    @else
-                                        @if ($focusTrailUrl)
-                                            <a href="{{ $focusTrailUrl }}"
-                                               class="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700">
-                                                {{ $focusPrimaryLabel }}
-                                            </a>
-                                            <a href="{{ route('career-trail.cv') }}"
-                                               class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
-                                                Meu CV
-                                            </a>
-                                        @endif
-                                    @endif
-                                </div>
-                            @endif
-                        </div>
-                    @endif
 
-                    @php
-                        $hasNextStepTrail = $currentStep->sort_order < $steps->max('sort_order');
-                        $mayAdvanceTrail = ($currentStepReadiness['ready'] ?? true);
-                    @endphp
-                    <div class="mt-8 flex flex-wrap items-center gap-3 border-t border-slate-200/80 pt-6">
-                        <form method="POST" action="{{ route('career-trail.back') }}">
-                            @csrf
-                            <button type="submit"
-                                    class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-                                    @disabled($currentStep->sort_order <= $steps->min('sort_order'))>
-                                Etapa anterior
-                            </button>
-                        </form>
-                        <form method="POST" action="{{ route('career-trail.advance') }}">
-                            @csrf
-                            <button type="submit"
-                                    title="{{ ! $mayAdvanceTrail && $hasNextStepTrail ? ($currentStepReadiness['blocked_message'] ?? '') : '' }}"
-                                    class="inline-flex items-center rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
-                                    @disabled(! $hasNextStepTrail || ! $mayAdvanceTrail)>
-                                Avançar etapa
-                            </button>
-                        </form>
-                        <p class="w-full text-xs text-slate-500 sm:w-auto sm:flex-1">
-                            O botão Avançar só prossegue quando os requisitos da etapa atual estão cumpridos (passos 1 e 2). Voltar atrás não remove o que já desbloqueou.
-                        </p>
-                    </div>
                 </div>
             </div>
         </div>

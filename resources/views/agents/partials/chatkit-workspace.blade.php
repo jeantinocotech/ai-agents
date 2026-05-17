@@ -1,7 +1,9 @@
 @php
     $compactTrail = $compactTrail ?? $compactAts ?? false;
     $compactCvOnly = $compactCvOnly ?? false;
-    $compactTrailAts = $compactTrail && ! $compactCvOnly;
+    $compactTrailStepSlug = $compactTrailStep->slug ?? null;
+    $compactTrailAts = $compactTrail && ! $compactCvOnly && $compactTrailStepSlug === 'ats';
+    $compactTrailProcess = $compactTrail && ! $compactCvOnly && in_array($compactTrailStepSlug, ['cover-letter', 'interviews'], true);
     $atsPairContext = $atsPairContext ?? null;
 @endphp
 @if ($compactTrail)
@@ -25,15 +27,17 @@
                             @endforeach
                         </select>
                     </div>
-                    <a href="{{ route('career-trail.cv') }}"
-                       class="inline-flex shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-center text-[11px] font-semibold text-slate-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50/60 hover:text-indigo-900">
+                    <x-ui.button variant="secondary" size="xs" :href="route('career-trail.cv')" class="shrink-0">
                         Gerir CVs (Meu CV)
-                    </a>
+                    </x-ui.button>
                 </div>
                 <div class="flex flex-wrap items-center gap-2 pt-0.5">
-                    <button type="button" id="chatkit-send-cv" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-45">
+                    <x-ui.button type="button" id="chatkit-send-cv" variant="primary" size="xs">
                         Enviar CV para revisão
-                    </button>
+                    </x-ui.button>
+                    <x-ui.button type="button" id="chatkit-create-cv-from-scratch" variant="outline" size="xs">
+                        {{ config('career_trail.cv_assistant_chat_create_button', 'Criar novo CV') }}
+                    </x-ui.button>
                 </div>
                 <p id="chatkit-documents-status" class="text-xs leading-snug text-slate-600 empty:hidden" role="status"></p>
             </div>
@@ -65,6 +69,11 @@
                             <span class="text-slate-400" aria-hidden="true">·</span>
                             {{ $atsPairContext['jd_title'] ?? 'Vaga' }}
                         @endif
+                    </p>
+                @endif
+                @if ($compactTrailProcess)
+                    <p class="text-[11px] leading-snug text-slate-600">
+                        Selecione CV e vaga, envie ambos ao assistente e copie o texto para a biblioteca de cartas.
                     </p>
                 @endif
                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
@@ -109,12 +118,12 @@
                 </div>
                 <div class="space-y-1 border-t border-slate-100 pt-2">
                     <div class="flex flex-wrap items-center gap-2">
-                        <button type="button" id="chatkit-send-cv" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-45">
+                        <x-ui.button type="button" id="chatkit-send-cv" variant="primary" size="xs">
                             Enviar CV
-                        </button>
-                        <button type="button" id="chatkit-send-jd" class="rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-45" disabled>
+                        </x-ui.button>
+                        <x-ui.button type="button" id="chatkit-send-jd" variant="primary" size="xs" disabled>
                             Enviar Vaga
-                        </button>
+                        </x-ui.button>
                     </div>
                     <p id="chatkit-documents-status" class="text-xs leading-snug text-slate-600 empty:hidden" role="status"></p>
                 </div>
@@ -162,13 +171,12 @@
                                 @selected((int) $ckDefJd === (int) $jd['id'])>{{ $jdOptLabel }}</option>
                     @endforeach
                 </select>
-                <a href="{{ $documentsHubUrl ?? route('agents.documents.index', $agent) }}"
-                   class="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl border border-slate-300 bg-white px-3 py-2 text-center text-xs font-semibold text-slate-700 shadow-sm transition hover:border-indigo-300 hover:bg-indigo-50/60 hover:text-indigo-900 sm:max-w-[11rem] sm:self-auto">
+                <x-ui.button variant="secondary" size="xs" href="{{ $documentsHubUrl ?? route('agents.documents.index', $agent) }}" class="shrink-0 gap-1.5 sm:max-w-[11rem] sm:self-auto">
                     <svg class="h-3.5 w-3.5 shrink-0 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                     </svg>
                     Manter CV/JD
-                </a>
+                </x-ui.button>
             </div>
         </div>
     </div>
@@ -178,12 +186,12 @@
             Cada <strong class="text-slate-800">Enviar CV</strong> inicia uma <strong class="text-slate-800">conversa nova</strong> (o histórico anterior é limpo), para manter só o contexto desta análise. Depois aguarde o assistente e use <strong class="text-slate-800">Enviar Vaga</strong>.
         </p>
         <div class="mt-3 flex flex-wrap gap-2">
-            <button type="button" id="chatkit-send-cv" class="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-45">
+            <x-ui.button type="button" id="chatkit-send-cv" variant="primary" size="xs">
                 Enviar CV
-            </button>
-            <button type="button" id="chatkit-send-jd" class="rounded-xl bg-violet-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-45" disabled>
+            </x-ui.button>
+            <x-ui.button type="button" id="chatkit-send-jd" variant="primary" size="xs" disabled>
                 Enviar Vaga
-            </button>
+            </x-ui.button>
         </div>
     </div>
     <p id="chatkit-documents-status" class="mt-3 min-h-[1.25rem] text-xs text-slate-600" role="status"></p>

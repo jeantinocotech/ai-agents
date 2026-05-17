@@ -34,7 +34,7 @@ test('authenticated user sees career trail and progress is created', function ()
     expect(UserCareerTrailProgress::query()->where('user_id', $user->id)->exists())->toBeTrue();
 });
 
-test('user can advance and go back along the trail', function () {
+test('cv readiness unlocks ats progress without advance button', function () {
     $user = User::factory()->create();
 
     UserCv::query()->create([
@@ -45,19 +45,18 @@ test('user can advance and go back along the trail', function () {
         'source' => UserCv::SOURCE_MANUAL,
     ]);
 
-    $this->actingAs($user)->get(route('career-trail.index'));
+    $this->actingAs($user)
+        ->get(route('career-trail.index'))
+        ->assertOk()
+        ->assertDontSee('Avançar etapa', false)
+        ->assertDontSee('Etapa anterior', false);
 
     $progress = UserCareerTrailProgress::query()->where('user_id', $user->id)->firstOrFail();
-    expect($progress->currentStep->slug)->toBe('ats');
     expect((int) $progress->max_sort_order_reached)->toBe(2);
 
     $this->actingAs($user)
-        ->post(route('career-trail.back'))
-        ->assertRedirect(route('career-trail.index'));
-
-    $progress->refresh();
-    expect($progress->currentStep->slug)->toBe('cv');
-    expect((int) $progress->max_sort_order_reached)->toBe(2);
+        ->get(route('career-trail.cv'))
+        ->assertOk();
 });
 
 test('career trail banner is shown when steps exist', function () {
@@ -92,18 +91,16 @@ test('career trail banner suggests advance when cv step is satisfied', function 
         ->assertSee($atsTitle, false);
 });
 
-test('cannot advance from cv step without saved profile cv', function () {
+test('max progress stays at cv until profile cv is saved', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)->get(route('career-trail.index'));
 
-    $this->actingAs($user)
-        ->post(route('career-trail.advance'))
-        ->assertRedirect(route('career-trail.index'))
-        ->assertSessionHas('error');
+    $progress = UserCareerTrailProgress::query()->where('user_id', $user->id)->firstOrFail();
+    expect((int) $progress->max_sort_order_reached)->toBe(1);
 });
 
-test('cannot advance from cv step when profile cv text is too short', function () {
+test('max progress stays at cv when profile cv text is too short', function () {
     $user = User::factory()->create();
     UserCv::query()->create([
         'user_id' => $user->id,
@@ -115,13 +112,11 @@ test('cannot advance from cv step when profile cv text is too short', function (
 
     $this->actingAs($user)->get(route('career-trail.index'));
 
-    $this->actingAs($user)
-        ->post(route('career-trail.advance'))
-        ->assertRedirect(route('career-trail.index'))
-        ->assertSessionHas('error');
+    $progress = UserCareerTrailProgress::query()->where('user_id', $user->id)->firstOrFail();
+    expect((int) $progress->max_sort_order_reached)->toBe(1);
 });
 
-test('cannot advance from ats step without paired cv and jd in ats library', function () {
+test('max progress stays at ats without paired cv and jd in ats library', function () {
     $agent = Agent::query()->create([
         'name' => 'ATS biblioteca',
         'price' => 0,
@@ -143,12 +138,11 @@ test('cannot advance from ats step without paired cv and jd in ats library', fun
 
     $this->actingAs($user)->get(route('career-trail.index'));
 
-    expect(UserCareerTrailProgress::query()->where('user_id', $user->id)->firstOrFail()->currentStep->slug)->toBe('ats');
+    $progress = UserCareerTrailProgress::query()->where('user_id', $user->id)->firstOrFail();
+    expect((int) $progress->max_sort_order_reached)->toBe(2);
 
-    $this->actingAs($user)
-        ->post(route('career-trail.advance'))
-        ->assertRedirect(route('career-trail.index'))
-        ->assertSessionHas('error');
+    $interviewOrder = (int) CareerTrailStep::query()->where('slug', 'interviews')->value('sort_order');
+    expect((int) $progress->max_sort_order_reached)->toBeLessThan($interviewOrder);
 });
 
 test('user on ats step can open chat when ats agent is chatkit with workflow id', function () {
@@ -325,7 +319,7 @@ test('jd created via chat pairing paired_cv_document_id gets user_cv_id and unlo
     expect($gate['ready'] ?? false)->toBeTrue();
 });
 
-test('ats completion unlocks motivation and interviews in parallel; advance lands on interviews', function () {
+test('ats completion unlocks motivation and interviews in parallel', function () {
     $agent = Agent::query()->create([
         'name' => 'ATS paralelo',
         'price' => 0,
@@ -348,7 +342,6 @@ test('ats completion unlocks motivation and interviews in parallel; advance land
     $this->actingAs($user)->get(route('career-trail.index'));
 
     $progress = UserCareerTrailProgress::query()->where('user_id', $user->id)->firstOrFail();
-    expect($progress->currentStep->slug)->toBe('ats');
     expect((int) $progress->max_sort_order_reached)->toBe(2);
 
     AgentDocument::query()->create([
@@ -365,16 +358,6 @@ test('ats completion unlocks motivation and interviews in parallel; advance land
     $progress->refresh();
     $interviewOrder = (int) CareerTrailStep::query()->where('slug', 'interviews')->value('sort_order');
     expect((int) $progress->max_sort_order_reached)->toBeGreaterThanOrEqual($interviewOrder);
-    expect($progress->currentStep->slug)->toBe('interviews');
-
-    $offerStep = CareerTrailStep::query()->where('slug', 'offer')->firstOrFail();
-    $this->actingAs($user)
-        ->post(route('career-trail.advance'))
-        ->assertRedirect(route('career-trail.index'))
-        ->assertSessionHas('status');
-
-    $progress->refresh();
-    expect($progress->currentStep->slug)->toBe($offerStep->slug);
 });
 
 test('career trail banner is hidden on admin routes', function () {
@@ -386,7 +369,7 @@ test('career trail banner is hidden on admin routes', function () {
         ->assertDontSee('Trilha de carreira', false);
 });
 
-test('banner badge marks ats completed when jd cv pair exists even if pointer is still on ats', function () {
+test('banner badge marks ats completed when jd cv pair exists', function () {
     $agent = Agent::query()->create([
         'name' => 'ATS badge',
         'price' => 0,
@@ -406,15 +389,11 @@ test('banner badge marks ats completed when jd cv pair exists even if pointer is
 
     $this->actingAs($user)->get(route('career-trail.index'));
 
-    $progress = UserCareerTrailProgress::query()->where('user_id', $user->id)->firstOrFail();
-    $current = $progress->currentStep;
-    expect($current->slug)->toBe('ats');
-
     $cvStep = CareerTrailStep::query()->where('slug', 'cv')->firstOrFail();
     $atsStep = CareerTrailStep::query()->where('slug', 'ats')->firstOrFail();
 
-    expect(CareerTrailStepCompletion::bannerShowsCompletedBadge($user, $cvStep, $current))->toBeTrue();
-    expect(CareerTrailStepCompletion::bannerShowsCompletedBadge($user, $atsStep, $current))->toBeFalse();
+    expect(CareerTrailStepCompletion::bannerShowsCompletedBadge($user, $cvStep))->toBeTrue();
+    expect(CareerTrailStepCompletion::bannerShowsCompletedBadge($user, $atsStep))->toBeFalse();
 
     AgentDocument::query()->create([
         'user_id' => $user->id,
@@ -427,11 +406,8 @@ test('banner badge marks ats completed when jd cv pair exists even if pointer is
 
     $this->actingAs($user)->get(route('career-trail.index'));
 
-    $progress->refresh();
-    $currentAfterUnlock = $progress->currentStep;
-    expect(CareerTrailStepCompletion::bannerShowsCompletedBadge($user, $atsStep, $currentAfterUnlock))->toBeTrue();
-    expect(CareerTrailStepCompletion::bannerShowsCompletedBadge($user, $cvStep, $currentAfterUnlock))->toBeTrue();
-    expect($currentAfterUnlock->slug)->toBe('interviews');
+    expect(CareerTrailStepCompletion::bannerShowsCompletedBadge($user, $atsStep))->toBeTrue();
+    expect(CareerTrailStepCompletion::bannerShowsCompletedBadge($user, $cvStep))->toBeTrue();
 });
 
 test('banner badge motivation is false until a letter is saved', function () {
@@ -473,14 +449,9 @@ test('banner badge motivation is false until a letter is saved', function () {
 
     $this->actingAs($user)->get(route('career-trail.index'));
 
-    UserCareerTrailProgress::query()->where('user_id', $user->id)->update([
-        'current_step_id' => CareerTrailStep::query()->where('slug', 'interviews')->value('id'),
-    ]);
-
-    $current = CareerTrailStep::query()->where('slug', 'interviews')->firstOrFail();
     $motivationStep = CareerTrailStep::query()->where('slug', 'cover-letter')->firstOrFail();
 
-    expect(CareerTrailStepCompletion::bannerShowsCompletedBadge($user, $motivationStep, $current))->toBeFalse();
+    expect(CareerTrailStepCompletion::bannerShowsCompletedBadge($user, $motivationStep))->toBeFalse();
 
     MotivationLetter::query()->create([
         'user_id' => $user->id,
@@ -490,7 +461,7 @@ test('banner badge motivation is false until a letter is saved', function () {
         'source' => MotivationLetter::SOURCE_MANUAL,
     ]);
 
-    expect(CareerTrailStepCompletion::bannerShowsCompletedBadge($user, $motivationStep, $current))->toBeTrue();
+    expect(CareerTrailStepCompletion::bannerShowsCompletedBadge($user, $motivationStep))->toBeTrue();
 });
 
 test('career trail ats page includes library forms when agent is active', function () {

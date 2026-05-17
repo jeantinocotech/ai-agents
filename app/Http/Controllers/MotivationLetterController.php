@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Agent;
+use App\Models\CareerTrailStep;
 use App\Models\MotivationLetter;
 use App\Services\CareerTrailAgentAccess;
 use App\Services\ChatKitDocumentLibraryService;
@@ -56,6 +57,7 @@ class MotivationLetterController extends Controller
             'search' => $search,
             'jdOptions' => $jdOptions,
             'documentsHubUrl' => $documentsHubUrl,
+            'coverLetterStep' => $this->coverLetterStep(),
         ]);
     }
 
@@ -87,6 +89,7 @@ class MotivationLetterController extends Controller
         return view('agents.motivation-letters.edit', [
             'agent' => $agent,
             'letter' => $motivationLetter,
+            'coverLetterStep' => $this->coverLetterStep(),
         ]);
     }
 
@@ -169,6 +172,14 @@ class MotivationLetterController extends Controller
         return redirect()
             ->route('agents.motivation-letters.index', $agent)
             ->with('status', 'Carta removida.');
+    }
+
+    private function coverLetterStep(): ?CareerTrailStep
+    {
+        return CareerTrailStep::query()
+            ->where('slug', 'cover-letter')
+            ->where('is_active', true)
+            ->first();
     }
 
     private function authorizeCoverLetterAgent(Agent $agent): void

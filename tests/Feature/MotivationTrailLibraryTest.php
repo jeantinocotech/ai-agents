@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\UserCareerTrailProgress;
 use App\Models\UserCv;
 use App\Services\ChatKitDocumentLibraryService;
+use App\Support\GracaPanelPreferences;
 use Database\Seeders\CareerTrailStepsSeeder;
 
 beforeEach(function () {
@@ -120,4 +121,54 @@ test('motivation letter can be stored for an ats jd process from cover letter ag
     $saved = MotivationLetter::query()->where('user_id', $user->id)->where('jd_document_id', $jd->id)->firstOrFail();
     expect($saved->body)->toContain('Texto da carta');
     expect($saved->title)->toBe('Carta teste');
+});
+
+test('cover letter chat compact does not show ats step bar', function () {
+    $motivation = makeChatKitAgent('Motivação chat');
+    $coverLetterStep = CareerTrailStep::query()->where('slug', 'cover-letter')->firstOrFail();
+
+    CareerTrailStep::query()->where('slug', 'cover-letter')->update(['agent_id' => $motivation->id]);
+
+    $user = User::factory()->create();
+    UserCareerTrailProgress::query()->updateOrCreate(
+        ['user_id' => $user->id],
+        [
+            'current_step_id' => $coverLetterStep->id,
+            'started_at' => now(),
+            'max_sort_order_reached' => (int) $coverLetterStep->sort_order,
+        ]
+    );
+
+    $this->actingAs($user)
+        ->get(route('agents.chat', $motivation))
+        ->assertOk()
+        ->assertViewHas('compactTrailChatUi', true)
+        ->assertDontSee('id="chatkit-ats-steps"', false)
+        ->assertSee('Enviar CV', false)
+        ->assertSee('biblioteca de cartas', false);
+});
+
+test('motivation letters library shows graca orientation panel', function () {
+    $motivation = makeChatKitAgent('Motivação bib UI');
+    $coverLetterStep = CareerTrailStep::query()->where('slug', 'cover-letter')->firstOrFail();
+
+    CareerTrailStep::query()->where('slug', 'cover-letter')->update(['agent_id' => $motivation->id]);
+
+    $user = User::factory()->create();
+    UserCareerTrailProgress::query()->updateOrCreate(
+        ['user_id' => $user->id],
+        [
+            'current_step_id' => $coverLetterStep->id,
+            'started_at' => now(),
+            'max_sort_order_reached' => (int) $coverLetterStep->sort_order,
+        ]
+    );
+
+    $this->actingAs($user)
+        ->get(route('agents.motivation-letters.index', $motivation))
+        ->assertOk()
+        ->assertViewHas('coverLetterStep')
+        ->assertSee('graca-orientation-panel', false)
+        ->assertSee(GracaPanelPreferences::PAGE_TRAIL_COVER_LETTER, false)
+        ->assertSee(config('career_trail.cover_letter_library_graca_fallback'), false);
 });

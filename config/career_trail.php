@@ -28,6 +28,10 @@ return [
 
     'cover_letter_chat_graca_summary_line' => 'Mensagem para redigir a carta neste processo (CV + vaga no chat abaixo).',
 
+    'cover_letter_chat_start_greeting' => 'Selecione CV e vaga acima, envie ambos ao assistente e copie o texto para a biblioteca de cartas.',
+
+    'cover_letter_library_graca_fallback' => 'Guarde cartas por processo (vaga + CV na biblioteca ATS). Use o chat para redigir ou crie manualmente; pode editar e pesquisar na lista.',
+
     /*
     | Chat compacto do coach de entrevistas (passo interviews): título e textos da caixa Graça.
     */
@@ -36,6 +40,8 @@ return [
     'interviews_chat_graca_fallback' => 'Envie o CV e a vaga com os botões acima para dar contexto ao assistente; depois pratique perguntas e registe rondas na página de entrevistas. O mapa da trilha resume o passo.',
 
     'interviews_chat_graca_summary_line' => 'Mensagem para preparar entregas neste processo (CV + vaga no chat abaixo).',
+
+    'interviews_chat_start_greeting' => 'Selecione CV e vaga acima e envie ambos ao assistente para preparar a entrevista.',
 
     /*
     | Chat compacto do assistente de CV / CV Creator (passo cv): só lista de CVs — sem vaga (JD).
@@ -46,7 +52,11 @@ return [
 
     'cv_assistant_chat_graca_summary_line' => 'Selecione um CV acima para enviar ao assistente (revisão no chat).',
 
-    'cv_assistant_chat_start_greeting' => 'Escolha um CV na lista acima e clique em «Enviar CV para revisão».',
+    'cv_assistant_chat_start_greeting' => 'Escolha um CV na lista e use «Enviar CV para revisão», ou «Criar novo CV» para começar do zero com o assistente.',
+
+    'cv_assistant_chat_create_button' => 'Criar novo CV',
+
+    'cv_assistant_chat_create_from_scratch_prompt' => 'Quero preparar um CV novo do zero. Guie-me passo a passo (perfil, experiência, formação e competências) para construir o texto no chat.',
 
     /*
     | Caminho público do avatar (relativo a /public). Sobrescreva com CAREER_TRAIL_MENTOR_AVATAR se quiser outro arquivo.

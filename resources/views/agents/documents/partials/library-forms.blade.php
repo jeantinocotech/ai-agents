@@ -102,7 +102,7 @@
                     <textarea name="body" rows="8" required maxlength="{{ $maxJdBodyChars }}" class="w-full rounded-md border-gray-300 font-mono text-sm shadow-sm"></textarea>
                 </div>
                 <div>
-                    <button type="submit" class="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">Adicionar vaga</button>
+                    <x-ui.button type="submit" variant="primary" size="sm">Adicionar vaga</x-ui.button>
                 </div>
             </form>
         </section>
@@ -276,19 +276,18 @@
                         <textarea name="body" rows="8" required maxlength="{{ $maxJdBodyChars }}" class="w-full rounded-md border-gray-300 font-mono text-sm shadow-sm">{{ old('body', $editingJd->body) }}</textarea>
                     </div>
                     <div class="flex flex-wrap items-center justify-end gap-3 border-t border-gray-200/80 pt-3">
-                        <button type="submit" class="inline-flex items-center rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700">
+                        <x-ui.button type="submit" variant="primary" size="md">
                             Salvar alterações
-                        </button>
+                        </x-ui.button>
                         @if ($blockReason = $editingJd->atsFlowBlockReason())
                             <p class="w-full text-right text-xs text-amber-800 sm:w-auto">
                                 {{ $blockReason }}
                             </p>
                         @endif
                         @if (! empty($atsAnalyzeChatUrl))
-                            <a href="{{ $atsAnalyzeChatUrl }}"
-                               class="inline-flex items-center rounded-xl border border-indigo-300 bg-white px-5 py-2.5 text-sm font-semibold text-indigo-800 shadow-sm hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2">
+                            <x-ui.button variant="outline" size="md" href="{{ $atsAnalyzeChatUrl }}">
                                 {{ $atsChatHeading }}
-                            </a>
+                            </x-ui.button>
                             @php
                                 $editWs = $editingJd->user_cv_id
                                     ? $atsAnalysisByJd->get($editingJd->id)
@@ -297,18 +296,16 @@
                             @endphp
                             @if ($editingJd->user_cv_id)
                                 @if ($editWs && $canEditAtsTableOnEdit)
-                                    <a href="{{ route('career-trail.ats.workspace', $editWs) }}"
-                                       class="inline-flex items-center rounded-xl border border-violet-300 bg-violet-50 px-5 py-2.5 text-sm font-semibold text-violet-900 shadow-sm hover:bg-violet-100">
+                                    <x-ui.button variant="outline" size="md" href="{{ route('career-trail.ats.workspace', $editWs) }}">
                                         Editar com tabela
-                                    </a>
+                                    </x-ui.button>
                                 @elseif (! $editWs && $canEditAtsTableOnEdit)
                                     <form method="post" action="{{ route('career-trail.ats.analyses.store') }}" class="inline">
                                         @csrf
                                         <input type="hidden" name="jd_document_id" value="{{ $editingJd->id }}">
-                                        <button type="submit"
-                                                class="inline-flex items-center rounded-xl border border-violet-300 bg-violet-50 px-5 py-2.5 text-sm font-semibold text-violet-900 shadow-sm hover:bg-violet-100">
+                                        <x-ui.button type="submit" variant="outline" size="md">
                                             Preparar lista de ajustes
-                                        </button>
+                                        </x-ui.button>
                                     </form>
                                 @endif
                             @endif
@@ -353,7 +350,7 @@
                         <textarea name="body" rows="8" required maxlength="{{ $maxJdBodyChars }}" class="w-full rounded-md border-gray-300 font-mono text-sm shadow-sm"></textarea>
                     </div>
                     <div>
-                        <button type="submit" class="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">Adicionar vaga</button>
+                        <x-ui.button type="submit" variant="primary" size="sm">Adicionar vaga</x-ui.button>
                     </div>
                 </form>
                 @else
@@ -503,7 +500,7 @@
                     Definir como CV padrão do perfil
                 </label>
                 <div>
-                    <button type="submit" class="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700">Salvar CV</button>
+                    <x-ui.button type="submit" variant="primary" size="sm">Salvar CV</x-ui.button>
                 </div>
             </form>
         </section>

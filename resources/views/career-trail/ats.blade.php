@@ -57,7 +57,7 @@
                     </p>
                     <div class="mt-4 flex flex-wrap gap-3">
                         <a href="{{ route('career-trail.index') }}"
-                           class="inline-flex items-center rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700">
+                           class="{{ \App\Support\UiButton::classes('primary', 'md') }}">
                             Ver mapa da trilha
                         </a>
                     </div>

@@ -15,6 +15,8 @@ final class GracaPanelPreferences
 
     public const PAGE_TRAIL_CV = 'trail_cv';
 
+    public const PAGE_TRAIL_COVER_LETTER = 'trail_cover_letter';
+
     public const PAGE_CHAT_ATS = 'chat_ats';
 
     public const PAGE_CHAT_COVER_LETTER = 'chat_cover_letter';
@@ -30,6 +32,7 @@ final class GracaPanelPreferences
             self::PAGE_TRAIL_MAP,
             self::PAGE_TRAIL_ATS,
             self::PAGE_TRAIL_CV,
+            self::PAGE_TRAIL_COVER_LETTER,
             self::PAGE_CHAT_ATS,
             self::PAGE_CHAT_COVER_LETTER,
             self::PAGE_CHAT_INTERVIEWS,

@@ -84,8 +84,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/trilha/cv/{userCv}', [CareerTrailCvController::class, 'destroyProfileCv'])->name('career-trail.cv.destroy');
     Route::post('/trilha/cv/{userCv}/duplicar', [CareerTrailCvController::class, 'duplicateProfileCv'])->name('career-trail.cv.duplicate');
     Route::post('/trilha/cv/sync/{agent}', [CareerTrailCvController::class, 'syncToAgent'])->name('career-trail.cv.sync');
-    Route::post('/trilha/avancar', [CareerTrailController::class, 'advance'])->name('career-trail.advance');
-    Route::post('/trilha/voltar', [CareerTrailController::class, 'back'])->name('career-trail.back');
 
     Route::get('/agents/{agent}', [AgentController::class, 'show'])->name('agents.show');
     Route::get('/agents/{agent}/chat', [AgentController::class, 'chat'])->name('agents.chat');

@@ -52,6 +52,7 @@
             @include('agents.partials.chatkit-workspace', [
                 'compactTrail' => $compactTrailChatUi ?? false,
                 'compactCvOnly' => $compactTrailCvOnly,
+                'compactTrailStep' => $compactTrailStep ?? null,
             ])
         @endif
 

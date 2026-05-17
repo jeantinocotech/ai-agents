@@ -3,11 +3,11 @@
 @php
     /** @var \Illuminate\Support\Collection<\App\Models\CareerTrailStep> $steps */
     $steps = $context['steps'];
-    /** @var \App\Models\CareerTrailStep $current */
-    $current = $context['current'];
+    /** @var \App\Models\CareerTrailStep|null $frontierStep */
+    $frontierStep = $context['frontierStep'] ?? null;
     /** @var \App\Models\User $trailBannerUser */
     $trailBannerUser = $context['user'];
-    $maxReached = (int) ($context['maxReached'] ?? $current->sort_order);
+    $maxReached = (int) ($context['maxReached'] ?? 1);
     $tokenBalance = (int) ($context['tokenBalance'] ?? 0);
     $cvCreatorChatUrl = $context['cvCreatorChatUrl'] ?? null;
     /** @var \App\Models\Agent|null $atsBannerAgent */
@@ -23,8 +23,8 @@
                 <a href="{{ route('career-trail.index') }}"
                    @class([
                        'whitespace-nowrap rounded px-1.5 py-0.5 text-[10px] font-medium hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 sm:px-2 sm:text-[11px]',
-                       'bg-violet-100 text-violet-900 ring-1 ring-violet-200' => request()->routeIs('career-trail.index') || request()->routeIs('career-trail.advance') || request()->routeIs('career-trail.back'),
-                       'text-indigo-600 hover:text-indigo-800' => ! request()->routeIs('career-trail.index') && ! request()->routeIs('career-trail.advance') && ! request()->routeIs('career-trail.back'),
+                       'bg-violet-100 text-violet-900 ring-1 ring-violet-200' => request()->routeIs('career-trail.index'),
+                       'text-indigo-600 hover:text-indigo-800' => ! request()->routeIs('career-trail.index'),
                    ])>
                     Mapa
                 </a>
@@ -38,11 +38,11 @@
                     @php
                         $stepAgent = $step->resolvedAgent();
                         $isUnlocked = (int) $step->sort_order <= $maxReached;
-                        $isCurrent = (int) $step->id === (int) $current->id;
+                        $isFrontier = $frontierStep && (int) $step->id === (int) $frontierStep->id;
                         $trailUrl = $isUnlocked ? $step->trailChatUrl() : null;
-                        $showCheck = $isUnlocked && \App\Support\CareerTrailStepCompletion::bannerShowsCompletedBadge($trailBannerUser, $step, $current);
-                        $bundleRing = $isCurrent
-                            ? 'border-violet-400 bg-violet-50/95 ring-1 ring-violet-200 shadow-sm'
+                        $showCheck = $isUnlocked && \App\Support\CareerTrailStepCompletion::bannerShowsCompletedBadge($trailBannerUser, $step);
+                        $bundleRing = $isFrontier
+                            ? 'border-indigo-300 bg-indigo-50/95 ring-1 ring-indigo-200 shadow-sm'
                             : ($isUnlocked ? 'border-emerald-200/90 bg-emerald-50/50 ring-1 ring-emerald-100/70' : 'border-dashed border-slate-300 bg-slate-50/60 opacity-90');
                     @endphp
 
@@ -51,8 +51,8 @@
                             <div class="flex items-center gap-1.5 border-b border-slate-200/60 pb-1">
                                 <span @class([
                                     'inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none tabular-nums',
-                                    'bg-violet-600 text-white' => $isCurrent,
-                                    'bg-emerald-500 text-white' => $isUnlocked && ! $isCurrent,
+                                    'bg-indigo-600 text-white' => $isFrontier,
+                                    'bg-emerald-500 text-white' => $isUnlocked && ! $isFrontier,
                                     'border border-slate-300 bg-white text-slate-400' => ! $isUnlocked,
                                 ])>
                                     @if ($showCheck)
@@ -94,8 +94,8 @@
                                    aria-label="Resumo da etapa ATS (hub)">
                                     <span @class([
                                         'inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums leading-none',
-                                        'bg-violet-600 text-white' => $isCurrent,
-                                        'bg-emerald-500 text-white' => $isUnlocked && ! $isCurrent,
+                                        'bg-indigo-600 text-white' => $isFrontier,
+                                        'bg-emerald-500 text-white' => $isUnlocked && ! $isFrontier,
                                     ])>
                                         @if ($showCheck)
                                             <span aria-hidden="true">✓</span>
@@ -146,8 +146,8 @@
                             <div class="flex items-center gap-1.5 border-b border-slate-200/60 pb-1">
                                 <span @class([
                                     'inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none tabular-nums',
-                                    'bg-violet-600 text-white' => $isCurrent,
-                                    'bg-emerald-500 text-white' => $isUnlocked && ! $isCurrent,
+                                    'bg-indigo-600 text-white' => $isFrontier,
+                                    'bg-emerald-500 text-white' => $isUnlocked && ! $isFrontier,
                                     'border border-slate-300 bg-white text-slate-400' => ! $isUnlocked,
                                 ])>
                                     @if ($showCheck)
@@ -187,8 +187,8 @@
                             <div class="flex items-center gap-1.5 border-b border-slate-200/60 pb-1">
                                 <span @class([
                                     'inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none tabular-nums',
-                                    'bg-violet-600 text-white' => $isCurrent,
-                                    'bg-emerald-500 text-white' => $isUnlocked && ! $isCurrent,
+                                    'bg-indigo-600 text-white' => $isFrontier,
+                                    'bg-emerald-500 text-white' => $isUnlocked && ! $isFrontier,
                                     'border border-slate-300 bg-white text-slate-400' => ! $isUnlocked,
                                 ])>
                                     @if ($showCheck)
@@ -227,8 +227,8 @@
                                    title="{{ $step->title }}"
                                    @class([
                                        'inline-flex min-h-[1.375rem] shrink-0 items-center justify-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 sm:min-h-6 sm:px-2 sm:text-[11px]',
-                                       'bg-violet-600 text-white ring-2 ring-violet-300 focus-visible:ring-violet-500' => $isCurrent,
-                                       'bg-emerald-500 text-white hover:bg-emerald-600 focus-visible:ring-emerald-400' => ! $isCurrent,
+                                       'bg-indigo-600 text-white ring-2 ring-indigo-300 focus-visible:ring-indigo-500' => $isFrontier,
+                                       'bg-emerald-500 text-white hover:bg-emerald-600 focus-visible:ring-emerald-400' => ! $isFrontier,
                                    ])>
                                     @if ($showCheck)
                                         <span aria-hidden="true">✓</span>
@@ -242,7 +242,7 @@
                                       @class([
                                           'inline-flex min-h-[1.375rem] shrink-0 items-center justify-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none sm:min-h-6 sm:px-2 sm:text-[11px]',
                                           'border border-dashed border-slate-300 bg-white/70 text-slate-400 opacity-85' => ! $isUnlocked,
-                                          'bg-violet-100 text-violet-900 ring-1 ring-violet-300' => $isCurrent && ! $trailUrl,
+                                          'bg-indigo-100 text-indigo-900 ring-1 ring-indigo-300' => $isFrontier && ! $trailUrl,
                                       ])>
                                     @if ($showCheck)
                                         <span aria-hidden="true">✓</span>

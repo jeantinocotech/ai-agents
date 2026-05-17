@@ -67,15 +67,13 @@
                         Se já tem texto final para arquivo, prefira <strong>CV completo</strong>. Se quer conversar com o assistente para estruturar ou refinar, prefira <strong>CV Creator</strong>.
                     </p>
                     <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                        <a href="{{ route('career-trail.cv') }}"
-                           class="inline-flex items-center justify-center rounded-xl bg-violet-600 px-8 py-3 text-center text-sm font-semibold text-white shadow-md transition hover:bg-violet-700">
+                        <x-ui.button variant="primary" size="md" href="{{ route('career-trail.cv') }}">
                             CV completo
-                        </a>
+                        </x-ui.button>
                         @if ($cvCreatorChatUrl ?? null)
-                            <a href="{{ $cvCreatorChatUrl }}"
-                               class="inline-flex items-center justify-center rounded-xl border-2 border-violet-600 bg-white px-8 py-3 text-center text-sm font-semibold text-violet-900 shadow-sm transition hover:bg-violet-50">
+                            <x-ui.button variant="outline" size="md" href="{{ $cvCreatorChatUrl }}">
                                 CV Creator
-                            </a>
+                            </x-ui.button>
                         @endif
                     </div>
                     <div class="mt-6">
@@ -164,10 +162,9 @@
                     </div>
                 @else
                     <div class="mt-12 text-center">
-                        <a href="{{ route('career-trail.index') }}"
-                           class="inline-flex items-center justify-center px-8 py-3 rounded-xl bg-indigo-600 text-white font-semibold hover:bg-indigo-700 transition">
+                        <x-ui.button variant="primary" size="md" href="{{ route('career-trail.index') }}">
                             Ver mapa da trilha
-                        </a>
+                        </x-ui.button>
                     </div>
                 @endguest
             @endif

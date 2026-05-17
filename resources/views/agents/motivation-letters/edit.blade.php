@@ -14,8 +14,10 @@
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 text-sm sm:px-0">
                 <a href="{{ route('agents.motivation-letters.index', $agent) }}" class="font-medium text-indigo-600 hover:text-indigo-800 hover:underline">&larr; Biblioteca de cartas</a>
                 <span class="text-slate-300">·</span>
-                <a href="{{ route('agents.chat', $agent) }}" class="font-medium text-violet-700 hover:text-violet-950 hover:underline">Gerar no chat</a>
+                <a href="{{ route('agents.chat', $agent) }}" class="font-medium text-indigo-600 hover:text-indigo-800 hover:underline">Gerar no chat</a>
             </div>
+
+            @include('agents.motivation-letters.partials.graca-panel')
 
             <div class="overflow-hidden bg-white shadow-sm ring-1 ring-slate-200 sm:rounded-xl">
                 <div class="border-b border-slate-100 bg-slate-50/80 px-6 py-5">
@@ -53,8 +55,8 @@
                         </div>
                         <input type="hidden" name="source" value="{{ old('source', $letter->source) }}" />
                         <div class="flex flex-wrap gap-2">
-                            <button type="submit" class="inline-flex items-center rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-violet-700">Salvar alterações</button>
-                            <a href="{{ route('agents.motivation-letters.index', $agent) }}" class="inline-flex items-center rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50">Cancelar</a>
+                            <x-ui.button type="submit" variant="primary" size="md">Salvar alterações</x-ui.button>
+                            <x-ui.button variant="secondary" size="md" href="{{ route('agents.motivation-letters.index', $agent) }}">Cancelar</x-ui.button>
                         </div>
                     </form>
                 </div>

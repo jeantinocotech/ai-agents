@@ -45,10 +45,9 @@ final class CareerTrailStepCompletion
     }
 
     /**
-     * Ícone ✓ na barra fixa da trilha: critérios reais (CV/ATS), carta guardada (Motivação opcional),
-     * ou posição do ponteiro da trilha para as restantes etapas.
+     * Ícone ✓ na barra da trilha: critérios reais por etapa (não depende de «etapa atual»).
      */
-    public static function bannerShowsCompletedBadge(User $user, CareerTrailStep $step, CareerTrailStep $current): bool
+    public static function bannerShowsCompletedBadge(User $user, CareerTrailStep $step): bool
     {
         return match ($step->slug) {
             'cv' => self::readiness($user, $step)['ready'],
@@ -59,7 +58,7 @@ final class CareerTrailStepCompletion
             'interviews' => InterviewPreparation::query()
                 ->where('user_id', (int) $user->id)
                 ->exists(),
-            default => (int) $step->sort_order < (int) $current->sort_order,
+            default => false,
         };
     }
 
@@ -75,7 +74,7 @@ final class CareerTrailStepCompletion
             return [
                 'ready' => false,
                 'reason' => null,
-                'blocked_message' => 'Salve um CV na área "Meu CV" antes de avançar para a etapa seguinte.',
+                'blocked_message' => 'Salve um CV na área "Meu CV" para desbloquear a etapa ATS.',
             ];
         }
 
@@ -123,7 +122,7 @@ final class CareerTrailStepCompletion
 
         return [
             'ready' => true,
-            'reason' => 'Você tem pelo menos uma vaga com JD e CV associados. Pode usar Motivação (opcional) e Entrevista em paralelo; ao avançar, a etapa inicial sugerida é Entrevista.',
+            'reason' => 'Você tem pelo menos uma vaga com JD e CV associados. Motivação (opcional) e Entrevista ficam disponíveis na barra da trilha.',
             'blocked_message' => null,
         ];
     }

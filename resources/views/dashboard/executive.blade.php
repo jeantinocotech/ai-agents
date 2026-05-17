@@ -6,11 +6,11 @@
     </x-slot>
 
     @php
-        /** @var array{progress:\App\Models\UserCareerTrailProgress,steps:\Illuminate\Support\Collection,current:\App\Models\CareerTrailStep} $bundle */
+        /** @var array{progress:\App\Models\UserCareerTrailProgress,steps:\Illuminate\Support\Collection,maxReached:int,frontierStep:\App\Models\CareerTrailStep|null} $bundle */
         $progress = $bundle['progress'];
         $steps = $bundle['steps'];
-        $current = $bundle['current'];
-        $maxReached = (int) ($progress->max_sort_order_reached ?? $current->sort_order);
+        $maxReached = $bundle['maxReached'];
+        $frontierStep = $bundle['frontierStep'];
         $totalSteps = max(1, (int) $steps->count());
         $unlockedSteps = (int) $steps->filter(fn ($s) => (int) $s->sort_order <= $maxReached)->count();
         $pct = (int) round(($unlockedSteps / $totalSteps) * 100);
@@ -27,7 +27,11 @@
                         <p class="text-xs font-semibold uppercase tracking-wide text-violet-700">Resumo</p>
                         <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900">A sua trilha</h1>
                         <p class="mt-2 text-sm text-slate-600">
-                            Etapa atual: <strong class="text-slate-900">{{ $current->title }}</strong>
+                            @if ($frontierStep)
+                                Próximo foco: <strong class="text-slate-900">{{ $frontierStep->title }}</strong>
+                            @else
+                                Todas as etapas desbloqueadas estão concluídas.
+                            @endif
                         </p>
                     </div>
                     <div class="px-6 py-6">
@@ -38,13 +42,12 @@
                                     {{ $unlockedSteps }} de {{ $totalSteps }} etapas desbloqueadas
                                 </p>
                             </div>
-                            <a href="{{ route('career-trail.index') }}"
-                               class="inline-flex items-center rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-700">
+                            <x-ui.button variant="primary" size="sm" href="{{ route('career-trail.index') }}">
                                 Abrir trilha
-                            </a>
+                            </x-ui.button>
                         </div>
                         <div class="mt-4 h-3 w-full rounded-full bg-slate-100">
-                            <div class="h-3 rounded-full bg-violet-600" style="width: {{ $pct }}%"></div>
+                            <div class="h-3 rounded-full bg-indigo-600" style="width: {{ $pct }}%"></div>
                         </div>
                         <p class="mt-2 text-xs text-slate-500">{{ $pct }}%</p>
                     </div>
@@ -86,9 +89,9 @@
                         <p><span class="text-slate-500">Últimos 7 dias:</span> <strong class="tabular-nums">{{ number_format((int) ($tokenStats['used_7d'] ?? 0), 0, ',', '.') }}</strong></p>
                         <p><span class="text-slate-500">Últimos 30 dias:</span> <strong class="tabular-nums">{{ number_format((int) ($tokenStats['used_30d'] ?? 0), 0, ',', '.') }}</strong></p>
                         <div class="pt-2">
-                            <a href="{{ route('tokens.purchase') }}" class="inline-flex items-center rounded-xl bg-teal-500 px-4 py-2 text-sm font-semibold text-black hover:bg-teal-400">
+                            <x-ui.button variant="primary" size="sm" href="{{ route('tokens.purchase') }}">
                                 Comprar tokens
-                            </a>
+                            </x-ui.button>
                         </div>
                     </div>
                 </div>

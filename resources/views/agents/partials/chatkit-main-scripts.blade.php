@@ -11,6 +11,18 @@
             'Escolha um CV na lista acima e clique em «Enviar CV para revisão».'
         );
         $ckComposerPlaceholder = '';
+    } elseif (isset($compactTrailStep) && ($compactTrailStep->slug ?? null) === 'cover-letter') {
+        $ckStartGreeting = (string) config(
+            'career_trail.cover_letter_chat_start_greeting',
+            'Selecione CV e vaga acima, envie ambos ao assistente e copie o texto para a biblioteca de cartas.'
+        );
+        $ckComposerPlaceholder = '';
+    } elseif (isset($compactTrailStep) && ($compactTrailStep->slug ?? null) === 'interviews') {
+        $ckStartGreeting = (string) config(
+            'career_trail.interviews_chat_start_greeting',
+            'Selecione CV e vaga acima e envie ambos ao assistente para preparar a entrevista.'
+        );
+        $ckComposerPlaceholder = '';
     } else {
         $ckStartGreeting = 'Clique no botão «Enviar CV» e depois da resposta, clique no botão «Enviar Vaga».';
         $ckComposerPlaceholder = '';
@@ -446,6 +458,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
     var limits = { cv: {{ (int) $ckMaxCv }}, jd: {{ (int) $ckMaxJd }} };
     var chatkitConsultationCost = {{ (int) ($ckConsultTokens ?? 0) }};
     var chatkitDebitUrl = @json(route('chat.chatkit.debit-consultation'));
+    var createCvFromScratchPrompt = @json((string) config('career_trail.cv_assistant_chat_create_from_scratch_prompt', ''));
     var markApplicationSubmittedUrlTemplate = @json($markApplicationSubmittedUrlTemplate ?? null);
     var jdSendAllowed = false;
     var waitAssistantEndAfterCv = false;
@@ -469,8 +482,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
     var atsAutoPersistTimer = null;
     var atsAutoPersistInFlight = false;
     var atsAutoPersistAttempt = 0;
-    var btnClassViolet =
-        'inline-flex items-center rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-violet-700';
+    var btnClassPrimary = @json(\App\Support\UiButton::classes('primary', 'xs'));
 
     function parseCvSelectUserId() {
         var v = cvSel ? cvSel.value : '';
@@ -684,7 +696,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                         '<a href="' +
                         sessionSync.workspace_url +
                         '" class="' +
-                        btnClassViolet +
+                        btnClassPrimary +
                         '">Ver análise e ajustar CV</a>'
                     return;
                     
@@ -712,7 +724,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                         '<a href="' +
                         o.data.workspace_url +
                         '" class="' +
-                        btnClassViolet +
+                        btnClassPrimary +
                         '">Ver análise e ajustar CV</a>' +
                         chatkitScore;
                     return;
@@ -745,7 +757,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                     pair.jdId +
                     '">' +
                     '<button type="submit" class="' +
-                    btnClassViolet +
+                    btnClassPrimary +
                     '">Preparar lista de ajustes</button></form>';
             })
             .catch(function () {
@@ -1726,6 +1738,65 @@ function initChatKitLibrarySendButtons(chatKitEl) {
         }
         runCvSend();
     });
+
+    var createCvBtn = document.getElementById('chatkit-create-cv-from-scratch');
+    if (createCvBtn && chatKitLibraryCvOnly) {
+        createCvBtn.addEventListener('click', function () {
+            if (
+                chatkitConsultationCost > 0 &&
+                parseTokenBalanceFromPill() < chatkitConsultationCost
+            ) {
+                var needCreate =
+                    'Precisa de pelo menos ' +
+                    chatkitConsultationCost.toLocaleString('pt-BR') +
+                    ' tokens para iniciar a criação do CV no assistente.';
+                setStatus(needCreate);
+                if (window.chatApp && window.chatApp.showErrorMessage) {
+                    window.chatApp.showErrorMessage(needCreate);
+                }
+                return;
+            }
+            var prompt = String(createCvFromScratchPrompt || '').trim();
+            if (!prompt) {
+                prompt =
+                    'Quero preparar um CV novo do zero. Guie-me passo a passo para construir o texto no chat.';
+            }
+            createCvBtn.disabled = true;
+            cvBtn.disabled = true;
+            setStatus('A iniciar criação de CV no chat…');
+            Promise.resolve(chatKitEl.sendUserMessage({ text: prompt, newThread: true }))
+                .then(function () {
+                    if (chatkitConsultationCost > 0) {
+                        pendingCvTurnDebits += 1;
+                    }
+                    setStatus('Pedido enviado — siga as orientações do assistente no chat.');
+                    if (window.chatApp && window.chatApp.showSuccessMessage) {
+                        window.chatApp.showSuccessMessage(
+                            'Conversa iniciada — o assistente vai guiá-lo na criação do CV.'
+                        );
+                    }
+                })
+                .catch(function (err) {
+                    var msg =
+                        (err && err.message) ||
+                        'Não foi possível enviar o pedido ao assistente.';
+                    setStatus(msg);
+                    postChatKitClientLog({
+                        agent_id: agentId,
+                        message: String(msg).slice(0, 1500),
+                        source: 'chatkit_create_cv_from_scratch',
+                    });
+                    if (window.chatApp && window.chatApp.showErrorMessage) {
+                        window.chatApp.showErrorMessage(msg);
+                    }
+                })
+                .finally(function () {
+                    createCvBtn.disabled = false;
+                    cvBtn.disabled = false;
+                });
+        });
+    }
+
     (function autoCareerTrailCvSendFromQuery() {
         try {
             var params = new URLSearchParams(window.location.search);

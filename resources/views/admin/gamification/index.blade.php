@@ -116,9 +116,9 @@
                         @endforeach
 
                         <div class="pt-2">
-                            <button type="submit" class="inline-flex items-center rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+                            <x-ui.button type="submit" variant="primary" size="md">
                                 Salvar badges
-                            </button>
+                            </x-ui.button>
                         </div>
                     </form>
                 </div>
@@ -218,9 +218,9 @@
                         </div>
 
                         <div class="pt-2">
-                            <button type="submit" class="inline-flex items-center rounded-xl bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700">
+                            <x-ui.button type="submit" variant="primary" size="md">
                                 Salvar score &amp; ranks
-                            </button>
+                            </x-ui.button>
                         </div>
                     </form>
                 </div>

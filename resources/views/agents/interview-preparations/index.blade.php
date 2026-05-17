@@ -1,7 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            Entrevistas · {{ $agent->name }}
+            Passo 4 - Entrevista
         </h2>
     </x-slot>
 
@@ -10,9 +10,9 @@
             <div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 text-sm sm:px-0">
                 <a href="{{ route('career-trail.index') }}" class="font-medium text-indigo-600 hover:text-indigo-800 hover:underline">&larr; Voltar à trilha</a>
                 <span class="text-slate-300">·</span>
-                <a href="{{ route('agents.chat', $agent) }}" class="font-medium text-violet-700 hover:text-violet-950 hover:underline">Preparar entrevistas (chat)</a>
+                <a href="{{ route('agents.chat', $agent) }}" class="font-medium text-violet-700 hover:text-violet-950 hover:underline">Assistente - Preparar entrevistas</a>
                 <span class="text-slate-300">·</span>
-                <a href="{{ $documentsHubUrl }}" class="font-medium text-emerald-700 hover:text-emerald-950 hover:underline">Biblioteca ATS (CV e vagas)</a>
+                <a href="{{ $documentsHubUrl }}" class="font-medium text-emerald-700 hover:text-emerald-950 hover:underline">Vagas e CVs</a>
             </div>
 
             @if (session('status'))
@@ -28,14 +28,12 @@
                         <p class="mt-1 text-sm text-slate-600">Agrupado por processo (vaga ATS + CV). Rondas listadas por sequência dentro de cada processo.</p>
                     </div>
                     <div class="flex shrink-0 flex-wrap gap-2">
-                        <a href="{{ route('agents.interview-preparations.create', $agent) }}"
-                           class="inline-flex h-10 items-center justify-center rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-violet-700">
+                        <x-ui.button variant="primary" size="sm" href="{{ route('agents.interview-preparations.create', $agent) }}">
                             Nova entrada
-                        </a>
-                        <a href="{{ route('agents.chat', $agent) }}"
-                           class="inline-flex h-10 items-center justify-center rounded-xl border border-violet-500 bg-white px-4 text-sm font-semibold text-violet-950 shadow-sm hover:bg-violet-50">
+                        </x-ui.button>
+                        <x-ui.button variant="outline" size="sm" href="{{ route('agents.chat', $agent) }}">
                             Preparar (chat)
-                        </a>
+                        </x-ui.button>
                     </div>
                 </div>
 
@@ -147,13 +145,13 @@
                         </details>
 
                         <div class="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 bg-slate-50/60 px-4 py-2.5 sm:px-5">
-                            <button type="submit" class="inline-flex h-10 min-w-[7rem] items-center justify-center rounded-xl bg-violet-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-violet-700">
+                            <x-ui.button type="submit" variant="primary" size="sm" class="min-w-[7rem]">
                                 Aplicar
-                            </button>
+                            </x-ui.button>
                             @if (! empty($filtersActive))
-                                <a href="{{ route('agents.interview-preparations.index', $agent) }}" class="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50">
+                                <x-ui.button variant="secondary" size="sm" href="{{ route('agents.interview-preparations.index', $agent) }}">
                                     Limpar
-                                </a>
+                                </x-ui.button>
                             @endif
                         </div>
                     </form>

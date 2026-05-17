@@ -382,6 +382,8 @@ test('embedded career cv assistant without no_documents uses compact cv-only wor
         ->assertViewHas('chatkitSimpleChat', false)
         ->assertViewHas('compactTrailChatUi', true)
         ->assertSee('Gerir CVs (Meu CV)', false)
+        ->assertSee('id="chatkit-create-cv-from-scratch"', false)
+        ->assertSee('Criar novo CV', false)
         ->assertDontSee('Vaga (JD)', false);
 });
 
