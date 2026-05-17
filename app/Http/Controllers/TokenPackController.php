@@ -7,6 +7,7 @@ use App\Models\TokenPackOrder;
 use App\Rules\ValidBrazilTaxId;
 use App\Services\AsaasService;
 use App\Services\TokenPackOrderCompletionService;
+use App\Support\AsaasPaymentCheckoutPresenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -115,6 +116,7 @@ class TokenPackController extends Controller
                     'tokens_amount' => $tokensAmount,
                     'amount_brl' => $price,
                     'status' => TokenPackOrder::STATUS_PENDING,
+                    'payment_method' => $request->payment_method,
                 ]);
 
                 $externalRef = "user_{$user->id}";
@@ -181,6 +183,9 @@ class TokenPackController extends Controller
                 }
 
                 $order->asaas_payment_id = $asaasResponse['id'];
+                if ($request->payment_method === 'boleto') {
+                    $order->bank_slip_url = $asaasResponse['bankSlipUrl'] ?? null;
+                }
                 $order->save();
 
                 if ($user->asaas_customer_id !== $customerId) {
@@ -188,38 +193,22 @@ class TokenPackController extends Controller
                     $user->save();
                 }
 
-                if ($request->payment_method === 'pix') {
-                    $pixInfo = $this->asaasService->getPixQrCode($asaasResponse['id']);
-
-                    return response()->json([
-                        'success' => true,
-                        'is_pix' => true,
-                        'pix_info' => $pixInfo,
-                        'payment_id' => $asaasResponse['id'],
-                        'asaas_subscription_id' => $asaasResponse['id'],
-                        'invoice_url' => $asaasResponse['invoiceUrl'] ?? null,
-                    ]);
+                if (AsaasPaymentCheckoutPresenter::isPaid($asaasResponse['status'] ?? null)) {
+                    app(TokenPackOrderCompletionService::class)->tryCompleteFromAsaasPayment($asaasResponse);
                 }
 
-                $payUrl = $asaasResponse['invoiceUrl']
-                    ?? $asaasResponse['bankSlipUrl']
-                    ?? null;
+                $payload = AsaasPaymentCheckoutPresenter::presentForCheckout(
+                    $asaasResponse,
+                    $request->payment_method
+                );
 
-                $checkoutButtonLabel = match ($request->payment_method) {
-                    'boleto' => 'Abrir boleto / fatura no Asaas',
-                    'credit_card' => 'Concluir pagamento no Asaas',
-                    default => 'Abrir página de pagamento no Asaas',
-                };
+                if ($request->payment_method === 'pix') {
+                    $payload['pix_info'] = $this->asaasService->getPixQrCode($asaasResponse['id']);
+                }
 
-                return response()->json([
-                    'success' => true,
-                    'invoice_url' => $payUrl,
-                    'payment_id' => $asaasResponse['id'],
-                    'checkout_button_label' => $payUrl ? $checkoutButtonLabel : null,
-                    'checkout_hint' => $payUrl
-                        ? 'O Asaas abre em novo separador. Pode fechá-lo depois — esta página passa a verificar o pagamento automaticamente até creditar os tokens.'
-                        : null,
-                ]);
+                $payload['order_id'] = $order->id;
+
+                return response()->json($payload);
             });
         } catch (\Throwable $e) {
             Log::error('Token pack checkout failed', [
@@ -271,9 +260,35 @@ class TokenPackController extends Controller
             app(TokenPackOrderCompletionService::class)->tryCompleteFromAsaasPayment($payment);
         }
 
+        $orderId = is_array($meta) ? (int) ($meta['order_id'] ?? 0) : 0;
+
         return response()->json([
             'success' => true,
             'is_paid' => $isPaid,
+            'payment_status' => $status,
+            'order_id' => $orderId > 0 ? $orderId : null,
+        ]);
+    }
+
+    public function thankYou(TokenPackOrder $order): View|RedirectResponse
+    {
+        $user = Auth::user();
+        if ($user === null || (int) $order->user_id !== (int) $user->id) {
+            abort(403);
+        }
+
+        if ($user !== null && ! $user->hasVerifiedEmail()) {
+            return redirect()
+                ->route('verification.notice')
+                ->with('warning', 'Confirme o seu e-mail para ver o resumo da compra.');
+        }
+
+        $order->refresh();
+        $user->refresh();
+
+        return view('tokens.thank-you', [
+            'order' => $order,
+            'balance' => (int) $user->token_balance,
         ]);
     }
 

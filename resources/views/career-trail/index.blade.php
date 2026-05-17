@@ -7,6 +7,11 @@
 
     <div class="py-10">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
+            @if (request('compra') === 'ok' && request()->filled('tokens'))
+                <div class="mb-4 rounded-lg border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900" role="status">
+                    Compra confirmada! Foram creditados {{ number_format((int) request('tokens'), 0, ',', '.') }} tokens na sua conta.
+                </div>
+            @endif
             @if (session('status'))
                 <div class="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900" role="status">
                     {{ session('status') }}

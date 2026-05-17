@@ -190,6 +190,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('ratings.quick-store');
 
     Route::get('/tokens/comprar', [TokenPackController::class, 'show'])->name('tokens.purchase');
+    Route::get('/tokens/obrigado/{order}', [TokenPackController::class, 'thankYou'])->name('tokens.thank-you');
     Route::get('/tokens/historico', [TokenPackController::class, 'history'])->name('tokens.history');
     Route::post('/tokens/comprar/processar', [TokenPackController::class, 'process'])->name('tokens.purchase.process');
     Route::post('/tokens/pagamento/status', [TokenPackController::class, 'checkPaymentStatus'])->name('tokens.payment.status');

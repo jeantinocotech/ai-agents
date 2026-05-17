@@ -188,10 +188,10 @@
         </div>
     </div>
 
-    <div id="pix-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50">
+    <div id="pix-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50 p-4">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold">PIX</h3>
+                <h3 class="text-xl font-bold text-slate-900">Pagar com PIX</h3>
                 <button type="button" id="close-pix-modal" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
             </div>
             <div class="text-center">
@@ -208,21 +208,41 @@
         </div>
     </div>
 
-    <div id="checkout-external-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-50 p-4">
+    <div id="boleto-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50 p-4">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-gray-900">Pagamento externo</h3>
-                <button type="button" id="close-external-checkout-modal" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
+                <h3 class="text-xl font-bold text-slate-900">Boleto gerado</h3>
+                <button type="button" id="close-boleto-modal" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
             </div>
-            <p id="external-checkout-hint" class="text-sm text-gray-600 mb-4"></p>
-            <div class="space-y-3">
-                <a id="checkout-external-link" href="#" target="_blank" rel="noopener noreferrer"
-                   class="hidden w-full rounded-lg bg-blue-600 px-4 py-3 text-center font-medium text-white hover:bg-blue-700">
-                    Abrir no Asaas
-                </a>
-                <p id="external-checkout-status" class="text-sm text-yellow-900 bg-yellow-50 p-3 rounded-md">À espera da confirmação do pagamento…</p>
-                <p class="text-xs text-gray-500">Pode fechar este modal; a verificação continua até o pagamento ser confirmado ou pode voltar mais tarde ao histórico de compras.</p>
+            <p id="boleto-message" class="text-sm text-slate-600 mb-4"></p>
+            <p id="boleto-due-date" class="text-sm text-slate-700 mb-3 hidden"></p>
+            <label class="block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Linha digitável</label>
+            <div class="flex mb-4">
+                <input id="boleto-barcode" type="text" readonly class="flex-1 px-3 py-2 border border-slate-200 rounded-l-lg text-sm bg-slate-50">
+                <button type="button" id="copy-boleto-barcode" class="bg-violet-600 text-white px-3 py-2 rounded-r-lg text-sm hover:bg-violet-700">Copiar</button>
             </div>
+            <a id="boleto-pdf-link" href="#" target="_blank" rel="noopener noreferrer"
+               class="mb-4 inline-block w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-center text-sm font-medium text-slate-800 hover:bg-slate-100 hidden">
+                Baixar PDF do boleto
+            </a>
+            <p id="boleto-status" class="text-sm text-amber-900 bg-amber-50 p-3 rounded-lg">Aguardando confirmação do pagamento…</p>
+            <p class="mt-3 text-xs text-slate-500">Os tokens serão creditados após a compensação. Pode fechar este modal — a verificação continua em segundo plano.</p>
+        </div>
+    </div>
+
+    <div id="card-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-black/50 p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full p-6 ring-1 ring-slate-200">
+            <div class="flex justify-between items-center mb-4">
+                <h3 id="card-modal-title" class="text-xl font-bold text-slate-900">Pagamento com cartão</h3>
+                <button type="button" id="close-card-modal" class="text-gray-500 hover:text-gray-700 text-2xl leading-none">&times;</button>
+            </div>
+            <p id="card-message" class="text-sm text-slate-600 mb-4"></p>
+            <a id="card-secondary-link" href="#" target="_blank" rel="noopener noreferrer"
+               class="mb-4 hidden w-full rounded-lg border border-violet-200 bg-violet-50 px-4 py-2.5 text-center text-sm font-medium text-violet-900 hover:bg-violet-100">
+                Concluir verificação
+            </a>
+            <p id="card-status" class="text-sm text-amber-900 bg-amber-50 p-3 rounded-lg">Aguardando confirmação…</p>
+            <p class="mt-3 text-xs text-slate-500">Não é necessário sair do site. Esta página atualiza automaticamente.</p>
         </div>
     </div>
 
@@ -237,10 +257,17 @@
             const pixModal = document.getElementById('pix-modal');
             const pixQrcode = document.getElementById('pix-qrcode');
             const pixCode = document.getElementById('pix-code');
-            const checkoutExternalModal = document.getElementById('checkout-external-modal');
-            const checkoutExternalLink = document.getElementById('checkout-external-link');
-            const externalCheckoutHint = document.getElementById('external-checkout-hint');
-            const externalCheckoutStatus = document.getElementById('external-checkout-status');
+            const boletoModal = document.getElementById('boleto-modal');
+            const boletoMessage = document.getElementById('boleto-message');
+            const boletoDueDate = document.getElementById('boleto-due-date');
+            const boletoBarcode = document.getElementById('boleto-barcode');
+            const boletoPdfLink = document.getElementById('boleto-pdf-link');
+            const boletoStatus = document.getElementById('boleto-status');
+            const cardModal = document.getElementById('card-modal');
+            const cardModalTitle = document.getElementById('card-modal-title');
+            const cardMessage = document.getElementById('card-message');
+            const cardSecondaryLink = document.getElementById('card-secondary-link');
+            const cardStatus = document.getElementById('card-status');
 
             function resetCheckoutButtonState() {
                 submitButton.disabled = false;
@@ -296,7 +323,9 @@
             }
 
             let paymentId = null;
+            let orderId = null;
             let pollingInterval = null;
+            const thankYouUrlFor = (id) => @json(route('tokens.thank-you', ['order' => 0])).replace(/\/0$/, '/' + id);
 
             function toggleCard() {
                 const m = document.querySelector('input[name="payment_method"]:checked');
@@ -362,27 +391,54 @@
                 syncPackTotals();
             }
 
-            document.getElementById('close-pix-modal').addEventListener('click', () => pixModal.classList.add('hidden'));
+            function showModal(el) {
+                if (!el) return;
+                el.classList.remove('hidden');
+                el.classList.add('flex');
+            }
+
+            function hideModal(el) {
+                if (!el) return;
+                el.classList.add('hidden');
+                el.classList.remove('flex');
+            }
+
+            function markStatusPaid(el) {
+                if (!el) return;
+                el.textContent = 'Pagamento confirmado. A redirecionar…';
+                el.classList.remove('text-amber-900', 'bg-amber-50', 'text-yellow-800', 'bg-yellow-50');
+                el.classList.add('text-emerald-900', 'bg-emerald-50');
+            }
+
+            document.getElementById('close-pix-modal').addEventListener('click', () => hideModal(pixModal));
             document.getElementById('copy-pix-code').addEventListener('click', function () {
                 pixCode.select();
                 document.execCommand('copy');
             });
-
-            document.getElementById('close-external-checkout-modal').addEventListener('click', () => {
-                checkoutExternalModal.classList.add('hidden');
+            document.getElementById('close-boleto-modal').addEventListener('click', () => hideModal(boletoModal));
+            document.getElementById('copy-boleto-barcode').addEventListener('click', function () {
+                if (!boletoBarcode || !boletoBarcode.value) return;
+                boletoBarcode.select();
+                document.execCommand('copy');
             });
+            document.getElementById('close-card-modal').addEventListener('click', () => hideModal(cardModal));
+
+            function redirectToThankYou() {
+                if (orderId) {
+                    window.location.href = thankYouUrlFor(orderId);
+                    return;
+                }
+                window.location.href = '{{ route('career-trail.index') }}';
+            }
 
             function setPaymentConfirmedUi() {
                 clearInterval(pollingInterval);
                 const msg = 'Pagamento confirmado. A redirecionar…';
                 const ps = document.getElementById('payment-status');
-                if (ps) ps.textContent = msg;
-                if (externalCheckoutStatus) {
-                    externalCheckoutStatus.textContent = msg;
-                    externalCheckoutStatus.classList.remove('text-yellow-900', 'bg-yellow-50');
-                    externalCheckoutStatus.classList.add('text-emerald-900', 'bg-emerald-50');
-                }
-                setTimeout(() => { window.location.href = '{{ route('career-trail.index') }}'; }, 2000);
+                if (ps) markStatusPaid(ps);
+                markStatusPaid(boletoStatus);
+                markStatusPaid(cardStatus);
+                setTimeout(redirectToThankYou, 2000);
             }
 
             function checkPaymentStatus() {
@@ -398,6 +454,9 @@
                         'Accept': 'application/json',
                     }
                 }).then(r => r.json()).then(data => {
+                    if (data.order_id) {
+                        orderId = data.order_id;
+                    }
                     if (data.success && data.is_paid) {
                         setPaymentConfirmedUi();
                     }
@@ -454,35 +513,80 @@
                         return;
                     }
                     if (data.success) {
-                        if (data.is_pix && data.pix_info) {
-                            paymentId = data.payment_id || data.asaas_subscription_id;
+                        paymentId = data.payment_id || null;
+                        if (data.order_id) {
+                            orderId = data.order_id;
+                        }
+                        const mode = data.checkout_mode || (data.is_pix ? 'pix' : null);
+
+                        if (data.is_paid) {
+                            setPaymentConfirmedUi();
+                            return;
+                        }
+
+                        if (mode === 'pix' && data.pix_info) {
                             if (data.pix_info.encodedImage) {
                                 pixQrcode.src = 'data:image/png;base64,' + data.pix_info.encodedImage;
                                 pixQrcode.classList.remove('hidden');
                             }
                             pixCode.value = data.pix_info.payload || data.pix_info.copyPaste || '';
-                            pixModal.classList.remove('hidden');
+                            showModal(pixModal);
                             pollingInterval = setInterval(checkPaymentStatus, 5000);
-                        } else if (data.payment_id) {
-                            paymentId = data.payment_id;
-                            if (externalCheckoutHint) {
-                                externalCheckoutHint.textContent = data.checkout_hint || '';
-                            }
-                            if (checkoutExternalLink) {
-                                if (data.invoice_url) {
-                                    checkoutExternalLink.href = data.invoice_url;
-                                    checkoutExternalLink.textContent = data.checkout_button_label || 'Abrir no Asaas';
-                                    checkoutExternalLink.classList.remove('hidden');
+                        } else if (mode === 'boleto') {
+                            if (boletoMessage) boletoMessage.textContent = data.message || '';
+                            if (boletoDueDate) {
+                                if (data.due_date) {
+                                    boletoDueDate.textContent = 'Vencimento: ' + data.due_date;
+                                    boletoDueDate.classList.remove('hidden');
                                 } else {
-                                    checkoutExternalLink.classList.add('hidden');
+                                    boletoDueDate.classList.add('hidden');
                                 }
                             }
-                            if (externalCheckoutStatus) {
-                                externalCheckoutStatus.textContent = 'À espera da confirmação do pagamento…';
-                                externalCheckoutStatus.classList.add('text-yellow-900', 'bg-yellow-50');
-                                externalCheckoutStatus.classList.remove('text-emerald-900', 'bg-emerald-50');
+                            if (boletoBarcode) {
+                                boletoBarcode.value = data.identification_field || '';
                             }
-                            checkoutExternalModal.classList.remove('hidden');
+                            if (boletoPdfLink) {
+                                if (data.bank_slip_url) {
+                                    boletoPdfLink.href = data.bank_slip_url;
+                                    boletoPdfLink.classList.remove('hidden');
+                                } else {
+                                    boletoPdfLink.classList.add('hidden');
+                                }
+                            }
+                            if (boletoStatus) {
+                                boletoStatus.textContent = 'Aguardando confirmação do pagamento…';
+                                boletoStatus.classList.add('text-amber-900', 'bg-amber-50');
+                                boletoStatus.classList.remove('text-emerald-900', 'bg-emerald-50');
+                            }
+                            showModal(boletoModal);
+                            pollingInterval = setInterval(checkPaymentStatus, 5000);
+                        } else if (mode === 'card_confirmed') {
+                            if (cardMessage) cardMessage.textContent = data.message || 'Pagamento confirmado.';
+                            if (cardModalTitle) cardModalTitle.textContent = 'Pagamento confirmado';
+                            if (cardSecondaryLink) cardSecondaryLink.classList.add('hidden');
+                            markStatusPaid(cardStatus);
+                            showModal(cardModal);
+                            setTimeout(setPaymentConfirmedUi, 1500);
+                        } else if (mode === 'card_pending') {
+                            if (cardMessage) cardMessage.textContent = data.message || '';
+                            if (cardModalTitle) cardModalTitle.textContent = 'Pagamento com cartão';
+                            if (cardSecondaryLink) {
+                                if (data.secondary_url) {
+                                    cardSecondaryLink.href = data.secondary_url;
+                                    cardSecondaryLink.textContent = data.secondary_url_label || 'Concluir verificação';
+                                    cardSecondaryLink.classList.remove('hidden');
+                                } else {
+                                    cardSecondaryLink.classList.add('hidden');
+                                }
+                            }
+                            if (cardStatus) {
+                                cardStatus.textContent = 'Aguardando confirmação…';
+                                cardStatus.classList.add('text-amber-900', 'bg-amber-50');
+                                cardStatus.classList.remove('text-emerald-900', 'bg-emerald-50');
+                            }
+                            showModal(cardModal);
+                            pollingInterval = setInterval(checkPaymentStatus, 5000);
+                        } else if (paymentId) {
                             pollingInterval = setInterval(checkPaymentStatus, 5000);
                         } else {
                             window.location.href = '{{ route('career-trail.index') }}';
