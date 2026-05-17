@@ -177,4 +177,13 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(UserCv::class);
     }
+
+    public function profilePhotoUrl(): ?string
+    {
+        if (! $this->profile_photo) {
+            return null;
+        }
+
+        return asset('storage/'.$this->profile_photo);
+    }
 }

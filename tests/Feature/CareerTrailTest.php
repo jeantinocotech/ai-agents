@@ -535,3 +535,90 @@ test('career trail ats shows ats check link only when jd has profile cv linked',
     $withPair->assertSee('/agents/'.$agent->id.'/chat', false);
     $withPair->assertSee('auto_ats_pair');
 });
+
+test('ats duplicate cv creates job titled copy and links editing jd', function () {
+    $agent = Agent::query()->create([
+        'name' => 'ATS dup',
+        'price' => 0,
+        'model_type' => 'gpt-4o-mini',
+        'is_active' => true,
+    ]);
+    CareerTrailStep::query()->where('slug', 'ats')->update(['agent_id' => $agent->id]);
+
+    $user = User::factory()->create();
+    $source = UserCv::query()->create([
+        'user_id' => $user->id,
+        'title' => 'CV Comercial',
+        'body' => str_repeat('x', 400),
+        'is_default' => true,
+        'source' => UserCv::SOURCE_MANUAL,
+    ]);
+
+    $jd = AgentDocument::query()->create([
+        'user_id' => $user->id,
+        'agent_id' => $agent->id,
+        'type' => AgentDocument::TYPE_JD,
+        'title' => 'Engenheiro Sénior',
+        'body' => str_repeat('j', 200),
+        'user_cv_id' => $source->id,
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('career-trail.ats.cv.duplicate'), [
+            'source_user_cv_id' => $source->id,
+            'job_title' => 'Engenheiro Sénior',
+            'edit_jd' => $jd->id,
+        ])
+        ->assertRedirect(route('career-trail.ats', ['edit_jd' => $jd->id]).'#sec-ats-jd-form');
+
+    $copy = UserCv::query()
+        ->where('user_id', $user->id)
+        ->where('title', 'CV Comercial — Engenheiro Sénior')
+        ->first();
+
+    expect($copy)->not->toBeNull();
+    expect($copy->is_default)->toBeFalse();
+    expect((string) $copy->body)->toBe(str_repeat('x', 400));
+
+    $jd->refresh();
+    expect((int) $jd->user_cv_id)->toBe((int) $copy->id);
+});
+
+test('ats duplicate cv preselects copy on new job form', function () {
+    $agent = Agent::query()->create([
+        'name' => 'ATS dup new',
+        'price' => 0,
+        'model_type' => 'gpt-4o-mini',
+        'is_active' => true,
+    ]);
+    CareerTrailStep::query()->where('slug', 'ats')->update(['agent_id' => $agent->id]);
+
+    $user = User::factory()->create();
+    $source = UserCv::query()->create([
+        'user_id' => $user->id,
+        'title' => 'CV Base',
+        'body' => str_repeat('y', 400),
+        'is_default' => true,
+        'source' => UserCv::SOURCE_MANUAL,
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('career-trail.ats.cv.duplicate'), [
+            'source_user_cv_id' => $source->id,
+            'job_title' => 'Product Manager',
+        ])
+        ->assertRedirect(route('career-trail.ats').'#sec-ats-jd-form');
+
+    $copy = UserCv::query()
+        ->where('user_id', $user->id)
+        ->where('title', 'CV Base — Product Manager')
+        ->first();
+
+    expect($copy)->not->toBeNull();
+
+    $this->actingAs($user)
+        ->get(route('career-trail.ats'))
+        ->assertOk()
+        ->assertSee('value="'.$copy->id.'"', false)
+        ->assertSee('selected', false);
+});

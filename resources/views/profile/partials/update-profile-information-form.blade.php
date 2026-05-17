@@ -13,7 +13,7 @@
         @csrf
     </form>
 
-    <form method="post" action="{{ route('profile.update') }}" class="mt-6 space-y-6" enctype="multipart/form-data">
+    <form id="profile-update-form" method="post" action="{{ route('profile.update') }}" class="mt-6 space-y-6" enctype="multipart/form-data">
 
         @csrf
         @method('PATCH')
@@ -21,12 +21,13 @@
         <div>
             <div class="flex flex-col items-start">
                 <img id="profile-photo-preview"
-                    src="{{ $user->profile_photo ? asset('storage/' . $user->profile_photo) : 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&background=23272a&color=fff&size=128' }}"
+                    src="{{ $user->profilePhotoUrl() ?? 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&background=23272a&color=fff&size=128' }}"
                     class="w-24 h-24 rounded-full border mb-2 object-cover"
-                    alt="Profile Photo">
+                    alt="Foto de perfil">
                 
-                <!-- Input escondido -->
-                <input id="profile_photo" name="profile_photo" type="file" accept="image/*" class="hidden" onchange="showFileName(this)">
+                <input id="profile_photo" name="profile_photo" type="file"
+                    accept="image/jpeg,image/png,image/x-png,image/webp,image/gif,.jpg,.jpeg,.png,.PNG,.webp,.gif"
+                    class="hidden">
                 
                 <!-- Botão customizado -->
                 <label for="profile_photo"
@@ -37,6 +38,11 @@
 
             </div>
             <x-input-error class="mt-2" :messages="$errors->get('profile_photo')" />
+            <p class="mt-1 text-xs text-gray-500">
+                JPG, PNG, WEBP ou GIF, até {{ $profilePhotoMaxLabel ?? '5 MB' }}.
+                Depois de escolher a foto, clique em <strong>Save</strong>.
+            </p>
+            <p id="profile-photo-size-error" class="mt-1 text-xs text-red-600 hidden" role="alert"></p>
         </div>
 
         <div>
@@ -152,18 +158,62 @@
     document.addEventListener('DOMContentLoaded', function () {
         const input = document.getElementById('profile_photo');
         const preview = document.getElementById('profile-photo-preview');
+        const sizeError = document.getElementById('profile-photo-size-error');
+        const form = document.getElementById('profile-update-form');
+        const maxBytes = {{ (int) ($profilePhotoMaxBytes ?? 5 * 1024 * 1024) }};
+        const maxLabel = @json($profilePhotoMaxLabel ?? '5 MB');
 
-        input.addEventListener('change', function (e) {
-            const [file] = input.files;
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function (e) {
-                    preview.src = e.target.result;
-                    preview.classList.remove('hidden');
-                }
-                reader.readAsDataURL(file);
+        function showPhotoSizeError(message) {
+            if (!sizeError) return;
+            sizeError.textContent = message;
+            sizeError.classList.remove('hidden');
+        }
+
+        function clearPhotoSizeError() {
+            if (!sizeError) return;
+            sizeError.textContent = '';
+            sizeError.classList.add('hidden');
+        }
+
+        function validatePhotoSize(file) {
+            if (!file) {
+                clearPhotoSizeError();
+                return true;
             }
-        });
+            if (file.size > maxBytes) {
+                showPhotoSizeError('Esta foto tem ' + (file.size / (1024 * 1024)).toFixed(1).replace('.', ',') + ' MB. O limite é ' + maxLabel + '.');
+                return false;
+            }
+            clearPhotoSizeError();
+            return true;
+        }
+
+        if (input) {
+            input.addEventListener('change', function () {
+                const [file] = input.files;
+                if (!validatePhotoSize(file)) {
+                    input.value = '';
+                    return;
+                }
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        preview.src = e.target.result;
+                        preview.classList.remove('hidden');
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        if (form && input) {
+            form.addEventListener('submit', function (e) {
+                const [file] = input.files;
+                if (file && !validatePhotoSize(file)) {
+                    e.preventDefault();
+                }
+            });
+        }
     });
 
     document.addEventListener("DOMContentLoaded", function() {

@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use App\Models\User;
 use App\Rules\ValidBrazilTaxId;
+use App\Rules\ValidProfilePhoto;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -31,17 +32,25 @@ class ProfileUpdateRequest extends FormRequest
             'address' => ['nullable', 'string', 'max:255'],
             'number' => ['nullable', 'string', 'max:20'],
             'city' => ['nullable', 'string', 'max:60'],
-            'state' => ['nullable', 'string', 'max:2', 'regex:/^[A-Za-z]{2}$/'],
-            'profile_photo' => ['nullable', 'image', 'max:2048'],
+            'state' => ['nullable', 'string', 'size:2', 'regex:/^[A-Za-z]{2}$/'],
+            'profile_photo' => ['nullable', new ValidProfilePhoto],
         ];
     }
 
     protected function prepareForValidation(): void
     {
-        if ($this->has('state')) {
-            $this->merge([
-                'state' => strtoupper(trim((string) $this->input('state'))),
-            ]);
+        $nullableStrings = ['linkedin_url', 'phone', 'cpf', 'cep', 'address', 'number', 'city', 'state'];
+        $merged = [];
+        foreach ($nullableStrings as $key) {
+            if ($this->has($key) && trim((string) $this->input($key)) === '') {
+                $merged[$key] = null;
+            }
+        }
+        if ($this->has('state') && $this->input('state') !== null) {
+            $merged['state'] = strtoupper(trim((string) $this->input('state')));
+        }
+        if ($merged !== []) {
+            $this->merge($merged);
         }
     }
 }

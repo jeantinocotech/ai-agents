@@ -50,15 +50,15 @@
                     <h1 class="text-xl font-bold text-slate-900">Meus CVs</h1>
                 </div>
 
-                <div class="space-y-5 px-4 py-4 sm:px-5 sm:py-5">
+                <div class="space-y-3 px-4 py-3 sm:px-5 sm:py-4">
                     @if ($profileCvs->isNotEmpty())
-                        <div class="max-h-56 overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 bg-white">
+                        <div class="overflow-x-auto overflow-y-auto rounded-xl border border-slate-200 bg-white" style="max-height: 10.5rem;">
                             <table class="min-w-full text-left text-sm">
                                 <thead class="sticky top-0 z-10 border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wide text-slate-500">
                                     <tr>
-                                        <th class="px-3 py-2">CV</th>
-                                        <th class="whitespace-nowrap px-3 py-2">Atualizado</th>
-                                        <th class="whitespace-nowrap px-3 py-2 text-right">Ações</th>
+                                        <th class="px-3 py-1.5">CV</th>
+                                        <th class="whitespace-nowrap px-3 py-1.5">Atualizado</th>
+                                        <th class="whitespace-nowrap px-3 py-1.5 text-right">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
@@ -66,7 +66,7 @@
                                         <tr @class([
                                             'bg-violet-50/80' => $formCv && (int) $formCv->id === (int) $cv->id,
                                         ])>
-                                            <td class="align-top px-3 py-2">
+                                            <td class="align-top px-3 py-1.5">
                                                 <a href="{{ route('career-trail.cv', ['edit' => $cv->id]) }}#sec-cv-form"
                                                    class="group block min-w-0 text-slate-900 hover:text-indigo-700">
                                                     <span class="font-medium group-hover:underline">{{ $cv->title ?: 'Sem título' }}</span>
@@ -75,10 +75,10 @@
                                                     @endif
                                                 </a>
                                             </td>
-                                            <td class="whitespace-nowrap px-3 py-2 align-middle text-slate-600">
+                                            <td class="whitespace-nowrap px-3 py-1.5 align-middle text-slate-600">
                                                 {{ $cv->updated_at->format('d/m/Y H:i') }}
                                             </td>
-                                            <td class="px-3 py-2 align-middle text-right">
+                                            <td class="px-3 py-1.5 align-middle text-right">
                                                 <div class="inline-flex flex-wrap items-center justify-end gap-2">
                                                     <form method="post" action="{{ route('career-trail.cv.duplicate', $cv) }}" class="inline">
                                                         @csrf
@@ -102,121 +102,50 @@
                     @endif
 
 
-                    <div class="flex flex-wrap items-center justify-end gap-2 rounded-xl border border-slate-200 bg-slate-50/50 p-2.5">
-                        <label class="{{ \App\Support\UiButton::classes('outline', 'sm') }} cursor-pointer">
-                            <span>Upload CV</span>
-                            <input type="file" id="cv_extract_file_top" accept=".txt,.pdf,.doc,.docx" class="sr-only" aria-label="Ficheiro para extrair texto">
-                        </label>
-                        @if ($cvAssistantChatUrl)
-                            <x-ui.button type="button" id="btn-open-cv-assistant" variant="primary" size="sm">
-                                Ajustar / Criar CV
-                            </x-ui.button>
-                        @endif
-                    </div>
                     <div id="sec-cv-form" class="scroll-mt-24">
                     @if ($formCv)
-                        <form method="post" action="{{ route('career-trail.cv.update', $formCv) }}" class="space-y-4 rounded-xl border border-indigo-200 bg-indigo-50/30 px-3 py-4 sm:px-4">
+                        <form id="cv-profile-form" method="post" action="{{ route('career-trail.cv.update', $formCv) }}" class="space-y-3 rounded-xl border border-indigo-200 bg-indigo-50/30 px-3 py-3 sm:px-4">
                             @csrf
                             @method('PATCH')
                     @else
-                        <form method="post" action="{{ route('career-trail.cv.store') }}" class="space-y-4 rounded-xl border border-transparent px-1">
+                        <form id="cv-profile-form" method="post" action="{{ route('career-trail.cv.store') }}" class="space-y-3">
                             @csrf
                     @endif
 
-                        <div>
-                            <label for="cv_title" class="block text-sm font-medium text-slate-700">Título</label>
-                            <input type="text" name="title" id="cv_title" value="{{ old('title', $formCv?->title) }}"
-                                   class="mt-1 w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                   placeholder="Ex.: CV — área comercial"
-                                   required autocomplete="off">
-                            <x-input-error class="mt-2" :messages="$errors->get('title')" />
-                        </div>
-
-                        <div>
-                            <span class="block text-sm font-medium text-slate-700">Tenho um CV <span class="font-normal text-slate-500"></span></span>
-                            <div class="mt-1 flex flex-wrap items-center gap-3">
+                        <div class="flex flex-wrap items-end gap-3">
+                            <div class="min-w-[12rem] flex-1">
+                                <label for="cv_title" class="block text-sm font-medium text-slate-800">Título</label>
+                                <input type="text" name="title" id="cv_title" value="{{ old('title', $formCv?->title) }}"
+                                       class="mt-0.5 w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                       placeholder="Ex.: CV — área comercial"
+                                       required autocomplete="off">
+                                <x-input-error class="mt-1" :messages="$errors->get('title')" />
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2 pb-0.5">
                                 <label class="{{ \App\Support\UiButton::classes('outline', 'sm') }} cursor-pointer">
-                                    <span>Selecionar arquivo</span>
-                                    <input type="file" id="cv_extract_file" accept=".txt,.pdf,.doc,.docx" class="sr-only">
+                                    <span>Upload CV</span>
+                                    <input type="file" id="cv_extract_file" accept=".txt,.pdf,.doc,.docx" class="sr-only" aria-label="Ficheiro para extrair texto">
                                 </label>
-                                <span id="cv_extract_filename"
-                                      class="min-w-0 max-w-full flex-1 truncate text-sm text-slate-600"
-                                      aria-live="polite"
-                                      title="">Nenhum arquivo selecionado</span>
                             </div>
-                            <p class="mt-1 text-xs text-slate-500">Opcional — Aceita TXT, PDF ou Word (até 20&nbsp;MB). Ao escolher o arquivo, o texto extraído é colocado na área Texto do CV para você revisar antes de salvar.</p>
-                            <p id="cv_extract_status" class="mt-2 hidden text-xs font-medium text-slate-700" role="status" aria-live="polite"></p>
-                            <x-input-error class="mt-2" :messages="$errors->get('cv_file')" />
                         </div>
+                        <p id="cv_extract_filename" class="-mt-1 truncate text-xs text-slate-500" aria-live="polite">TXT, PDF ou Word (máx. 20&nbsp;MB) — o texto vai para a caixa abaixo.</p>
+                        <p id="cv_extract_status" class="hidden text-xs font-medium text-slate-700" role="status" aria-live="polite"></p>
+                        <x-input-error :messages="$errors->get('cv_file')" />
 
                         <div>
-                            <label for="cv_body" class="block text-sm font-medium text-slate-700">Conteúdo do CV</label>
-                            {{-- Sem maxlength no HTML: ao colar texto extraído por JS o navegador cortava o conteúdo sem aviso. --}}
-                            <textarea name="body" id="cv_body" rows="12" data-max-cv-body-chars="{{ $maxCvBodyChars }}"
-                                      class="mt-1 w-full rounded-lg border-slate-300 font-mono text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                      placeholder="Cole ou escreva o conteúdo completo do CV.">{{ old('body', $formCv?->body) }}</textarea>
-                            <div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
-                                <p>Limite ao salvar {{ number_format($maxCvBodyChars, 0, ',', '.') }} caracteres.</p>
-                                <p id="cv-char-hint" class="font-medium text-slate-600 tabular-nums" aria-live="polite"><span id="cv-char-count">0</span> caracteres</p>
+                            <label for="cv_body" class="block text-sm font-medium text-slate-800">Conteúdo do CV</label>
+                            <textarea name="body" id="cv_body" rows="14" data-max-cv-body-chars="{{ $maxCvBodyChars }}"
+                                      class="mt-0.5 w-full rounded-lg border-slate-300 font-mono text-sm leading-relaxed shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                      placeholder="Cole ou escreva o CV completo.">{{ old('body', $formCv?->body) }}</textarea>
+                            <div class="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                                <span>Máx. {{ number_format($maxCvBodyChars, 0, ',', '.') }} caracteres ao salvar</span>
+                                <span id="cv-char-hint" class="font-medium tabular-nums text-slate-600" aria-live="polite"><span id="cv-char-count">0</span> caracteres</span>
                             </div>
-                            <x-input-error class="mt-2" :messages="$errors->get('body')" />
+                            <x-input-error class="mt-1" :messages="$errors->get('body')" />
                         </div>
 
-                        <div class="mt-3 rounded-lg border border-slate-100 bg-slate-50/90 px-3 py-2.5">
-                            @if ($firstCvSuggestion)
-                                <p class="text-xs text-slate-500">O primeiro CV na conta torna-se o padrão ao gravar.</p>
-                            @elseif (! $formCv)
-                                <label class="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-                                    <input type="checkbox" name="make_default" value="1" class="rounded border-slate-300 text-indigo-600" @checked(old('make_default'))>
-                                    <span>Padrão</span>
-                                </label>
-                            @elseif (! $formCv->is_default)
-                                <label class="inline-flex cursor-pointer items-center gap-2 text-sm text-slate-700">
-                                    <input type="checkbox" name="make_default" value="1" class="rounded border-slate-300 text-indigo-600" @checked(old('make_default'))>
-                                    <span>Padrão</span>
-                                </label>
-                            @else
-                                <span class="text-xs font-medium text-emerald-800">CV padrão da conta</span>
-                            @endif
-                        </div>
-
-                        <details class="rounded-lg border border-slate-200 bg-slate-50/80 px-4 py-3">
-                            <summary class="cursor-pointer text-sm font-semibold text-slate-800">LinkedIn (opcional)</summary>
-                            <p class="mt-2 text-xs text-slate-600">
-                                Guarde o URL público do perfil como referência; pode colar experiências manualmente no texto do CV.
-                            </p>
-                            <label for="linkedin_url" class="mt-3 block text-sm font-medium text-slate-700">URL do perfil</label>
-                            <input type="text" name="linkedin_url" id="linkedin_url" value="{{ old('linkedin_url', $linkedinUrl) }}"
-                                   class="mt-1 w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                                   placeholder="https://www.linkedin.com/in/…">
-                            <x-input-error class="mt-2" :messages="$errors->get('linkedin_url')" />
-                        </details>
-
-                        @if ($formCv)
-                            <div class="rounded-lg border border-slate-200 bg-white px-4 py-3">
-                                <h3 class="text-sm font-semibold text-slate-900">Vagas associadas com este CV</h3>
-                                @if (($editingCvAssociatedJds ?? collect())->isNotEmpty())
-                                    <ul class="mt-2 divide-y divide-slate-100 text-sm">
-                                        @foreach ($editingCvAssociatedJds as $jd)
-                                            <li class="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0 last:pb-0">
-                                                <div class="min-w-0">
-                                                    <span class="font-medium text-slate-800">{{ $jd->title ?: ('Vaga #'.$jd->id) }}</span>
-                                                    <span class="mt-0.5 block text-xs text-slate-500">{{ $jd->agent->name ?? '—' }}</span>
-                                                </div>
-                                                @if ($jd->agent)
-                                                    <a href="{{ \App\Services\CareerTrailAgentAccess::documentsHubUrl($jd->agent) }}"
-                                                       class="shrink-0 text-xs font-semibold text-indigo-700 hover:underline">Biblioteca ATS</a>
-                                                @endif
-                                            </li>
-                                        @endforeach
-                                    </ul>
-                                @else
-                                    <p class="mt-1 text-xs text-slate-500">Ainda não há descrições de vaga (JD) associadas a este CV.</p>
-                                @endif
-                            </div>
-                        @endif
-
-                        <div class="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200/80 pt-3">
+                        <div class="flex flex-wrap items-center justify-end gap-2">
+                            <x-cv-export-dropdown form-id="cv-profile-form" :user-cv="$formCv" />
                             <x-ui.button type="submit" variant="primary" size="md">
                                 {{ $formCv ? 'Salvar alterações' : 'Salvar CV' }}
                             </x-ui.button>
@@ -228,38 +157,74 @@
                                     </x-ui.button>
                                 @else
                                     <span class="{{ \App\Support\UiButton::classes('secondary', 'md') }} cursor-not-allowed opacity-40"
-                                          role="note"
-                                          title="Grave o CV primeiro; depois pode abrir a análise no assistente.">
+                                          role="note" title="Grave o CV primeiro.">
                                         Analisar CV
                                     </span>
                                 @endif
                             @endif
                         </div>
+
+                        <div class="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-700">
+                            @if ($firstCvSuggestion)
+                                <span class="text-xs text-slate-500">O primeiro CV gravado torna-se o padrão.</span>
+                            @elseif (! $formCv)
+                                <label class="inline-flex cursor-pointer items-center gap-2">
+                                    <input type="checkbox" name="make_default" value="1" class="rounded border-slate-300 text-indigo-600" @checked(old('make_default'))>
+                                    <span>Definir como CV padrão</span>
+                                </label>
+                            @elseif (! $formCv->is_default)
+                                <label class="inline-flex cursor-pointer items-center gap-2">
+                                    <input type="checkbox" name="make_default" value="1" class="rounded border-slate-300 text-indigo-600" @checked(old('make_default'))>
+                                    <span>Definir como CV padrão</span>
+                                </label>
+                            @else
+                                <span class="text-xs font-medium text-emerald-800">CV padrão da conta</span>
+                            @endif
+                        </div>
+
+                        <details class="rounded-lg border border-slate-200/80 bg-slate-50/60 px-3 py-2">
+                            <summary class="cursor-pointer text-sm font-medium text-slate-800">LinkedIn</summary>
+                            <label for="linkedin_url" class="mt-2 block text-xs font-medium text-slate-600">URL do perfil</label>
+                            <input type="text" name="linkedin_url" id="linkedin_url" value="{{ old('linkedin_url', $linkedinUrl) }}"
+                                   class="mt-0.5 w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                   placeholder="https://www.linkedin.com/in/…">
+                            <x-input-error class="mt-1" :messages="$errors->get('linkedin_url')" />
+                        </details>
+
+                        @if ($formCv)
+                            <details class="rounded-lg border border-slate-200/80 bg-white px-3 py-2">
+                                <summary class="cursor-pointer text-sm font-medium text-slate-800">
+                                    Vagas associadas
+                                    @if (($editingCvAssociatedJds ?? collect())->isNotEmpty())
+                                        <span class="font-normal text-slate-500">({{ $editingCvAssociatedJds->count() }})</span>
+                                    @endif
+                                </summary>
+                                @if (($editingCvAssociatedJds ?? collect())->isNotEmpty())
+                                    <ul class="mt-2 divide-y divide-slate-100 text-sm">
+                                        @foreach ($editingCvAssociatedJds as $jd)
+                                            <li class="flex flex-wrap items-center justify-between gap-2 py-1.5 first:pt-0 last:pb-0">
+                                                <div class="min-w-0">
+                                                    <span class="font-medium text-slate-800">{{ $jd->title ?: ('Vaga #'.$jd->id) }}</span>
+                                                    <span class="block text-xs text-slate-500">{{ $jd->agent->name ?? '—' }}</span>
+                                                </div>
+                                                @if ($jd->agent)
+                                                    <a href="{{ \App\Services\CareerTrailAgentAccess::documentsHubUrl($jd->agent) }}"
+                                                       class="shrink-0 text-xs font-semibold text-indigo-700 hover:underline">ATS</a>
+                                                @endif
+                                            </li>
+                                        @endforeach
+                                    </ul>
+                                @else
+                                    <p class="mt-2 text-xs text-slate-500">Nenhuma vaga (JD) associada.</p>
+                                @endif
+                            </details>
+                        @endif
                     </form>
                     </div>
-
                 </div>
             </div>
         </div>
 
-        @if ($cvAssistantChatUrl)
-            <div id="cv-assistant-modal" class="fixed inset-0 z-[60] hidden" role="dialog" aria-modal="true" aria-labelledby="cv-assistant-modal-title">
-                <button type="button" class="absolute inset-0 h-full w-full cursor-default border-0 bg-slate-900/50 p-0" data-cv-assistant-backdrop aria-label="Fechar"></button>
-                <div class="pointer-events-none absolute inset-3 flex flex-col sm:inset-6 md:inset-10">
-                    <div class="pointer-events-auto flex max-h-full min-h-0 flex-1 flex-col overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/10">
-                        <div class="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3">
-                            <h2 id="cv-assistant-modal-title" class="text-sm font-semibold text-slate-900">Assistente de CV</h2>
-                            <button type="button" data-cv-assistant-close
-                                    class="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200">
-                                Fechar
-                            </button>
-                        </div>
-                        <iframe id="cv-assistant-iframe" title="Assistente de CV" class="min-h-0 w-full flex-1 border-0 bg-white"
-                                loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe>
-                    </div>
-                </div>
-            </div>
-        @endif
         <script>
             (function () {
                 var ta = document.getElementById('cv_body');
@@ -312,10 +277,12 @@
                     }
                 }
 
+                var cvExtractFilenameHint = filenameEl ? filenameEl.textContent : '';
+
                 function syncCvExtractFilename() {
                     if (!filenameEl || !fileEl) return;
                     if (!fileEl.files || !fileEl.files[0]) {
-                        filenameEl.textContent = 'Nenhum arquivo selecionado';
+                        filenameEl.textContent = cvExtractFilenameHint;
                         filenameEl.removeAttribute('title');
                         return;
                     }
@@ -397,52 +364,7 @@
                             });
                     });
                 }
-                    var fileElTop = document.getElementById("cv_extract_file_top");
-                    if (fileElTop && fileEl && statusEl && extractUrl && tokenEl) {
-                        fileElTop.addEventListener("change", function () {
-                            if (!fileElTop.files || !fileElTop.files[0]) return;
-                            try {
-                                var dt = new DataTransfer();
-                                dt.items.add(fileElTop.files[0]);
-                                fileEl.files = dt.files;
-                            } catch (e) {
-                                return;
-                            }
-                            fileEl.dispatchEvent(new Event("change", { bubbles: true }));
-                        });
-                    }
             })();
         </script>
-        @if ($cvAssistantChatUrl)
-            <script>
-                (function () {
-                    var modal = document.getElementById('cv-assistant-modal');
-                    var iframe = document.getElementById('cv-assistant-iframe');
-                    var assistantBtn = document.getElementById('btn-open-cv-assistant');
-                    var chatUrl = @json($cvAssistantChatIframeUrl ?? '');
-                    if (!modal || !iframe || !assistantBtn || !chatUrl) return;
-
-                    function openModal() {
-                        if (!iframe.getAttribute('src')) {
-                            iframe.setAttribute('src', chatUrl);
-                        }
-                        modal.classList.remove('hidden');
-                        document.body.classList.add('overflow-hidden');
-                    }
-                    function closeModal() {
-                        modal.classList.add('hidden');
-                        document.body.classList.remove('overflow-hidden');
-                    }
-
-                    assistantBtn.addEventListener('click', openModal);
-                    modal.querySelectorAll('[data-cv-assistant-close], [data-cv-assistant-backdrop]').forEach(function (el) {
-                        el.addEventListener('click', closeModal);
-                    });
-                    document.addEventListener('keydown', function (e) {
-                        if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
-                    });
-                })();
-            </script>
-        @endif
     </div>
 </x-app-layout>

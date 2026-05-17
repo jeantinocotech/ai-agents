@@ -90,12 +90,22 @@ class CareerTrailAtsWorkspaceController extends Controller
         $validated = $request->validate([
             'body' => ['required', 'string', 'max:'.(int) config('agent_documents.max_cv_body_chars', 60000)],
             'redirect' => ['nullable', 'string', 'in:workspace,reanalyze'],
+            'export_format' => ['nullable', 'string', 'in:pdf,docx'],
         ]);
 
         $userCv = $analysis->userCv;
         abort_if($userCv === null, 404);
 
         $userCv->update(['body' => $validated['body']]);
+        $userCv->refresh();
+
+        $exportFormat = $validated['export_format'] ?? null;
+        if (in_array($exportFormat, ['pdf', 'docx'], true)) {
+            return redirect()->route('career-trail.cv.export', [
+                'userCv' => $userCv,
+                'format' => $exportFormat,
+            ]);
+        }
 
         if (($validated['redirect'] ?? 'workspace') === 'reanalyze') {
             $atsStep = CareerTrailStep::query()->where('slug', 'ats')->where('is_active', true)->first();

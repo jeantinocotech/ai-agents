@@ -108,13 +108,14 @@
                 </div>
             </div>
 
-            <form method="post" action="{{ route('career-trail.ats.workspace.cv', $analysis) }}" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+            <form id="ats-cv-editor-form" method="post" action="{{ route('career-trail.ats.workspace.cv', $analysis) }}" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
                 @csrf
                 @method('PUT')
                 <label for="cv_body" class="block text-sm font-semibold text-slate-900">Editor do CV</label>
                 <textarea id="cv_body" name="body" rows="16" required maxlength="{{ $maxCvBodyChars }}"
                           class="mt-2 w-full rounded-xl border-slate-300 font-mono text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('body', $analysis->userCv?->body) }}</textarea>
-                <div class="mt-4 flex flex-wrap gap-3">
+                <div class="mt-4 flex flex-wrap items-center gap-3">
+                    <x-cv-export-dropdown form-id="ats-cv-editor-form" :user-cv="$analysis->userCv" />
                     <x-ui.button type="submit" name="redirect" value="workspace" variant="primary" size="md">
                         Salvar
                     </x-ui.button>

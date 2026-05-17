@@ -12,7 +12,9 @@ use App\Services\CareerTrailAgentAccess;
 use App\Services\GamificationService;
 use App\Services\ProfileCvAgentLibrary;
 use App\Services\ProfileDefaultCvAtsSync;
+use App\Services\UserCvDuplicateService;
 use App\Support\AgentDocumentLimits;
+use App\Support\AgentsDocumentTrailListFilter;
 use App\Support\CareerTrailStepCompletion;
 use App\Support\UserCvTextExtractor;
 use Illuminate\Http\JsonResponse;
@@ -160,6 +162,7 @@ class CareerTrailCvController extends Controller
             'body' => 'nullable|string',
             'linkedin_url' => 'nullable|string|max:512',
             'make_default' => 'sometimes|boolean',
+            'export_format' => 'nullable|string|in:pdf,docx',
         ]);
 
         $title = trim((string) ($validated['title'] ?? ''));
@@ -224,6 +227,10 @@ class CareerTrailCvController extends Controller
             $this->setUserCvAsOnlyDefault($user, $new);
         }
 
+        if ($exportRedirect = $this->exportRedirectAfterSave($request, $new)) {
+            return $exportRedirect;
+        }
+
         $msg = $makeDefault
             ? 'Novo CV salvo e definido como padrão na conta.'
             : 'Novo CV salvo na conta.';
@@ -244,6 +251,7 @@ class CareerTrailCvController extends Controller
             'body' => 'nullable|string',
             'linkedin_url' => 'nullable|string|max:512',
             'make_default' => 'sometimes|boolean',
+            'export_format' => 'nullable|string|in:pdf,docx',
         ]);
 
         $title = trim((string) ($validated['title'] ?? ''));
@@ -293,6 +301,12 @@ class CareerTrailCvController extends Controller
             $this->setUserCvAsOnlyDefault($user, $userCv);
         } elseif ($userCv->is_default) {
             ProfileDefaultCvAtsSync::sync($user);
+        }
+
+        $userCv->refresh();
+
+        if ($exportRedirect = $this->exportRedirectAfterSave($request, $userCv)) {
+            return $exportRedirect;
         }
 
         return redirect()
@@ -445,28 +459,69 @@ class CareerTrailCvController extends Controller
             ->with('status', 'CV padrão copiado para a biblioteca deste agente.');
     }
 
-    public function duplicateProfileCv(Request $request, UserCv $userCv): RedirectResponse
+    public function duplicateProfileCv(Request $request, UserCv $userCv, UserCvDuplicateService $duplicator): RedirectResponse
     {
         $user = $request->user();
         $this->abortUnlessOwnCv($user, $userCv);
 
-        $base = trim((string) ($userCv->title ?: 'CV'));
-        $newTitle = 'Cópia de '.$base;
-        if (mb_strlen($newTitle) > 255) {
-            $newTitle = mb_substr($newTitle, 0, 252).'...';
-        }
-
-        $copy = UserCv::query()->create([
-            'user_id' => $user->id,
-            'title' => $newTitle,
-            'body' => $userCv->body,
-            'is_default' => false,
-            'source' => UserCv::SOURCE_MANUAL,
-        ]);
+        $copy = $duplicator->duplicate(
+            $user,
+            $userCv,
+            $duplicator->titleForGenericCopy((string) $userCv->title)
+        );
 
         return redirect()
             ->to(route('career-trail.cv', ['edit' => $copy->id]).'#sec-cv-form')
             ->with('status', 'CV duplicado — edite o texto e salve quando estiver pronto.');
+    }
+
+    public function duplicateProfileCvForAts(Request $request, UserCvDuplicateService $duplicator): RedirectResponse
+    {
+        $validated = $request->validate([
+            'source_user_cv_id' => 'required|integer|exists:user_cvs,id',
+            'job_title' => 'nullable|string|max:255',
+            'edit_jd' => 'nullable|integer',
+            'jd_list_filter' => 'nullable|string',
+        ]);
+
+        $user = $request->user();
+        $source = UserCv::query()
+            ->whereKey($validated['source_user_cv_id'])
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        $jobTitle = trim((string) ($validated['job_title'] ?? ''));
+        $copy = $duplicator->duplicate(
+            $user,
+            $source,
+            $duplicator->titleForJobCopy((string) $source->title, $jobTitle !== '' ? $jobTitle : null)
+        );
+
+        $editJdId = (int) ($validated['edit_jd'] ?? 0);
+        if ($editJdId > 0) {
+            $jd = AgentDocument::query()
+                ->whereKey($editJdId)
+                ->where('user_id', $user->id)
+                ->where('type', AgentDocument::TYPE_JD)
+                ->firstOrFail();
+
+            $jd->user_cv_id = $copy->id;
+            $jd->save();
+        }
+
+        $query = [];
+        if ($editJdId > 0) {
+            $query['edit_jd'] = $editJdId;
+        }
+        $filter = (string) ($validated['jd_list_filter'] ?? '');
+        if ($filter !== '' && $filter !== AgentsDocumentTrailListFilter::OPEN) {
+            $query['jd_list_filter'] = $filter;
+        }
+
+        return redirect()
+            ->to(route('career-trail.ats', $query).'#sec-ats-jd-form')
+            ->with('status', 'CV duplicado para esta vaga — a cópia está seleccionada; o CV original não foi alterado.')
+            ->with('ats_prefill_user_cv_id', $copy->id);
     }
 
     private function abortUnlessOwnCv(User $user, UserCv $userCv): void
@@ -479,6 +534,19 @@ class CareerTrailCvController extends Controller
         UserCv::query()->where('user_id', $user->id)->update(['is_default' => false]);
         $cv->forceFill(['is_default' => true])->save();
         ProfileDefaultCvAtsSync::sync($user);
+    }
+
+    private function exportRedirectAfterSave(Request $request, UserCv $userCv): ?RedirectResponse
+    {
+        $format = $request->input('export_format');
+        if (! in_array($format, ['pdf', 'docx'], true)) {
+            return null;
+        }
+
+        return redirect()->route('career-trail.cv.export', [
+            'userCv' => $userCv,
+            'format' => $format,
+        ]);
     }
 
     private function suggestedCvTitleFromUploadedFile(UploadedFile $file): ?string

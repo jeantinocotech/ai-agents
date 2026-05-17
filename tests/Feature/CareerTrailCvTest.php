@@ -245,22 +245,22 @@ test('user can duplicate profile cv', function () {
     expect((string) $copy->body)->toBe(str_repeat('o', 400));
 });
 
-test('career trail cv page shows embedded assistant when user has no cv and agent is configured', function () {
+test('career trail cv page shows upload form without inline assistant when agent is configured', function () {
     $user = User::factory()->create();
     $agent = makeCareerTrailChatKitAgent();
     bindCareerCvStepAgent((int) $agent->id);
 
-    $response = $this->actingAs($user)->get(route('career-trail.cv'));
-
-    $response->assertOk();
-    $html = str_replace('\\/', '/', $response->getContent());
-    expect($html)->toContain('embedded=1');
-    expect($html)->not->toContain('no_documents=1');
-    expect($html)->toContain('/agents/'.$agent->id.'/chat');
-    $response->assertSee('btn-open-cv-assistant', false);
+    $this->actingAs($user)
+        ->get(route('career-trail.cv'))
+        ->assertOk()
+        ->assertSee('Upload CV', false)
+        ->assertSee('sec-cv-form', false)
+        ->assertDontSee('btn-open-cv-assistant', false)
+        ->assertDontSee('Ajustar / Criar CV', false)
+        ->assertDontSee('cv-assistant-modal', false);
 });
 
-test('career trail cv page still shows assistant when user already has default cv', function () {
+test('career trail cv page with existing default cv still offers upload without inline assistant', function () {
     $user = User::factory()->create();
     $agent = makeCareerTrailChatKitAgent();
     bindCareerCvStepAgent((int) $agent->id);
@@ -275,8 +275,10 @@ test('career trail cv page still shows assistant when user already has default c
     $this->actingAs($user)
         ->get(route('career-trail.cv'))
         ->assertOk()
-        ->assertSee('btn-open-cv-assistant', false)
-        ->assertSee('Ajustar / Criar CV', false);
+        ->assertSee('Existente', false)
+        ->assertSee('Upload CV', false)
+        ->assertDontSee('btn-open-cv-assistant', false)
+        ->assertDontSee('Ajustar / Criar CV', false);
 });
 
 test('default profile cv is upserted to ats agent library when saved as predefinido', function () {

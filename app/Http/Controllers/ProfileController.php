@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Support\UploadLimits;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,6 +20,8 @@ class ProfileController extends Controller
     {
         return view('profile.edit', [
             'user' => $request->user(),
+            'profilePhotoMaxBytes' => UploadLimits::profilePhotoMaxBytes(),
+            'profilePhotoMaxLabel' => UploadLimits::profilePhotoMaxLabel(),
         ]);
     }
 
@@ -39,7 +42,18 @@ class ProfileController extends Controller
             if ($user->profile_photo) {
                 Storage::disk('public')->delete($user->profile_photo);
             }
-            $data['profile_photo'] = $request->file('profile_photo')->store('profile_photos', 'public');
+            $uploaded = $request->file('profile_photo');
+            $extension = strtolower($uploaded->getClientOriginalExtension() ?: 'jpg');
+            if (! in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
+                $extension = 'jpg';
+            }
+            $filename = uniqid('profile_', true).'.'.$extension;
+            $path = $uploaded->storeAs('profile_photos', $filename, 'public');
+            if ($path === false) {
+                return Redirect::route('profile.edit')
+                    ->withErrors(['profile_photo' => 'Não foi possível guardar a foto. Verifique as permissões de storage.']);
+            }
+            $data['profile_photo'] = $path;
         } else {
             unset($data['profile_photo']);
         }

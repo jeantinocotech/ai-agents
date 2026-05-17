@@ -2,12 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Agent;
-use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
 use App\Models\Testimonial;
 use Auth;
+use Illuminate\Http\Request;
 
 class TestimonialController extends Controller
 {
@@ -16,12 +14,12 @@ class TestimonialController extends Controller
         // Se quiser passar agents para select, envie eles aqui
         $agents = Agent::where('is_active', true)->get();
 
-        $userPhoto = Auth::user()->profile_photo ? asset('storage/' . Auth::user()->profile_photo) : null;
+        $userPhoto = Auth::user()->profilePhotoUrl();
 
         // Busca o último depoimento do usuário autenticado
         $lastTestimonial = \App\Models\Testimonial::where('user_id', Auth::id())
-        ->latest()
-        ->first();
+            ->latest()
+            ->first();
 
         $selected_avatar = $lastTestimonial?->author_image;
 
@@ -32,7 +30,7 @@ class TestimonialController extends Controller
             $files = scandir($avatarPath);
             foreach ($files as $file) {
                 if (in_array(pathinfo($file, PATHINFO_EXTENSION), ['svg', 'png', 'jpg', 'jpeg'])) {
-                    $avatars[] = 'img/avatars/' . $file;
+                    $avatars[] = 'img/avatars/'.$file;
                 }
             }
         }
@@ -56,10 +54,10 @@ class TestimonialController extends Controller
 
         // Decide a imagem do autor:
         if ($request->author_image == 'profile_photo') {
-            $authorImage = Auth::user()->profile_photo ? 'storage/' . Auth::user()->profile_photo : null;
+            $authorImage = Auth::user()->profile_photo ? 'storage/'.Auth::user()->profile_photo : null;
         } elseif ($request->author_image == 'upload' && $request->hasFile('author_image_upload')) {
             $authorImage = $request->file('author_image_upload')->store('testimonials', 'public');
-            $authorImage = 'storage/' . $authorImage;
+            $authorImage = 'storage/'.$authorImage;
         } else {
             // Assume que foi selecionado um avatar
             $authorImage = $request->author_image;
@@ -75,16 +73,16 @@ class TestimonialController extends Controller
             'is_approved' => false,
             'is_featured' => false,
         ]);
-    
 
         return redirect()->route('testimonials.create')
-        ->with('success', 'Depoimento enviado! Após aprovação, ele poderá aparecer no site.');
+            ->with('success', 'Depoimento enviado! Após aprovação, ele poderá aparecer no site.');
     }
 
-        // Controller
-        public function mine()
-        {
-            $testimonials = \App\Models\Testimonial::where('user_id', Auth::id())->latest()->get();
-            return view('testimonials.mine', compact('testimonials'));
-        }
+    // Controller
+    public function mine()
+    {
+        $testimonials = \App\Models\Testimonial::where('user_id', Auth::id())->latest()->get();
+
+        return view('testimonials.mine', compact('testimonials'));
+    }
 }

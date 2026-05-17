@@ -32,6 +32,7 @@ use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\RatingController;
 use App\Http\Controllers\TestimonialController;
 use App\Http\Controllers\TokenPackController;
+use App\Http\Controllers\UserCvExportController;
 use App\Http\Controllers\WebCvAnalysisController;
 use App\Http\Middleware\AdminMiddleware;
 use Illuminate\Support\Facades\Route;
@@ -68,6 +69,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/trilha', [CareerTrailController::class, 'index'])->name('career-trail.index');
     Route::get('/trilha/cv', [CareerTrailCvController::class, 'show'])->name('career-trail.cv');
     Route::get('/trilha/ats', [CareerTrailController::class, 'ats'])->name('career-trail.ats');
+    Route::post('/trilha/ats/duplicar-cv', [CareerTrailCvController::class, 'duplicateProfileCvForAts'])->name('career-trail.ats.cv.duplicate');
     Route::post('/trilha/ats/analyses', [CareerTrailAtsWorkspaceController::class, 'store'])->name('career-trail.ats.analyses.store');
     Route::get('/trilha/ats/workspace/{analysis}', [CareerTrailAtsWorkspaceController::class, 'show'])->name('career-trail.ats.workspace');
     Route::put('/trilha/ats/workspace/{analysis}/cv', [CareerTrailAtsWorkspaceController::class, 'updateCv'])->name('career-trail.ats.workspace.cv');
@@ -80,6 +82,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/trilha/cv/importar-agente', [CareerTrailCvController::class, 'importFromAgentDocument'])->name('career-trail.cv.import-agent');
     Route::delete('/trilha/cv/biblioteca-agente/{agent}/{document}', [CareerTrailCvController::class, 'destroyAgentDocument'])->name('career-trail.cv.agent-document.destroy');
     Route::patch('/trilha/cv/{userCv}', [CareerTrailCvController::class, 'update'])->name('career-trail.cv.update');
+    Route::get('/trilha/cv/{userCv}/exportar/{format}', UserCvExportController::class)
+        ->where('format', 'pdf|docx')
+        ->name('career-trail.cv.export');
     Route::post('/trilha/cv/{userCv}/padrao', [CareerTrailCvController::class, 'setDefault'])->name('career-trail.cv.default');
     Route::delete('/trilha/cv/{userCv}', [CareerTrailCvController::class, 'destroyProfileCv'])->name('career-trail.cv.destroy');
     Route::post('/trilha/cv/{userCv}/duplicar', [CareerTrailCvController::class, 'duplicateProfileCv'])->name('career-trail.cv.duplicate');

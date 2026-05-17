@@ -259,18 +259,12 @@
                         <label class="mb-1 block text-sm font-medium text-gray-700">Título da Vaga</label>
                         <input type="text" name="title" value="{{ old('title', $editingJd->title) }}" class="w-full rounded-md border-gray-300 text-sm shadow-sm" placeholder="Ex.: Engenheiro de software">
                     </div>
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-gray-700">Curriculum</label>
-                        <select name="user_cv_id" class="w-full rounded-md border-gray-300 text-sm shadow-sm">
-                            <option value="">— rascunho (sem CV) —</option>
-                            @foreach ($profileCvs as $pcv)
-                                <option value="{{ $pcv->id }}" @selected((int) $editingJd->user_cv_id === (int) $pcv->id)>
-                                    {{ ($pcv->title ?: 'CV do perfil').' (#'.$pcv->id.')' }}{{ $pcv->is_default ? ' — padrão' : '' }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <p class="mt-1 text-xs text-gray-500">Para <strong>{{ $atsChatHeading }}</strong>, a vaga precisa ter um CV associado.</p>
-                    </div>
+                    @include('agents.documents.partials.ats-cv-select-with-duplicate', [
+                        'label' => 'Curriculum',
+                        'selectedCvId' => $editingJd->user_cv_id,
+                        'editingJd' => $editingJd,
+                        'hint' => 'Para '.$atsChatHeading.', a vaga precisa ter um CV associado. Duplicar cria uma cópia (título: CV — nome da vaga) sem alterar o original.',
+                    ])
                     <div>
                         <label class="mb-1 block text-sm font-medium text-gray-700">Texto da vaga (máx. {{ number_format($maxJdBodyChars, 0, ',', '.') }} caracteres)</label>
                         <textarea name="body" rows="8" required maxlength="{{ $maxJdBodyChars }}" class="w-full rounded-md border-gray-300 font-mono text-sm shadow-sm">{{ old('body', $editingJd->body) }}</textarea>
@@ -333,18 +327,9 @@
                         <label class="mb-1 block text-sm font-medium text-gray-700">Título (opcional)</label>
                         <input type="text" name="title" class="w-full rounded-md border-gray-300 text-sm shadow-sm" placeholder="Ex.: Engenheiro de software">
                     </div>
-                    <div>
-                        <label class="mb-1 block text-sm font-medium text-gray-700">CV associado a esta vaga</label>
-                        <select name="user_cv_id" class="w-full rounded-md border-gray-300 text-sm shadow-sm">
-                            <option value="">— rascunho (sem CV) —</option>
-                            @foreach ($profileCvs as $pcv)
-                                <option value="{{ $pcv->id }}" @selected((int) $defaultProfileCvId === (int) $pcv->id)>
-                                    {{ ($pcv->title ?: 'CV do perfil').' (#'.$pcv->id.')' }}{{ $pcv->is_default ? ' — padrão' : '' }}
-                                </option>
-                            @endforeach
-                        </select>
-                        <p class="mt-1 text-xs text-gray-500">Pode deixar sem CV e voltar depois. Para <strong>{{ $atsChatHeading }}</strong>, a vaga precisa ter um CV associado.</p>
-                    </div>
+                    @include('agents.documents.partials.ats-cv-select-with-duplicate', [
+                        'hint' => 'Pode deixar sem CV e voltar depois. Para '.$atsChatHeading.', a vaga precisa ter um CV associado. Duplicar cria uma cópia (título: CV — nome da vaga) sem alterar o original.',
+                    ])
                     <div>
                         <label class="mb-1 block text-sm font-medium text-gray-700">Texto da vaga (máx. {{ number_format($maxJdBodyChars, 0, ',', '.') }} caracteres)</label>
                         <textarea name="body" rows="8" required maxlength="{{ $maxJdBodyChars }}" class="w-full rounded-md border-gray-300 font-mono text-sm shadow-sm"></textarea>
@@ -358,6 +343,60 @@
                 @endif
             @endif
         </section>
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                document.querySelectorAll('[data-ats-cv-field]').forEach(function (field) {
+                    var select = field.querySelector('.ats-jd-user-cv-select');
+                    var btn = field.querySelector('button.ats-cv-duplicate-btn');
+                    var duplicateUrl = field.getAttribute('data-duplicate-url');
+                    if (!select || !btn || !duplicateUrl) return;
+
+                    var parentForm = field.closest('form');
+                    var jobTitleInput = parentForm ? parentForm.querySelector('input[name="title"]') : null;
+                    var csrfMeta = document.querySelector('meta[name="csrf-token"]');
+
+                    function syncDuplicateButton() {
+                        var hasCv = select.value !== '';
+                        btn.disabled = !hasCv;
+                        btn.setAttribute('aria-disabled', hasCv ? 'false' : 'true');
+                    }
+
+                    function submitDuplicate() {
+                        var cvId = select.value;
+                        if (!cvId) return;
+
+                        var form = document.createElement('form');
+                        form.method = 'POST';
+                        form.action = duplicateUrl;
+                        form.style.display = 'none';
+
+                        function addField(name, value) {
+                            if (value === null || value === undefined || value === '') return;
+                            var input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = name;
+                            input.value = value;
+                            form.appendChild(input);
+                        }
+
+                        if (csrfMeta) {
+                            addField('_token', csrfMeta.getAttribute('content'));
+                        }
+                        addField('source_user_cv_id', cvId);
+                        addField('job_title', jobTitleInput ? jobTitleInput.value : '');
+                        addField('edit_jd', field.getAttribute('data-edit-jd'));
+                        addField('jd_list_filter', field.getAttribute('data-jd-list-filter'));
+
+                        document.body.appendChild(form);
+                        form.submit();
+                    }
+
+                    select.addEventListener('change', syncDuplicateButton);
+                    btn.addEventListener('click', submitDuplicate);
+                    syncDuplicateButton();
+                });
+            });
+        </script>
     @endif
 
     @if (! $trailReturnCareerTrailAts)
