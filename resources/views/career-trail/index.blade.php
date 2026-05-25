@@ -41,7 +41,7 @@
                 >
                     <div class="flex flex-col gap-6 sm:flex-row sm:items-start">
                         <div class="shrink-0 rounded-2xl bg-gradient-to-br from-violet-500/20 to-indigo-600/20 p-1 shadow-md ring-4 ring-white">
-                            <x-graca-avatar size="lg" class="ring-0 shadow-sm" />
+                            <x-graca-avatar size="lg" />
                         </div>
                         <div class="min-w-0 flex-1">
                             <p class="text-xs font-semibold uppercase tracking-wide text-violet-700">A sua guia na trilha</p>
@@ -66,19 +66,22 @@
                                 $isUnlocked = (int) $step->sort_order <= $maxReached;
                                 $stepAgent = $step->resolvedAgent();
                                 $stepTrailDone = $isUnlocked && \App\Support\CareerTrailStepCompletion::bannerShowsCompletedBadge($trailMapUser, $step);
+                                $isComingSoon = in_array($step->slug, ['offer', 'first-100-days'], true);
                             @endphp
                             <li>
                                 <div
                                     @class([
                                         'flex gap-4 rounded-xl border p-4 transition',
-                                        'border-emerald-200 bg-emerald-50/50' => $isUnlocked,
-                                        'border-slate-200 bg-slate-50/70' => ! $isUnlocked,
+                                        'border-amber-200 bg-amber-50/50' => $isComingSoon,
+                                        'border-emerald-200 bg-emerald-50/50' => $isUnlocked && ! $isComingSoon,
+                                        'border-slate-200 bg-slate-50/70' => ! $isUnlocked && ! $isComingSoon,
                                     ])
                                 >
                                     <div @class([
                                         'flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold tabular-nums',
-                                        'bg-emerald-500 text-white' => $isUnlocked,
-                                        'border border-slate-300 bg-white text-slate-400' => ! $isUnlocked,
+                                        'bg-amber-400 text-white' => $isComingSoon,
+                                        'bg-emerald-500 text-white' => $isUnlocked && ! $isComingSoon,
+                                        'border border-slate-300 bg-white text-slate-400' => ! $isUnlocked && ! $isComingSoon,
                                     ])>
                                         @if ($stepTrailDone)
                                             <span aria-hidden="true">✓</span>
@@ -90,7 +93,9 @@
                                         <div>
                                             <div class="flex flex-wrap items-center gap-2">
                                                 <h3 class="font-semibold text-slate-900">{{ $step->title }}</h3>
-                                                @if ($stepTrailDone)
+                                                @if ($isComingSoon)
+                                                    <span class="rounded-full border border-amber-300 bg-white px-2 py-0.5 text-xs font-medium text-amber-800">Em breve</span>
+                                                @elseif ($stepTrailDone)
                                                     <span class="rounded-full border border-emerald-300 bg-white px-2 py-0.5 text-xs font-medium text-emerald-800">Concluído</span>
                                                 @elseif ($isUnlocked)
                                                     <span class="rounded-full border border-emerald-300 bg-white px-2 py-0.5 text-xs font-medium text-emerald-800">Disponível</span>
@@ -103,7 +108,11 @@
                                             @endif
                                         </div>
 
-                                        @if (! $isUnlocked)
+                                        @if ($isComingSoon)
+                                            <div class="rounded-lg border border-amber-200/70 bg-amber-50/30 px-3 py-2.5">
+                                                <p class="text-xs text-amber-800">Estamos a preparar esta etapa. Será disponibilizada em breve.</p>
+                                            </div>
+                                        @elseif (! $isUnlocked)
                                             @if ($stepAgent)
                                                 <p class="text-xs text-slate-500">Avance na trilha até esta etapa para usar o assistente <span class="font-medium text-slate-700">{{ $stepAgent->name }}</span>.</p>
                                             @elseif ($step->slug !== 'cv')

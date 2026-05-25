@@ -15,6 +15,24 @@
                 <a href="{{ $documentsHubUrl }}" class="font-medium text-emerald-700 hover:text-emerald-950 hover:underline">Vagas e CVs</a>
             </div>
 
+            @if (! empty($interviewsStep))
+                <x-graca-orientation-panel :page-key="\App\Support\GracaPanelPreferences::PAGE_TRAIL_INTERVIEWS">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
+                        <div class="shrink-0 rounded-2xl bg-white p-1 shadow ring-1 ring-violet-100">
+                            <x-graca-avatar size="md" />
+                        </div>
+                        <div class="min-w-0 flex-1 text-sm leading-relaxed text-slate-700">
+                            <x-graca-slot
+                                :placement="\App\Support\CareerTrailGracaSlots::INTERVIEWS_PAGE_INTRO"
+                                :step="$interviewsStep"
+                                paragraph-class="text-sm leading-relaxed text-slate-700"
+                                :fallback="'Acompanhe seus processos de entrevista organizados por vaga. Registre cada ronda, anotações e aprendizados para manter o controle da sua evolução.'"
+                            />
+                        </div>
+                    </div>
+                </x-graca-orientation-panel>
+            @endif
+
             @if (session('status'))
                 <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">{{ session('status') }}</div>
             @endif

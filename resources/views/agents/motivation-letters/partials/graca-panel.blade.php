@@ -8,9 +8,7 @@
     <x-graca-orientation-panel :page-key="\App\Support\GracaPanelPreferences::PAGE_TRAIL_COVER_LETTER">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
             <div class="shrink-0 rounded-2xl bg-white p-1 shadow ring-1 ring-violet-100">
-                <img src="{{ asset(config('career_trail.mentor_avatar', 'img/graca-avatar.png')) }}"
-                     alt="{{ config('career_trail.mentor_label', 'Sra. Graça') }}"
-                     class="h-16 w-16 rounded-xl object-cover" />
+                <x-graca-avatar size="md" />
             </div>
             <div class="min-w-0 flex-1 text-sm leading-relaxed text-slate-700">
                 <x-graca-slot

@@ -13,6 +13,7 @@ use App\Services\CareerTrailAgentAccess;
 use App\Services\ChatKitDocumentLibraryService;
 use App\Services\GamificationService;
 use App\Services\InterviewProcessOutcomeService;
+use App\Models\CareerTrailStep;
 use App\Support\CareerTrailAtsJdValidator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -242,6 +243,7 @@ class InterviewPreparationController extends Controller
             'personaOptions' => InterviewPersona::optionsForForms(),
             'statusOptions' => InterviewProcessStatus::optionsForForms(),
             'filtersActive' => $filtersActive,
+            'interviewsStep' => CareerTrailStep::where('slug', 'interviews')->where('is_active', true)->first(),
         ]);
     }
 

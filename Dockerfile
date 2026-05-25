@@ -17,6 +17,10 @@ RUN apt-get update \
     && docker-php-ext-install pdo pdo_mysql zip \
     && a2enmod rewrite
 
+# PHP upload limits
+RUN echo "upload_max_filesize=10M" > /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "post_max_size=12M" >> /usr/local/etc/php/conf.d/uploads.ini
+
 # Instala Composer
 RUN curl -sS https://getcomposer.org/installer | php \
     && mv composer.phar /usr/local/bin/composer

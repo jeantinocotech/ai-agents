@@ -3,10 +3,6 @@
         <h2 class="text-lg font-medium text-gray-900">
             {{ __('Informação do Perfil') }}
         </h2>
-
-        <p class="mt-1 text-sm text-gray-600">
-            {{ __('Mantenha suas informações atualizadas.') }}
-        </p>
     </header>
 
     <form id="send-verification" method="post" action="{{ route('verification.send') }}">
@@ -24,11 +20,11 @@
                     src="{{ $user->profilePhotoUrl() ?? 'https://ui-avatars.com/api/?name=' . urlencode($user->name) . '&background=23272a&color=fff&size=128' }}"
                     class="w-24 h-24 rounded-full border mb-2 object-cover"
                     alt="Foto de perfil">
-                
+
                 <input id="profile_photo" name="profile_photo" type="file"
                     accept="image/jpeg,image/png,image/x-png,image/webp,image/gif,.jpg,.jpeg,.png,.PNG,.webp,.gif"
                     class="hidden">
-                
+
                 <!-- Botão customizado -->
                 <label for="profile_photo"
                     class="inline-flex items-center justify-center px-4 py-2 bg-black border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-800 focus:outline-none focus:border-gray-900 focus:ring ring-gray-300 disabled:opacity-25 transition ease-in-out duration-150"
@@ -39,14 +35,13 @@
             </div>
             <x-input-error class="mt-2" :messages="$errors->get('profile_photo')" />
             <p class="mt-1 text-xs text-gray-500">
-                JPG, PNG, WEBP ou GIF, até {{ $profilePhotoMaxLabel ?? '5 MB' }}.
-                Depois de escolher a foto, clique em <strong>Save</strong>.
+                JPG, PNG ou GIF até {{ $profilePhotoMaxLabel ?? '5 MB' }}.
             </p>
             <p id="profile-photo-size-error" class="mt-1 text-xs text-red-600 hidden" role="alert"></p>
         </div>
 
         <div>
-            <x-input-label for="name" :value="__('Name')" />
+            <x-input-label for="name" :value="__('Nome')" />
             <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $user->name)" required autofocus autocomplete="name" />
             <x-input-error class="mt-2" :messages="$errors->get('name')" />
         </div>
@@ -139,7 +134,7 @@
 
 
         <div class="flex items-center gap-4">
-            <x-primary-button>{{ __('Save') }}</x-primary-button>
+            <x-primary-button>{{ __('Salvar') }}</x-primary-button>
 
             @if (session('status') === 'profile-updated')
                 <p

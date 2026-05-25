@@ -21,6 +21,10 @@ COPY --from=frontend /app /app
 RUN apk add --no-cache libzip-dev zip \
     && docker-php-ext-install zip
 
+# PHP upload limits
+RUN echo "upload_max_filesize=10M" > /usr/local/etc/php/conf.d/uploads.ini \
+    && echo "post_max_size=12M" >> /usr/local/etc/php/conf.d/uploads.ini
+
 # Instala dependências PHP
 RUN composer install --no-dev --optimize-autoloader \
     && chown -R application:application /app \

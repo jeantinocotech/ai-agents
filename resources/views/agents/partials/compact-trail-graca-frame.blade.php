@@ -43,8 +43,8 @@
     border-class="border-slate-200/90 bg-white ring-1 ring-slate-100"
 >
     <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
-        <div class="shrink-0 rounded-2xl bg-gradient-to-br from-violet-500/12 to-indigo-600/12 p-0.5 shadow-sm ring-2 ring-white">
-            <x-graca-avatar size="md" class="ring-0 shadow-sm" />
+        <div class="shrink-0 rounded-2xl bg-white p-1 shadow ring-1 ring-violet-100">
+            <x-graca-avatar size="md" />
         </div>
         @if ($paragraphs->isNotEmpty())
             <div class="min-w-0 flex-1 space-y-2 text-sm leading-relaxed text-slate-700">

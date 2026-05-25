@@ -1,24 +1,22 @@
 <x-app-layout>
     <div class="max-w-6xl mx-auto py-10 px-6">
-        <div class="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div class="flex flex-col gap-6 md:flex-row md:items-start">
-                <div class="shrink-0">
-                    <img src="{{ asset(config('career_trail.mentor_avatar', 'img/graca-avatar.png')) }}"
-                         alt="{{ config('career_trail.mentor_label', 'Sra. Graça') }}"
-                         class="h-24 w-24 rounded-2xl object-cover shadow-sm ring-4 ring-white" />
+        <x-graca-orientation-panel :page-key="\App\Support\GracaPanelPreferences::PAGE_TOKENS">
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
+                <div class="shrink-0 rounded-2xl bg-white p-1 shadow ring-1 ring-violet-100">
+                    <x-graca-avatar size="md" />
                 </div>
-                <div class="min-w-0 flex-1">
+                <div class="min-w-0 flex-1 text-sm leading-relaxed text-slate-700">
                     <p class="text-xs font-semibold uppercase tracking-wide text-violet-700">Tokens</p>
-                    <h1 class="mt-1 text-3xl font-extrabold tracking-tight text-slate-900">Comprar tokens</h1>
-                    <p class="mt-3 text-sm text-slate-600">
+                    <h1 class="mt-1 text-2xl font-bold tracking-tight text-slate-900">Comprar tokens</h1>
+                    <p class="mt-2">
                         Use tokens para conversar com os agentes. Após o pagamento confirmado, o saldo é creditado automaticamente.
                     </p>
-                    <div class="mt-4">
+                    <div class="mt-3">
                         <x-token-policy-note />
                     </div>
                 </div>
             </div>
-        </div>
+        </x-graca-orientation-panel>
 
         @if (session('info'))
             <div class="mb-4 p-4 bg-blue-50 text-blue-800 rounded">{{ session('info') }}</div>

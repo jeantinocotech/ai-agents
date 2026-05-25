@@ -30,9 +30,7 @@
             <x-graca-orientation-panel :page-key="\App\Support\GracaPanelPreferences::PAGE_TRAIL_CV">
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-start">
                     <div class="shrink-0 rounded-2xl bg-white p-1 shadow ring-1 ring-violet-100">
-                        <img src="{{ asset(config('career_trail.mentor_avatar', 'img/graca-avatar.png')) }}"
-                             alt="{{ config('career_trail.mentor_label', 'Sra. Graça') }}"
-                             class="h-16 w-16 rounded-xl object-cover" />
+                        <x-graca-avatar size="md" />
                     </div>
                     <div class="min-w-0 flex-1 text-sm leading-relaxed text-slate-700">
                         <x-graca-slot
@@ -112,21 +110,19 @@
                             @csrf
                     @endif
 
-                        <div class="flex flex-wrap items-end gap-3">
-                            <div class="min-w-[12rem] flex-1">
-                                <label for="cv_title" class="block text-sm font-medium text-slate-800">Título</label>
+                        <div>
+                            <label for="cv_title" class="block text-sm font-medium text-slate-800">Título</label>
+                            <div class="mt-0.5 flex flex-wrap items-stretch gap-2">
                                 <input type="text" name="title" id="cv_title" value="{{ old('title', $formCv?->title) }}"
-                                       class="mt-0.5 w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                       class="h-10 min-w-[12rem] flex-1 rounded-lg border-slate-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                                        placeholder="Ex.: CV — área comercial"
                                        required autocomplete="off">
-                                <x-input-error class="mt-1" :messages="$errors->get('title')" />
-                            </div>
-                            <div class="flex flex-wrap items-center gap-2 pb-0.5">
-                                <label class="{{ \App\Support\UiButton::classes('outline', 'sm') }} cursor-pointer">
+                                <label class="{{ \App\Support\UiButton::classes('outline', 'field') }} cursor-pointer">
                                     <span>Upload CV</span>
                                     <input type="file" id="cv_extract_file" accept=".txt,.pdf,.doc,.docx" class="sr-only" aria-label="Ficheiro para extrair texto">
                                 </label>
                             </div>
+                            <x-input-error class="mt-1" :messages="$errors->get('title')" />
                         </div>
                         <p id="cv_extract_filename" class="-mt-1 truncate text-xs text-slate-500" aria-live="polite">TXT, PDF ou Word (máx. 20&nbsp;MB) — o texto vai para a caixa abaixo.</p>
                         <p id="cv_extract_status" class="hidden text-xs font-medium text-slate-700" role="status" aria-live="polite"></p>

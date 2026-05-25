@@ -4,10 +4,10 @@
 
 @php
     $box = match ($size) {
-        'sm' => 'h-10 w-10 min-h-[2.5rem] min-w-[2.5rem]',
-        'md' => 'h-12 w-12 min-h-[3rem] min-w-[3rem] sm:h-14 sm:w-14 sm:min-h-[3.5rem] sm:min-w-[3.5rem]',
-        'lg' => 'h-20 w-20 min-h-[5rem] min-w-[5rem]',
-        default => 'h-12 w-12 min-h-[3rem] min-w-[3rem]',
+        'sm' => 'h-10 w-10 min-h-[2.5rem] min-w-[2.5rem] rounded-xl',
+        'md' => 'h-16 w-16 min-h-[4rem] min-w-[4rem] rounded-xl',
+        'lg' => 'h-20 w-20 min-h-[5rem] min-w-[5rem] rounded-2xl',
+        default => 'h-16 w-16 min-h-[4rem] min-w-[4rem] rounded-xl',
     };
     $alt = config('career_trail.mentor_label', 'Graça');
 @endphp
@@ -19,5 +19,5 @@
     height="160"
     loading="lazy"
     decoding="async"
-    {{ $attributes->class($box.' shrink-0 rounded-2xl object-cover object-top shadow-md ring-2 ring-white') }}
+    {{ $attributes->class($box.' shrink-0 object-cover object-top') }}
 />

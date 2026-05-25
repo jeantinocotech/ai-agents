@@ -35,12 +35,12 @@
 
                 <div class="border-b border-slate-100 px-6 py-4">
                     <form method="get" action="{{ route('agents.motivation-letters.index', $agent) }}"
-                          class="grid grid-cols-1 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+                          class="flex flex-col gap-2 sm:flex-row sm:items-stretch">
                         <input id="ml-q" type="search" name="q" value="{{ $search }}"
                                placeholder="Pesquisar titulo, texto ou vaga..."
                                aria-label="Pesquisar"
-                               class="h-10 w-full rounded-lg border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
-                        <div class="flex flex-wrap gap-2 sm:justify-end">
+                               class="h-10 min-w-0 flex-1 rounded-lg border-slate-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
+                        <div class="flex flex-wrap gap-2">
                             <x-ui.button type="submit" variant="primary" size="field" class="w-full sm:w-auto">Pesquisar</x-ui.button>
                             @if ($search !== '')
                                 <x-ui.button variant="secondary" size="field" class="w-full sm:w-auto" href="{{ route('agents.motivation-letters.index', $agent) }}">Limpar</x-ui.button>

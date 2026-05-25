@@ -21,9 +21,13 @@ final class GracaPanelPreferences
 
     public const PAGE_CHAT_COVER_LETTER = 'chat_cover_letter';
 
+    public const PAGE_TRAIL_INTERVIEWS = 'trail_interviews';
+
     public const PAGE_CHAT_INTERVIEWS = 'chat_interviews';
 
     public const PAGE_CHAT_CV = 'chat_cv';
+
+    public const PAGE_TOKENS = 'tokens';
 
     /** @return list<string> */
     public static function pageKeys(): array
@@ -33,10 +37,12 @@ final class GracaPanelPreferences
             self::PAGE_TRAIL_ATS,
             self::PAGE_TRAIL_CV,
             self::PAGE_TRAIL_COVER_LETTER,
+            self::PAGE_TRAIL_INTERVIEWS,
             self::PAGE_CHAT_ATS,
             self::PAGE_CHAT_COVER_LETTER,
             self::PAGE_CHAT_INTERVIEWS,
             self::PAGE_CHAT_CV,
+            self::PAGE_TOKENS,
         ];
     }
 
