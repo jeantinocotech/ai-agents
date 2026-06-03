@@ -5,7 +5,7 @@
             <span class="inline-block align-middle">
             <img src="{{ asset(config('branding.logo_main')) }}" alt="{{ config('app.name', 'GratoAI') }}" class="mx-auto h-16 w-auto">
             </span>
-            <span class="font-bold text-xl text-white">Grato AI (Versão Beta)</span>
+            <span class="font-bold text-xl text-white">GratoAI</span>
         </div>
 
         <div class="flex items-center space-x-4">

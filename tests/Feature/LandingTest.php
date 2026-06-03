@@ -6,7 +6,8 @@ use App\Models\UserCv;
 test('guest sees public landing with sign up affordance', function () {
     $this->get(route('home'))
         ->assertOk()
-        ->assertSee('Criar conta');
+        ->assertSee('Ajustar meu CV para passar pelos filtros de IA (ATS)', false)
+        ->assertSee('filtros de IA e volte a receber entrevistas', false);
 });
 
 test('authenticated user without a saved cv sees home onboarding ctas', function () {

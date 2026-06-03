@@ -76,11 +76,7 @@
                             </x-ui.button>
                         @endif
                     </div>
-                    <div class="mt-6">
-                        @if (! session('info'))
-                            <x-token-policy-note />
-                        @endif
-                    </div>
+                    {{-- x-token-policy-note oculto provisoriamente --}}
                     <p class="mt-6 text-sm text-slate-600">
                         <a href="{{ route('career-trail.index') }}" class="font-medium text-indigo-600 hover:text-indigo-800 hover:underline">Ver o mapa da trilha</a>
                         <span class="text-slate-400"> — ou explore as etapas abaixo.</span>
@@ -92,7 +88,7 @@
         <section class="bg-[#1a1c1e] py-20">
             <div class="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-10">
                 <div class="md:w-2/3 text-white">
-                    <h1 class="text-4xl md:text-5xl font-extrabold mb-4">A sua trilha de carreira, com apoio de IA</h1>
+                    <h1 class="text-4xl md:text-5xl font-extrabold mb-4">Faça seu CV passar pelos filtros de IA e volte a receber entrevistas</h1>
                     <x-graca-slot
                         :placement="\App\Support\CareerTrailGracaSlots::LANDING_GUEST_HERO"
                         :step="null"
@@ -103,18 +99,14 @@
                     <div class="flex flex-wrap gap-3">
                         <a href="{{ route('register') }}"
                            class="inline-block px-8 py-3 rounded-full bg-white text-black font-semibold shadow hover:bg-gray-200 transition">
-                            Criar conta
+                            Ajustar meu CV para passar pelos filtros de IA (ATS)
                         </a>
                         <a href="{{ route('login') }}"
                            class="inline-block px-8 py-3 rounded-full border border-white/30 text-white font-semibold hover:bg-white/10 transition">
                             Entrar
                         </a>
                     </div>
-                    <div class="mt-6 max-w-2xl">
-                        @if (! session('info'))
-                            <x-token-policy-note />
-                        @endif
-                    </div>
+                    {{-- x-token-policy-note oculto provisoriamente --}}
                 </div>
                 <div class="md:w-1/3 flex justify-center">
                     <img src="{{ asset(config('career_trail.mentor_avatar', 'img/graca-avatar.png')) }}"
@@ -128,9 +120,9 @@
     <div id="trilha-teaser" class="scroll-mt-24 py-16 bg-gray-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="text-center mb-12">
-                <h2 class="text-3xl font-extrabold text-gray-900">Como é a trilha</h2>
+                <h2 class="text-3xl font-extrabold text-gray-900">Como o GratoAI ajuda na sua recolocação</h2>
                 <p class="mt-4 max-w-2xl mx-auto text-lg text-gray-600">
-                    Um percurso sugerido — do currículo ao novo cargo — com objetivos claros em cada etapa e assistentes quando as desbloqueia.
+                    Uma trilha simples para organizar sua busca: do CV preparado para os filtros de IA até a entrevista, proposta e início no novo emprego.
                 </p>
             </div>
 
