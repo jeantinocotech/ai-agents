@@ -7,6 +7,7 @@ use App\Models\TokenPackOrder;
 use App\Rules\ValidBrazilTaxId;
 use App\Services\AsaasService;
 use App\Services\TokenPackOrderCompletionService;
+use App\Services\TokenWalletService;
 use App\Support\AsaasPaymentCheckoutPresenter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -23,7 +24,7 @@ class TokenPackController extends Controller
         private AsaasService $asaasService
     ) {}
 
-    public function show(): View|RedirectResponse
+    public function show(TokenWalletService $wallet): View|RedirectResponse
     {
         $user = Auth::user();
         if ($user !== null && ! $user->hasVerifiedEmail()) {
@@ -34,8 +35,10 @@ class TokenPackController extends Controller
 
         $tokensAmount = (int) Setting::get('token_pack_amount', 10000);
         $price = (float) Setting::get('token_pack_price', 49.90);
+        $showFreeRenewal = $user !== null && $wallet->userEligibleForFreeRenewal($user);
+        $nextFreeRenewalAt = $showFreeRenewal ? $user->tokens_next_renewal_at : null;
 
-        return view('tokens.purchase', compact('user', 'tokensAmount', 'price'));
+        return view('tokens.purchase', compact('user', 'tokensAmount', 'price', 'showFreeRenewal', 'nextFreeRenewalAt'));
     }
 
     public function process(Request $request): JsonResponse

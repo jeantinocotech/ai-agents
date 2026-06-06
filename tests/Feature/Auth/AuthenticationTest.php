@@ -38,4 +38,15 @@ test('users can logout', function () {
 
     $this->assertGuest();
     $response->assertRedirect('/');
+    $response->assertSessionMissing('info');
+});
+
+test('logout does not show token promotion on home', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->post('/logout');
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertDontSee('Condição Especial de Lançamento', false);
 });

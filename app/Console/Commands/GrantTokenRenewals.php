@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\TokenTransaction;
 use App\Models\User;
 use App\Services\TokenWalletService;
 use Illuminate\Console\Command;
@@ -29,12 +28,7 @@ class GrantTokenRenewals extends Command
                 continue;
             }
 
-            // Opt-out permanente: quem já comprou tokens não recebe renovação gratuita.
-            $hasPurchase = TokenTransaction::query()
-                ->where('user_id', $user->id)
-                ->where('type', TokenTransaction::TYPE_PURCHASE)
-                ->exists();
-            if (! $hasPurchase) {
+            if ($wallet->userEligibleForFreeRenewal($user)) {
                 $wallet->resetBalanceToWelcome($user, ['source' => 'scheduled', 'target' => $target]);
             }
 

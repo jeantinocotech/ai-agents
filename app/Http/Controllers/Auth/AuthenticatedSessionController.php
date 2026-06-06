@@ -74,17 +74,6 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        $welcome = max(0, (int) \App\Models\Setting::get('tokens_welcome_amount', 0));
-        $days = max(1, (int) \App\Models\Setting::get('tokens_renewal_interval_days', 30));
-        $packAmount = max(0, (int) \App\Models\Setting::get('token_pack_amount', 0));
-        $packPrice = (float) \App\Models\Setting::get('token_pack_price', 0);
-
-        $msg = 'Condição Especial de Lançamento! Cadastre-se agora e ganhe '.$welcome.' tokens para testar todas as funcionalidades. '
-            .'Após '.$days.' dias, renovamos gratuitamente seus tokens para '.$welcome.'. '
-            .'Se precisar de mais Tokens para seguir com seu desenvolvimento, você pode adquirir '.$packAmount.' tokens por apenas R$ '.number_format($packPrice, 2, ',', '.')
-            .'. Após primeira compra a renovação grátis deixa de existir. Oportunidade por tempo limitado, aproveite.';
-
-        return redirect('/')
-            ->with('info', $msg);
+        return redirect('/');
     }
 }

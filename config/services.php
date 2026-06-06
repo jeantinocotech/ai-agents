@@ -14,6 +14,10 @@ return [
     |
     */
 
+    'google_analytics' => [
+        'measurement_id' => env('GA_MEASUREMENT_ID'),
+    ],
+
     'postmark' => [
         'token' => env('POSTMARK_TOKEN'),
     ],

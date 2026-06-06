@@ -11,9 +11,6 @@
                     <p class="mt-2">
                         Use tokens para conversar com os agentes. Após o pagamento confirmado, o saldo é creditado automaticamente.
                     </p>
-                    <div class="mt-3">
-                        <x-token-policy-note />
-                    </div>
                 </div>
             </div>
         </x-graca-orientation-panel>
@@ -178,7 +175,21 @@
                 <p class="text-lg text-gray-800">
                     R$ <span id="token-pack-total-price">{{ number_format($price, 2, ',', '.') }}</span>
                 </p>
-                <p class="text-sm text-gray-500 mt-4">Saldo atual: <strong>{{ number_format(auth()->user()->token_balance, 0, ',', '.') }}</strong> tokens</p>
+                <p class="text-sm text-gray-500 mt-4">
+                    Saldo atual:
+                    <strong class="tabular-nums text-gray-800">{{ number_format(auth()->user()->token_balance, 0, ',', '.') }}</strong>
+                    tokens
+                </p>
+                @if ($showFreeRenewal)
+                    @if ($nextFreeRenewalAt)
+                        <p class="text-sm text-gray-500 mt-2">
+                            Próxima renovação gratuita:
+                            <strong class="text-gray-800">{{ $nextFreeRenewalAt->timezone(config('app.timezone'))->format('d/m/Y') }}</strong>
+                        </p>
+                    @else
+                        <p class="text-sm text-gray-500 mt-2">Renovação gratuita conforme a política da sua conta.</p>
+                    @endif
+                @endif
                 <p class="text-sm mt-3">
                     <a href="{{ route('tokens.history') }}" class="text-green-700 font-medium hover:underline">Ver histórico de compras</a>
                 </p>

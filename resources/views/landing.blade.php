@@ -1,5 +1,5 @@
 <x-app-layout>
-    @if (session('status') || session('info') || session('success'))
+    @if (session('status') || session('success'))
         <div class="mx-auto max-w-5xl px-4 pt-6">
             @if (session('status'))
                 <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950" role="status">
@@ -9,12 +9,6 @@
             @if (session('success'))
                 <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950" role="status">
                     {{ session('success') }}
-                </div>
-            @endif
-            @if (session('info'))
-                {{-- Mesmo estilo visual da regra de tokens (x-token-policy-note), para consistência após logout e em avisos «info». --}}
-                <div class="mb-4 rounded-2xl border border-teal-300 bg-teal-100 p-4 text-sm shadow-sm ring-1 ring-teal-200" role="status">
-                    <p class="font-semibold text-indigo-800 whitespace-pre-line">{{ session('info') }}</p>
                 </div>
             @endif
         </div>

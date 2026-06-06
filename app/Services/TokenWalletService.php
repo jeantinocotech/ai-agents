@@ -35,6 +35,14 @@ class TokenWalletService
         return max(0, (int) Setting::get('tokens_renewal_amount', 0));
     }
 
+    public function userEligibleForFreeRenewal(User $user): bool
+    {
+        return ! TokenTransaction::query()
+            ->where('user_id', $user->id)
+            ->where('type', TokenTransaction::TYPE_PURCHASE)
+            ->exists();
+    }
+
     /**
      * Renovação gratuita: coloca o saldo exatamente no valor de boas-vindas (pode reduzir ou aumentar).
      *
