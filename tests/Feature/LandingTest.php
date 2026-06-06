@@ -7,7 +7,17 @@ test('guest sees public landing with sign up affordance', function () {
     $this->get(route('home'))
         ->assertOk()
         ->assertSee('Ajustar meu CV para passar pelos filtros de IA (ATS)', false)
-        ->assertSee('filtros de IA e volte a receber entrevistas', false);
+        ->assertSee('filtros de IA e volte a receber entrevistas', false)
+        ->assertSee('id="landing-hero-cv-cta"', false);
+});
+
+test('landing hero cta includes google analytics click event when measurement id is configured', function () {
+    config(['services.google_analytics.measurement_id' => 'G-TEST123']);
+
+    $this->get(route('home'))
+        ->assertOk()
+        ->assertSee('landing_hero_cv_cta', false)
+        ->assertSee('landing-hero-cv-cta', false);
 });
 
 test('authenticated user without a saved cv sees home onboarding ctas', function () {
