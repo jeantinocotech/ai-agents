@@ -17,6 +17,37 @@
                 gtag('js', new Date());
 
                 gtag('config', '{{ config('services.google_analytics.measurement_id') }}');
+
+                window.gratoGaTrack = function (eventName, params, destinationUrl) {
+                    if (typeof gtag !== 'function') {
+                        return true;
+                    }
+
+                    if (!destinationUrl) {
+                        gtag('event', eventName, params || {});
+
+                        return false;
+                    }
+
+                    var navigated = false;
+                    var go = function () {
+                        if (navigated) {
+                            return;
+                        }
+                        navigated = true;
+                        window.location.href = destinationUrl;
+                    };
+                    var payload = Object.assign({}, params || {}, {
+                        transport_type: 'beacon',
+                        link_url: destinationUrl,
+                        event_callback: go,
+                    });
+
+                    gtag('event', eventName, payload);
+                    setTimeout(go, 500);
+
+                    return false;
+                };
             </script>
         @endif
         

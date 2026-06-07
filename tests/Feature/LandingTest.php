@@ -17,7 +17,9 @@ test('landing hero cta includes google analytics click event when measurement id
     $this->get(route('home'))
         ->assertOk()
         ->assertSee('landing_hero_cv_cta', false)
-        ->assertSee('landing-hero-cv-cta', false);
+        ->assertSee('landing-hero-cv-cta', false)
+        ->assertSee('window.gratoGaTrack', false)
+        ->assertSee('transport_type', false);
 });
 
 test('authenticated user without a saved cv sees home onboarding ctas', function () {

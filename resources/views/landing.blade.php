@@ -93,6 +93,9 @@
                     <div class="flex flex-wrap gap-3">
                         <a href="{{ route('register') }}"
                            id="landing-hero-cv-cta"
+                           @if (config('services.google_analytics.measurement_id'))
+                               onclick="return window.gratoGaTrack('landing_hero_cv_cta', { cta_location: 'guest_hero', cta_text: 'Ajustar meu CV para passar pelos filtros de IA (ATS)' }, this.href);"
+                           @endif
                            class="inline-block px-8 py-3 rounded-full bg-white text-black font-semibold shadow hover:bg-gray-200 transition">
                             Ajustar meu CV para passar pelos filtros de IA (ATS)
                         </a>
@@ -237,25 +240,4 @@
             </div>
         </div>
     </footer>
-
-    @if (config('services.google_analytics.measurement_id'))
-        @push('scripts')
-            <script>
-                document.addEventListener('DOMContentLoaded', function () {
-                    const cta = document.getElementById('landing-hero-cv-cta');
-                    if (!cta || typeof gtag !== 'function') {
-                        return;
-                    }
-
-                    cta.addEventListener('click', function () {
-                        gtag('event', 'landing_hero_cv_cta', {
-                            cta_location: 'guest_hero',
-                            cta_text: 'Ajustar meu CV para passar pelos filtros de IA (ATS)',
-                            link_url: cta.href,
-                        });
-                    });
-                });
-            </script>
-        @endpush
-    @endif
 </x-app-layout>
