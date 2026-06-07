@@ -39,7 +39,7 @@
             $chatkitSimpleChat = $chatkitSimpleChat ?? false;
             $compactTrailCvOnly = ($compactTrailChatUi ?? false) && (($compactTrailStep->slug ?? null) === 'cv');
             $ckLib = $documentLibrary ?? ['cvs' => [], 'jds' => [], 'defaults' => ['cv_document_id' => null, 'jd_document_id' => null]];
-            $ckDefCv = $ckLib['defaults']['cv_document_id'] ?? null;
+            $ckDefCv = $chatkitAutoAnalyzeCvId ?? ($ckLib['defaults']['cv_document_id'] ?? null);
             $ckDefJd = $ckLib['defaults']['jd_document_id'] ?? null;
             $ckMaxCv = (int) ($ckLib['max_cv_body_chars'] ?? config('agent_documents.max_cv_body_chars', 60000));
             $ckMaxJd = (int) ($ckLib['max_jd_body_chars'] ?? config('agent_documents.max_jd_body_chars', 60000));

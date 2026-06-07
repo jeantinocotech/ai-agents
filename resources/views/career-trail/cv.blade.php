@@ -148,6 +148,8 @@
                             @if (! empty($cvAnalyzeChatUrl))
                                 @if ($canAnalyzeCvNow)
                                     <x-ui.button id="btn-analisar-cv" variant="outline" size="md" href="{{ $cvAnalyzeChatUrl }}"
+                                                 data-user-cv-id="{{ $formCv->id }}"
+                                                 data-chat-base-url="{{ $cvAssistantChatUrl }}"
                                                  @class(['ring-2 ring-indigo-400 ring-offset-2' => session('show_analisar')])>
                                         Analisar CV
                                     </x-ui.button>
@@ -360,6 +362,29 @@
                             });
                     });
                 }
+            })();
+
+            (function bindAnalyzeCvNavigation() {
+                var analyzeBtn = document.getElementById('btn-analisar-cv');
+                if (!analyzeBtn) {
+                    return;
+                }
+                analyzeBtn.addEventListener('click', function (ev) {
+                    var cvId = analyzeBtn.getAttribute('data-user-cv-id');
+                    var base = analyzeBtn.getAttribute('data-chat-base-url') || analyzeBtn.getAttribute('href');
+                    if (!cvId || !base) {
+                        return;
+                    }
+                    ev.preventDefault();
+                    try {
+                        var url = new URL(base, window.location.origin);
+                        url.searchParams.set('user_cv_id', String(cvId));
+                        url.searchParams.set('auto_send', '1');
+                        window.location.assign(url.toString());
+                    } catch (_) {
+                        window.location.assign(base);
+                    }
+                });
             })();
         </script>
     </div>

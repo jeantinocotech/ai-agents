@@ -9,6 +9,24 @@ beforeEach(function () {
     $this->seed(CareerTrailStepsSeeder::class);
 });
 
+test('login page renders sign_up script after registration redirect', function () {
+    config(['services.google_analytics.measurement_id' => 'G-TEST123']);
+
+    $this->post(route('register'), [
+        'name' => 'Test User',
+        'email' => 'analytics-html-'.uniqid().'@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+        'accept_privacy_policy' => '1',
+        'accept_terms' => '1',
+    ]);
+
+    $this->get(route('login'))
+        ->assertOk()
+        ->assertSee('sign_up', false)
+        ->assertSee('gratoGaEvent', false);
+});
+
 test('registration flashes sign_up analytics event for login page', function () {
     config(['services.google_analytics.measurement_id' => 'G-TEST123']);
 

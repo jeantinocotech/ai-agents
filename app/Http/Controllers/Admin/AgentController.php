@@ -149,7 +149,9 @@ class AgentController extends Controller
             'system_prompt' => $validated['system_prompt'] ?? null,
             'price' => $validated['price_formatted'] ?? 1.99, // Já vem no formato correto
             'youtube_video_id' => $validated['youtube_video_id'],
-            'api_key' => $validated['api_key'],
+            'api_key' => $request->filled('api_key')
+                ? trim((string) $validated['api_key'])
+                : $agent->api_key,
             'assistant_id' => $validated['assistant_id'],
             'model_type' => $validated['model_type'],
             'is_active' => $request->input('is_active', 0),

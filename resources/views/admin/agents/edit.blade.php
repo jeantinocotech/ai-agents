@@ -178,8 +178,14 @@
                         
                         <div class="mb-4">
                             <label for="api_key" class="block text-gray-700 text-sm font-bold mb-2">Chave API (opcional)</label>
-                            <input type="text" name="api_key" id="api_key" value="{{ old('api_key', $agent->api_key) }}" 
+                            @if ($agent->api_key)
+                                <p class="mb-1 text-sm text-emerald-800">Chave API já configurada neste agente. Deixe o campo vazio ao guardar para mantê-la.</p>
+                            @endif
+                            <input type="password" name="api_key" id="api_key" value="{{ old('api_key') }}"
+                                   autocomplete="new-password"
+                                   placeholder="{{ $agent->api_key ? '••••••••  (deixe vazio para manter)' : 'sk-…' }}"
                                    class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                            <p class="text-sm text-gray-500 mt-1">Usada nas sessões ChatKit deste agente. Fallback global: <code class="text-xs">OPENAI_API_KEY</code> no .env.</p>
                         </div>
                         
                         <div class="mb-6">

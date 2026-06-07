@@ -198,6 +198,10 @@ class AgentController extends Controller
             }
         }
 
+        $chatkitAutoAnalyzeCvId = is_array($documentLibrary)
+            ? \App\Support\ChatKitCvAutoAnalyze::preselectCvIdFromRequest($request, $documentLibrary)
+            : null;
+
         if ($request->boolean('embedded') && $agent->isChatKitWorkflow()) {
             return view('agents.chat-embedded', compact(
                 'agent',
@@ -218,6 +222,7 @@ class AgentController extends Controller
                 'markApplicationSubmittedUrlTemplate',
                 'atsPairContext',
                 'atsWorkspaceAnalysis',
+                'chatkitAutoAnalyzeCvId',
             ));
         }
 
@@ -240,6 +245,7 @@ class AgentController extends Controller
             'markApplicationSubmittedUrlTemplate',
             'atsPairContext',
             'atsWorkspaceAnalysis',
+            'chatkitAutoAnalyzeCvId',
         ));
     }
 

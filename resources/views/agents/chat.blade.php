@@ -26,6 +26,9 @@
                             </div>
                             @if ($agent->isChatKitWorkflow())
                                 <p class="text-xs text-slate-600">
+                                    Saldo:
+                                    <strong data-live-token-balance class="tabular-nums font-semibold text-emerald-800">{{ number_format($tokenBalance ?? 0, 0, ',', '.') }}</strong>
+                                    <span class="text-slate-400" aria-hidden="true">·</span>
                                     Consumidos na sessão:
                                     <strong id="chatkit-session-tokens-used" class="tabular-nums font-semibold text-amber-700">0</strong>
                                 </p>
@@ -96,7 +99,7 @@
                     @php
                         $compactTrailCvOnly = ($compactTrailChatUi ?? false) && (($compactTrailStep->slug ?? null) === 'cv');
                         $ckLib = $documentLibrary ?? ['cvs' => [], 'jds' => [], 'defaults' => ['cv_document_id' => null, 'jd_document_id' => null]];
-                        $ckDefCv = $ckLib['defaults']['cv_document_id'] ?? null;
+                        $ckDefCv = $chatkitAutoAnalyzeCvId ?? ($ckLib['defaults']['cv_document_id'] ?? null);
                         $ckDefJd = $ckLib['defaults']['jd_document_id'] ?? null;
                         $ckMaxCv = (int) ($ckLib['max_cv_body_chars'] ?? config('agent_documents.max_cv_body_chars', 60000));
                         $ckMaxJd = (int) ($ckLib['max_jd_body_chars'] ?? config('agent_documents.max_jd_body_chars', 60000));

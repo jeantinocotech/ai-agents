@@ -401,3 +401,59 @@ test('embedded no_documents is ignored for agents that are not the career cv ass
         ->assertViewHas('chatkitSimpleChat', false)
         ->assertSee('Documentos para o assistente', false);
 });
+
+test('cv analyze chat url preselects profile cv and registers pending auto send', function () {
+    $user = User::factory()->create(['token_balance' => 500]);
+    $agent = makeCareerTrailChatKitAgent();
+    bindCareerCvStepAgent((int) $agent->id);
+
+    UserCv::query()->create([
+        'user_id' => $user->id,
+        'title' => 'CV padrão',
+        'body' => str_repeat('a', 400),
+        'is_default' => true,
+        'source' => UserCv::SOURCE_MANUAL,
+    ]);
+
+    $target = UserCv::query()->create([
+        'user_id' => $user->id,
+        'title' => 'CV alvo',
+        'body' => str_repeat('b', 400),
+        'is_default' => false,
+        'source' => UserCv::SOURCE_MANUAL,
+    ]);
+
+    $analyzeUrl = CareerTrailStep::cvAnalyzeChatUrlForUserCv((int) $target->id);
+    expect($analyzeUrl)->not->toBeNull()
+        ->and($analyzeUrl)->toContain('auto_send=1')
+        ->and($analyzeUrl)->toContain('user_cv_id='.$target->id);
+
+    $response = $this->actingAs($user)->get($analyzeUrl);
+    $response->assertOk()
+        ->assertViewHas('chatkitAutoAnalyzeCvId', 'p'.$target->id)
+        ->assertSee('value="p'.$target->id.'" selected', false)
+        ->assertSee('chatkitPendingAutoCvSend = {"wanted":"p'.$target->id.'"}', false)
+        ->assertSee('var chatKitLibraryCvOnly = true', false)
+        ->assertSee('window.__chatkitTriggerAutoCvSend', false);
+});
+
+test('career trail cv edit page exposes analyze link for saved cv', function () {
+    $user = User::factory()->create();
+    $agent = makeCareerTrailChatKitAgent();
+    bindCareerCvStepAgent((int) $agent->id);
+
+    $cv = UserCv::query()->create([
+        'user_id' => $user->id,
+        'title' => 'Meu CV',
+        'body' => str_repeat('c', 400),
+        'is_default' => true,
+        'source' => UserCv::SOURCE_MANUAL,
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('career-trail.cv', ['edit' => $cv->id]))
+        ->assertOk()
+        ->assertSee('btn-analisar-cv', false)
+        ->assertSee('user_cv_id='.$cv->id, false)
+        ->assertSee('auto_send=1', false);
+});

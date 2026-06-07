@@ -49,8 +49,66 @@
             }
         }
     }
+
+    $chatkitPendingAutoCvSend = null;
+    if (! empty($chatkitAutoAnalyzeCvId ?? null)) {
+        $chatkitPendingAutoCvSend = ['wanted' => (string) $chatkitAutoAnalyzeCvId];
+    }
 @endphp
 <script>
+var chatkitPendingAutoCvSend = @json($chatkitPendingAutoCvSend);
+
+(function bootstrapAutoCvSelectFromQuery() {
+    if (!chatkitPendingAutoCvSend || !chatkitPendingAutoCvSend.wanted) {
+        return;
+    }
+    var wanted = String(chatkitPendingAutoCvSend.wanted);
+    var tries = 0;
+    function trySelect() {
+        tries += 1;
+        var cvSel = document.getElementById('chatkit-default-cv');
+        if (!cvSel) {
+            if (tries < 80) {
+                setTimeout(trySelect, 50);
+            }
+            return;
+        }
+        for (var i = 0; i < cvSel.options.length; i++) {
+            if (cvSel.options[i].value === wanted) {
+                cvSel.value = wanted;
+                cvSel.dispatchEvent(new Event('change', { bubbles: true }));
+                return;
+            }
+        }
+        if (tries < 80) {
+            setTimeout(trySelect, 50);
+        }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', trySelect);
+    } else {
+        trySelect();
+    }
+})();
+
+(function scheduleAutoCvSendWhenReady() {
+    if (!chatkitPendingAutoCvSend || !chatkitPendingAutoCvSend.wanted) {
+        return;
+    }
+    var tries = 0;
+    function tick() {
+        tries += 1;
+        if (typeof window.__chatkitTriggerAutoCvSend === 'function') {
+            if (window.__chatkitTriggerAutoCvSend()) {
+                return;
+            }
+        }
+        if (tries < 400) {
+            setTimeout(tick, 50);
+        }
+    }
+    tick();
+})();
 window.chatApp = {
     showSuccessMessage: function (message) {
         const notification = document.createElement('div');
@@ -108,6 +166,37 @@ function postChatKitClientLog(payload) {
 }
 var chatKitBootAttempts = 0;
 var chatKitMaxBootAttempts = 240;
+
+function whenChatKitSendReady(chatKitEl, attempt) {
+    attempt = attempt || 0;
+
+    return new Promise(function (resolve, reject) {
+        if (!chatKitEl) {
+            reject(new Error('Widget ChatKit não encontrado na página.'));
+
+            return;
+        }
+        if (typeof chatKitEl.sendUserMessage === 'function') {
+            resolve(chatKitEl);
+
+            return;
+        }
+        if (attempt >= chatKitMaxBootAttempts) {
+            reject(new Error('ChatKit não ficou pronto a tempo para enviar mensagens. Recarregue a página.'));
+
+            return;
+        }
+        setTimeout(function () {
+            whenChatKitSendReady(chatKitEl, attempt + 1).then(resolve).catch(reject);
+        }, 50);
+    });
+}
+
+function chatKitSendUserMessage(chatKitEl, params) {
+    return whenChatKitSendReady(chatKitEl).then(function (el) {
+        return el.sendUserMessage(params);
+    });
+}
 
 @if ($compactTrailAts)
 window.chatkitPersistAtsAnalysis = function () {
@@ -429,15 +518,31 @@ function bootOpenAiChatKit() {
         },
         @endif
     });
-    if (typeof el.sendUserMessage === 'function') {
-        initChatKitLibrarySendButtons(el);
-    }
+    @if (! ($chatkitSimpleChat ?? false))
+    initChatKitLibrarySendButtons(el);
+    @endif
     @if ($chatkitSimpleChat)
         initChatKitSimpleConversationBilling(el);
     @endif
 }
 
+document.addEventListener('DOMContentLoaded', function () {
+    @if (! ($chatkitSimpleChat ?? false))
+    var domChatKitEl = document.getElementById('openai-chatkit-root');
+    if (domChatKitEl) {
+        initChatKitLibrarySendButtons(domChatKitEl);
+    }
+    @endif
+});
+
 function initChatKitLibrarySendButtons(chatKitEl) {
+    if (chatKitEl && chatKitEl.dataset && chatKitEl.dataset.chatkitLibraryButtonsInit === '1') {
+        if (typeof window.__chatkitTriggerAutoCvSend === 'function') {
+            window.__chatkitTriggerAutoCvSend();
+        }
+
+        return;
+    }
     var chatKitLibraryCvOnly = @json($compactTrailCvOnly ?? false);
     var chatKitTrailAts = @json($compactTrailAts ?? false);
     var cvBtn = document.getElementById('chatkit-send-cv');
@@ -445,11 +550,18 @@ function initChatKitLibrarySendButtons(chatKitEl) {
     var cvSel = document.getElementById('chatkit-default-cv');
     var jdSel = document.getElementById('chatkit-default-jd');
     var statusEl = document.getElementById('chatkit-documents-status');
+    if (!chatKitLibraryCvOnly && !jdSel && document.getElementById('chatkit-create-cv-from-scratch')) {
+        chatKitLibraryCvOnly = true;
+        chatKitTrailAts = false;
+    }
     if (!cvBtn || !cvSel || !chatKitEl) {
         return;
     }
     if (!chatKitLibraryCvOnly && (!jdBtn || !jdSel)) {
         return;
+    }
+    if (chatKitEl.dataset) {
+        chatKitEl.dataset.chatkitLibraryButtonsInit = '1';
     }
     var csrf = document.querySelector('meta[name="csrf-token"]');
     var csrfToken = csrf ? csrf.getAttribute('content') : '';
@@ -483,6 +595,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
     var atsAutoPersistInFlight = false;
     var atsAutoPersistAttempt = 0;
     var btnClassPrimary = @json(\App\Support\UiButton::classes('primary', 'xs'));
+    var liveTokenBalance = {{ (int) ($tokenBalance ?? 0) }};
 
     function parseCvSelectUserId() {
         var v = cvSel ? cvSel.value : '';
@@ -931,7 +1044,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                     '\n\n--- VAGA (JD) ---\n' +
                     jdBody;
                 text += buildAtsMetaBlock(pair.jdId, pair.userCvId);
-                return chatKitEl.sendUserMessage({ text: text, newThread: true });
+                return chatKitSendUserMessage(chatKitEl, { text: text, newThread: true });
             })
             .then(function () {
                 updateAtsStepUi(3);
@@ -1342,12 +1455,17 @@ function initChatKitLibrarySendButtons(chatKitEl) {
 
     function parseTokenBalanceFromPill() {
         var bal = document.querySelector('[data-live-token-balance]') || document.getElementById('token-balance-value');
-        if (!bal || !bal.textContent) {
-            return 0;
+        if (bal && bal.textContent) {
+            var cleaned = bal.textContent.replace(/\./g, '').replace(/[^\d-]/g, '');
+            var n = parseInt(cleaned, 10);
+            if (!isNaN(n)) {
+                liveTokenBalance = n;
+
+                return n;
+            }
         }
-        var cleaned = bal.textContent.replace(/\./g, '').replace(/[^\d-]/g, '');
-        var n = parseInt(cleaned, 10);
-        return isNaN(n) ? 0 : n;
+
+        return liveTokenBalance;
     }
 
     function updateTokenPillFromJson(data) {
@@ -1661,7 +1779,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                     var cvPair = getSelectedAtsPairIds();
                     text += buildAtsMetaBlock(cvPair.jdId, cvPair.userCvId);
                 }
-                return chatKitEl.sendUserMessage({ text: text, newThread: true });
+                return chatKitSendUserMessage(chatKitEl, { text: text, newThread: true });
             })
             .then(function () {
                 if (chatKitLibraryCvOnly) {
@@ -1764,7 +1882,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
             createCvBtn.disabled = true;
             cvBtn.disabled = true;
             setStatus('A iniciar criação de CV no chat…');
-            Promise.resolve(chatKitEl.sendUserMessage({ text: prompt, newThread: true }))
+            chatKitSendUserMessage(chatKitEl, { text: prompt, newThread: true })
                 .then(function () {
                     if (chatkitConsultationCost > 0) {
                         pendingCvTurnDebits += 1;
@@ -1798,39 +1916,93 @@ function initChatKitLibrarySendButtons(chatKitEl) {
     }
 
     (function autoCareerTrailCvSendFromQuery() {
-        try {
-            var params = new URLSearchParams(window.location.search);
-            if (params.get('auto_send') !== '1') {
-                return;
+        var autoCvSendTriggered = false;
+
+        function parsePendingAutoCvWanted() {
+            if (chatkitPendingAutoCvSend && chatkitPendingAutoCvSend.wanted) {
+                return String(chatkitPendingAutoCvSend.wanted);
             }
-            var uid = params.get('user_cv_id');
-            if (!uid) {
-                return;
+            try {
+                var params = new URLSearchParams(window.location.search);
+                if (params.get('auto_send') !== '1') {
+                    return null;
+                }
+                var uid = params.get('user_cv_id');
+                if (!uid) {
+                    return null;
+                }
+                return 'p' + String(uid).replace(/\D/g, '');
+            } catch (err) {
+                return null;
             }
-            var wanted = 'p' + String(uid).replace(/\D/g, '');
-            var ok = false;
+        }
+
+        function cvOptionExists(wanted) {
             for (var i = 0; i < cvSel.options.length; i++) {
                 if (cvSel.options[i].value === wanted) {
-                    ok = true;
-                    break;
+                    return true;
                 }
             }
-            if (!ok) {
-                setStatus('CV não encontrado na lista para envio automático.');
-                return;
+            return false;
+        }
+
+        function applyAutoCvSelection(wanted) {
+            if (!wanted || !cvSel || !cvOptionExists(wanted)) {
+                return false;
             }
             cvSel.value = wanted;
             cvSel.dispatchEvent(new Event('change', { bubbles: true }));
-            params.delete('auto_send');
-            params.delete('user_cv_id');
-            var q = params.toString();
-            window.history.replaceState({}, '', window.location.pathname + (q ? '?' + q : '') + window.location.hash);
-            setTimeout(function () {
-                cvBtn.click();
-            }, 0);
-        } catch (err) {
-            console.error(err);
+            return true;
         }
+
+        function stripAutoCvQueryFromUrl() {
+            try {
+                var params = new URLSearchParams(window.location.search);
+                if (!params.has('auto_send') && !params.has('user_cv_id')) {
+                    return;
+                }
+                params.delete('auto_send');
+                params.delete('user_cv_id');
+                var q = params.toString();
+                window.history.replaceState({}, '', window.location.pathname + (q ? '?' + q : '') + window.location.hash);
+            } catch (err) {}
+        }
+
+        window.__chatkitTriggerAutoCvSend = function () {
+            if (autoCvSendTriggered || !cvBtn) {
+                return false;
+            }
+            var wanted = parsePendingAutoCvWanted();
+            if (!wanted) {
+                return false;
+            }
+            if (!applyAutoCvSelection(wanted)) {
+                setStatus('CV não encontrado na lista para envio automático.');
+                return false;
+            }
+            autoCvSendTriggered = true;
+            stripAutoCvQueryFromUrl();
+            setStatus('A preparar envio automático do CV…');
+            whenChatKitSendReady(chatKitEl)
+                .then(function () {
+                    setTimeout(function () {
+                        cvBtn.click();
+                    }, 350);
+                })
+                .catch(function (err) {
+                    autoCvSendTriggered = false;
+                    var msg =
+                        (err && err.message) ||
+                        'ChatKit não ficou pronto para enviar o CV automaticamente.';
+                    setStatus(msg);
+                    if (window.chatApp && window.chatApp.showErrorMessage) {
+                        window.chatApp.showErrorMessage(msg);
+                    }
+                });
+            return true;
+        };
+
+        window.__chatkitTriggerAutoCvSend();
     })();
 
     (function autoCareerTrailAtsPairFromQuery() {
@@ -1991,7 +2163,7 @@ function initChatKitLibrarySendButtons(chatKitEl) {
                     var jdPair = getSelectedAtsPairIds();
                     text += buildAtsMetaBlock(jdPair.jdId, jdPair.userCvId);
                 }
-                return chatKitEl.sendUserMessage({ text: text });
+                return chatKitSendUserMessage(chatKitEl, { text: text });
             })
             .then(function () {
                 setStatus(
