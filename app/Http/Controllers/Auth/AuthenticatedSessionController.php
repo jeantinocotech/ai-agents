@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Services\TwoFactorAuthService;
 use App\Support\DefaultAuthRedirect;
+use App\Support\GoogleAnalytics;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -59,6 +60,8 @@ class AuthenticatedSessionController extends Controller
         if (! $user->hasAcceptedCurrentLegalDocuments()) {
             return redirect()->route('legal.consent.show');
         }
+
+        GoogleAnalytics::flash('login', ['method' => 'email']);
 
         return redirect()->intended(DefaultAuthRedirect::url());
     }

@@ -1,4 +1,12 @@
 <x-app-layout>
+    <x-ga-page-event
+        event="begin_checkout"
+        :params="[
+            'currency' => 'BRL',
+            'value' => (float) $price,
+        ]"
+    />
+
     <div class="max-w-6xl mx-auto py-10 px-6">
         <x-graca-orientation-panel :page-key="\App\Support\GracaPanelPreferences::PAGE_TOKENS">
             <div class="flex flex-col gap-3 sm:flex-row sm:items-start">

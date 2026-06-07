@@ -1,4 +1,6 @@
 <x-app-layout>
+    <x-ga-page-event event="trail_map_view" />
+
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             A sua trilha de carreira

@@ -11,6 +11,7 @@ use App\Services\AtsKeywordAnalysisService;
 use App\Services\ChatKitThreadItemsService;
 use App\Support\AtsChatKitSyncNormalizer;
 use App\Support\CareerTrailAtsJdValidator;
+use App\Support\GoogleAnalytics;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -44,6 +45,8 @@ class CareerTrailAtsWorkspaceController extends Controller
 
         $score = isset($validated['ats_score']) ? (float) $validated['ats_score'] : null;
         $analysis = $analysisService->analyzeForPair($userCv, $jd, (int) $user->id, $score);
+
+        GoogleAnalytics::flash('ats_analysis_started', ['source' => 'app']);
 
         return redirect()
             ->route('career-trail.ats.workspace', $analysis)

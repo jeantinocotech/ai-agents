@@ -1,4 +1,15 @@
 <x-app-layout>
+    @if ($order->status === \App\Models\TokenPackOrder::STATUS_COMPLETED)
+        <x-ga-page-event
+            event="purchase"
+            :params="[
+                'currency' => 'BRL',
+                'value' => (float) $order->amount_brl,
+                'transaction_id' => (string) $order->id,
+            ]"
+        />
+    @endif
+
     <div class="max-w-2xl mx-auto py-10 px-6">
         <div class="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm ring-1 ring-slate-100">
             @if ($order->status === \App\Models\TokenPackOrder::STATUS_COMPLETED)

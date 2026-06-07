@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\DefaultAuthRedirect;
+use App\Support\GoogleAnalytics;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -42,6 +43,8 @@ class LegalConsentController extends Controller
         $user->terms_accepted_at = $now;
         $user->terms_accepted_version = config('legal.terms_version');
         $user->save();
+
+        GoogleAnalytics::flash('legal_consent_accepted');
 
         return redirect()->intended(DefaultAuthRedirect::url());
     }

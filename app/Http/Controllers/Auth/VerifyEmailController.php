@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Support\EmailVerificationCode;
+use App\Support\GoogleAnalytics;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -31,6 +32,7 @@ class VerifyEmailController extends Controller
         if ($user->markEmailAsVerified()) {
             EmailVerificationCode::forget((int) $user->getKey());
             event(new Verified($user));
+            GoogleAnalytics::flash('email_verified', ['method' => 'link']);
         }
 
         return redirect()

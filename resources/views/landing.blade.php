@@ -93,13 +93,16 @@
                     <div class="flex flex-wrap gap-3">
                         <a href="{{ route('register') }}"
                            id="landing-hero-cv-cta"
-                           @if (config('services.google_analytics.measurement_id'))
+                           @if (\App\Support\GoogleAnalytics::enabled())
                                onclick="return window.gratoGaTrack('landing_hero_cv_cta', { cta_location: 'guest_hero', cta_text: 'Ajustar meu CV para passar pelos filtros de IA (ATS)' }, this.href);"
                            @endif
                            class="inline-block px-8 py-3 rounded-full bg-white text-black font-semibold shadow hover:bg-gray-200 transition">
                             Ajustar meu CV para passar pelos filtros de IA (ATS)
                         </a>
                         <a href="{{ route('login') }}"
+                           @if (\App\Support\GoogleAnalytics::enabled())
+                               onclick="return window.gratoGaTrack('landing_cta_click', { cta_location: 'guest_hero', cta_text: 'Entrar' }, this.href);"
+                           @endif
                            class="inline-block px-8 py-3 rounded-full border border-white/30 text-white font-semibold hover:bg-white/10 transition">
                             Entrar
                         </a>
@@ -142,10 +145,18 @@
                     <div class="mt-12 text-center">
                         <p class="text-gray-700 mb-4">Para seguir a trilha completa com a Graça e os assistentes de IA, crie uma conta.</p>
                         <div class="flex justify-center gap-4 flex-wrap">
-                            <a href="{{ route('register') }}" class="bg-black hover:bg-gray-800 text-white px-6 py-3 rounded-xl font-semibold transition">
+                            <a href="{{ route('register') }}"
+                               @if (\App\Support\GoogleAnalytics::enabled())
+                                   onclick="return window.gratoGaTrack('landing_cta_click', { cta_location: 'trilha_teaser', cta_text: 'Criar conta' }, this.href);"
+                               @endif
+                               class="bg-black hover:bg-gray-800 text-white px-6 py-3 rounded-xl font-semibold transition">
                                 Criar conta
                             </a>
-                            <a href="{{ route('login') }}" class="border border-gray-800 text-gray-900 hover:bg-gray-100 px-6 py-3 rounded-xl font-semibold transition">
+                            <a href="{{ route('login') }}"
+                               @if (\App\Support\GoogleAnalytics::enabled())
+                                   onclick="return window.gratoGaTrack('landing_cta_click', { cta_location: 'trilha_teaser', cta_text: 'Já tenho conta' }, this.href);"
+                               @endif
+                               class="border border-gray-800 text-gray-900 hover:bg-gray-100 px-6 py-3 rounded-xl font-semibold transition">
                                 Já tenho conta
                             </a>
                         </div>
@@ -209,8 +220,16 @@
                     <h3 class="text-lg font-semibold text-white mb-4">Links</h3>
                     <ul class="space-y-2 text-sm">
                         <li><a href="{{ url('/#trilha-teaser') }}" class="hover:text-white">A trilha</a></li>
-                        <li><a href="{{ route('register') }}" class="hover:text-white">Cadastrar</a></li>
-                        <li><a href="{{ route('login') }}" class="hover:text-white">Entrar</a></li>
+                        <li><a href="{{ route('register') }}"
+                               @if (\App\Support\GoogleAnalytics::enabled())
+                                   onclick="return window.gratoGaTrack('landing_cta_click', { cta_location: 'footer', cta_text: 'Cadastrar' }, this.href);"
+                               @endif
+                               class="hover:text-white">Cadastrar</a></li>
+                        <li><a href="{{ route('login') }}"
+                               @if (\App\Support\GoogleAnalytics::enabled())
+                                   onclick="return window.gratoGaTrack('landing_cta_click', { cta_location: 'footer', cta_text: 'Entrar' }, this.href);"
+                               @endif
+                               class="hover:text-white">Entrar</a></li>
                     </ul>
                 </div>
                 <div>

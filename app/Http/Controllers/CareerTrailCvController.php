@@ -16,6 +16,7 @@ use App\Services\UserCvDuplicateService;
 use App\Support\AgentDocumentLimits;
 use App\Support\AgentsDocumentTrailListFilter;
 use App\Support\CareerTrailStepCompletion;
+use App\Support\GoogleAnalytics;
 use App\Support\UserCvTextExtractor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -234,6 +235,8 @@ class CareerTrailCvController extends Controller
         $msg = $makeDefault
             ? 'Novo CV salvo e definido como padrão na conta.'
             : 'Novo CV salvo na conta.';
+
+        GoogleAnalytics::flash('cv_saved', ['source' => UserCv::SOURCE_MANUAL]);
 
         return redirect()
             ->to(route('career-trail.cv', ['edit' => $new->id]).'#sec-cv-form')

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\TwoFactorAuthService;
 use App\Support\DefaultAuthRedirect;
+use App\Support\GoogleAnalytics;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -71,6 +72,8 @@ class TwoFactorChallengeController extends Controller
         if (! $user->hasAcceptedCurrentLegalDocuments()) {
             return redirect()->route('legal.consent.show');
         }
+
+        GoogleAnalytics::flash('login', ['method' => 'email']);
 
         return redirect()->intended(DefaultAuthRedirect::url());
     }

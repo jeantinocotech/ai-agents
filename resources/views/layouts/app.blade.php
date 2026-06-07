@@ -9,47 +9,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
 
-        @if(config('services.google_analytics.measurement_id'))
-            <script async src="https://www.googletagmanager.com/gtag/js?id={{ config('services.google_analytics.measurement_id') }}"></script>
-            <script>
-                window.dataLayer = window.dataLayer || [];
-                function gtag(){dataLayer.push(arguments);}
-                gtag('js', new Date());
-
-                gtag('config', '{{ config('services.google_analytics.measurement_id') }}');
-
-                window.gratoGaTrack = function (eventName, params, destinationUrl) {
-                    if (typeof gtag !== 'function') {
-                        return true;
-                    }
-
-                    if (!destinationUrl) {
-                        gtag('event', eventName, params || {});
-
-                        return false;
-                    }
-
-                    var navigated = false;
-                    var go = function () {
-                        if (navigated) {
-                            return;
-                        }
-                        navigated = true;
-                        window.location.href = destinationUrl;
-                    };
-                    var payload = Object.assign({}, params || {}, {
-                        transport_type: 'beacon',
-                        link_url: destinationUrl,
-                        event_callback: go,
-                    });
-
-                    gtag('event', eventName, payload);
-                    setTimeout(go, 500);
-
-                    return false;
-                };
-            </script>
-        @endif
+        @include('partials.google-analytics-head')
         
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -104,6 +64,8 @@
         </div>
 
         @stack('scripts')
+
+        @include('partials.google-analytics-flash')
 
        <!-- Cookie Consent Banner -->
         <div id="cookie-banner" class="fixed bottom-0 left-0 w-full z-50 flex items-center justify-between bg-[#181D20] text-white p-4 shadow-lg" style="display:none;">

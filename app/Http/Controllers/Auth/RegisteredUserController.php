@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\TokenWalletService;
+use App\Support\GoogleAnalytics;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -59,6 +60,8 @@ class RegisteredUserController extends Controller
         $user->refresh();
 
         event(new Registered($user));
+
+        GoogleAnalytics::flash('sign_up', ['method' => 'email']);
 
         return redirect()
             ->route('login')
