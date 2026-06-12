@@ -7,7 +7,17 @@ use Illuminate\Support\Facades\Notification;
 test('registration screen can be rendered', function () {
     $response = $this->get('/register');
 
-    $response->assertStatus(200);
+    $response->assertStatus(200)
+        ->assertDontSee('Abra ambos os documentos', false)
+        ->assertDontSee('disabled aria-describedby="register-legal-note"', false);
+});
+
+test('registration legal checkboxes are not gated behind document read', function () {
+    $this->get('/register')
+        ->assertOk()
+        ->assertSee('accept_privacy_policy', false)
+        ->assertSee('accept_terms', false)
+        ->assertSee('Ao marcar as caixas abaixo', false);
 });
 
 test('new users can register', function () {
